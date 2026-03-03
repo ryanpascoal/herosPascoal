@@ -2370,7 +2370,7 @@ function updateCompletedWorks() {
             : work.skipped
             ? `Custo: -${SKIP_ACTIVITY_COST} moedas`
             : work.type === 'epica'
-            ? 'Recompensa: 20 XP + 10 moedas'
+            ? 'Recompensa: 1 XP + 1 moeda'
             : 'Recompensa: 1 XP + 1 moeda';
         const eventDateLabel = work.failed ? 'Falhou em' : work.skipped ? 'Pulado em' : 'Concluido em';
         const eventDateValue = work.completedDate || work.failedDate || work.skippedDate;
@@ -6286,19 +6286,6 @@ function completeWork(workId, feedbackText = '') {
 
     let xpGained = 1;
     let coinsGained = 1;
-    if (work.type === 'epica') {
-        xpGained = 20;
-        coinsGained = 10;
-        work.attributes.forEach(attrId => {
-            const attrXp = attrId === 14 ? 100 : 20;
-            addAttributeXP(attrId, attrXp);
-        });
-    } else {
-        work.attributes.forEach(attrId => {
-            const attrXp = attrId === 14 ? 20 : 1;
-            addAttributeXP(attrId, attrXp);
-        });
-    }
 
     if (work.classId) {
         addClassXP(work.classId, xpGained);
@@ -6309,7 +6296,7 @@ function completeWork(workId, feedbackText = '') {
     appData.statistics.worksDone = (appData.statistics.worksDone || 0) + 1;
     updateProductiveDay(0, 0, 0, xpGained, 1);
 
-    damageBoss('Trabalho', work.type === 'epica' ? 35 : 15);
+    damageBoss('Trabalho', 15);
 
     addHeroLog(
         'mission',
