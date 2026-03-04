@@ -871,6 +871,38 @@ body {
     max-height: 420px;
 }
 
+.nutrition-reports-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+}
+
+.nutrition-reports-toolbar .form-group {
+    margin-bottom: 0;
+    min-width: 200px;
+}
+
+.nutrition-reports-charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.nutrition-evolution-chart {
+    grid-column: 1 / -1;
+}
+
+.nutrition-evolution-chart canvas,
+#nutrition-weekly-chart {
+    aspect-ratio: 1.9 / 1;
+    max-height: 420px !important;
+}
+
+.nutrition-meal-table h4 {
+    margin-bottom: 10px;
+}
+
 .finance-item {
     display: flex;
     justify-content: space-between;
@@ -1951,6 +1983,12 @@ tr:hover {
     height: auto !important;
 }
 
+/* Give extra vertical room to weekly chart (many legend items) */
+#weekly-chart {
+    aspect-ratio: 1.6 / 1;
+    max-height: 320px !important;
+}
+
 /* Diários */
 .diary-filter {
     display: grid;
@@ -2151,6 +2189,11 @@ tr:hover {
         aspect-ratio: 2 / 1;
         max-height: 190px !important;
     }
+
+    #weekly-chart {
+        aspect-ratio: 1.45 / 1;
+        max-height: 300px !important;
+    }
     
     .page-header {
         flex-direction: column;
@@ -2186,6 +2229,21 @@ tr:hover {
         grid-template-columns: 1fr;
     }
 
+    .nutrition-reports-toolbar {
+        justify-content: stretch;
+    }
+
+    .nutrition-reports-toolbar .form-group {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .nutrition-evolution-chart canvas,
+    #nutrition-weekly-chart {
+        aspect-ratio: 1.5 / 1;
+        max-height: 360px !important;
+    }
+
     .nutrition-preview-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2219,6 +2277,17 @@ tr:hover {
     .chart-box canvas {
         aspect-ratio: 2.2 / 1;
         max-height: 170px !important;
+    }
+
+    #weekly-chart {
+        aspect-ratio: 1.3 / 1;
+        max-height: 280px !important;
+    }
+
+    .nutrition-evolution-chart canvas,
+    #nutrition-weekly-chart {
+        aspect-ratio: 1.25 / 1;
+        max-height: 320px !important;
     }
 
     .nutrition-macros-grid,
@@ -4718,10 +4787,43 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
         background: var(--dark-color);
         border: 1px solid var(--card-border);
     }
-    body.light-theme .mobile-more-item {
+body.light-theme .mobile-more-item {
         background: rgba(123, 97, 255, 0.1);
         border: 1px solid rgba(123, 97, 255, 0.2);
         color: var(--primary-color);
+    }
+}
+
+/* Keep activity type badge beside activity name on mobile */
+@media (max-width: 768px) {
+    .mission-card .mission-header,
+    .mission-card .workout-header,
+    .mission-card .study-header,
+    .workout-card .workout-header,
+    .study-card .study-header {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .mission-card .mission-name,
+    .mission-card .workout-name,
+    .mission-card .study-name,
+    .workout-card .workout-name,
+    .study-card .study-name {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .mission-card .mission-type,
+    .mission-card .workout-type,
+    .mission-card .study-type,
+    .workout-card .workout-type,
+    .study-card .study-type {
+        flex: 0 0 auto;
+        white-space: nowrap;
     }
 }
 

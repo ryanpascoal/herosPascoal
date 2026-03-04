@@ -6,8 +6,8 @@ const appData = {
         level: 1,
         xp: 0,
         maxXp: 100,
-        lives: 5,
-        maxLives: 5,
+        lives: 10,
+        maxLives: 10,
         coins: 0,
         protection: {
             shield: false
@@ -47,7 +47,8 @@ const appData = {
     shopItems: [
         { id: 1, name: "Poção", emoji: "🧪", cost: 50, level: 0, description: "Restaura 1 vida", effect: "heal" },
         { id: 2, name: "Escudo", emoji: "🛡️", cost: 100, level: 0, description: "Protege de 1 dano e de uma quebra de streak", effect: "shield" },
-        { id: 3, name: "Bomba", emoji: "💣", cost: 100, level: 0, description: "Causa 50 de dano em 1 chefe à sua escolha", effect: "bomb" }
+        { id: 3, name: "Bomba", emoji: "💣", cost: 100, level: 0, description: "Causa 50 de dano em 1 chefe à sua escolha", effect: "bomb" },
+        { id: 4, name: "Pulo", emoji: "⏭️", cost: 25, level: 0, description: "Permite pular 1 atividade sem penalidade", effect: "skip" }
     ],
     inventory: [],
     missions: [],
@@ -91,10 +92,10 @@ const appData = {
     restDays: [],
     workOffDays: [],
     statisticsGoals: {
-        missions: 14,
-        workouts: 5,
-        studies: 7,
-        works: 5
+        missions: 60,
+        workouts: 20,
+        studies: 20,
+        works: 30
     },
     financeEntries: [],
     financeBudgets: [],
@@ -134,6 +135,7 @@ const NUTRITION_MEALS = {
     jantar: 'Jantar',
     lanche: 'Lanche'
 };
+const NUTRITION_MEAL_ORDER = ['cafe', 'almoco', 'jantar', 'lanche'];
 const CATEGORY_COLORS = {
     mission: {
         solid: 'rgba(255, 99, 132, 0.7)',
@@ -461,21 +463,46 @@ function ensureCriticalDataShape() {
     if (!Array.isArray(appData.financeRecurringSkips)) appData.financeRecurringSkips = [];
     if (!Array.isArray(appData.restDays)) appData.restDays = [];
     if (!Array.isArray(appData.workOffDays)) appData.workOffDays = [];
+    if (!Array.isArray(appData.shopItems)) appData.shopItems = [];
+    if (!Array.isArray(appData.inventory)) appData.inventory = [];
+    const hasSkipItem = appData.shopItems.some(item => item && item.effect === 'skip');
+    if (!hasSkipItem) {
+        appData.shopItems.push({
+            id: createUniqueId(appData.shopItems),
+            name: 'Pulo',
+            emoji: '⏭️',
+            cost: SKIP_ACTIVITY_COST,
+            level: 0,
+            description: 'Permite pular 1 atividade sem penalidade',
+            effect: 'skip'
+        });
+    }
+    normalizeEntityIds(appData.shopItems);
     if (!appData.statisticsGoals || typeof appData.statisticsGoals !== 'object') {
         appData.statisticsGoals = {};
     }
     appData.statisticsGoals.missions = Number.isFinite(Number(appData.statisticsGoals.missions)) && Number(appData.statisticsGoals.missions) > 0
         ? Math.floor(Number(appData.statisticsGoals.missions))
-        : 14;
+        : 60;
     appData.statisticsGoals.workouts = Number.isFinite(Number(appData.statisticsGoals.workouts)) && Number(appData.statisticsGoals.workouts) > 0
         ? Math.floor(Number(appData.statisticsGoals.workouts))
-        : 5;
+        : 20;
     appData.statisticsGoals.studies = Number.isFinite(Number(appData.statisticsGoals.studies)) && Number(appData.statisticsGoals.studies) > 0
         ? Math.floor(Number(appData.statisticsGoals.studies))
-        : 7;
+        : 20;
     appData.statisticsGoals.works = Number.isFinite(Number(appData.statisticsGoals.works)) && Number(appData.statisticsGoals.works) > 0
         ? Math.floor(Number(appData.statisticsGoals.works))
-        : 5;
+        : 30;
+
+    // Migracao de metas legadas para o novo padrao solicitado.
+    if (
+        appData.statisticsGoals.missions === 14 &&
+        appData.statisticsGoals.workouts === 5 &&
+        appData.statisticsGoals.studies === 7 &&
+        appData.statisticsGoals.works === 5
+    ) {
+        appData.statisticsGoals = { missions: 60, workouts: 20, studies: 20, works: 30 };
+    }
 
     appData.financeBudgets = appData.financeBudgets
         .filter(b => b && typeof b === 'object')
@@ -1264,6 +1291,7 @@ function initEvents() {
     document.getElementById('nutrition-entry-food')?.addEventListener('change', updateNutritionEntryPreview);
     document.getElementById('nutrition-entry-qty')?.addEventListener('input', updateNutritionEntryPreview);
     document.getElementById('nutrition-entry-date')?.addEventListener('change', updateNutritionView);
+    document.getElementById('nutrition-report-period')?.addEventListener('change', renderNutritionReports);
     document.getElementById('finance-month')?.addEventListener('change', function() {
         const budgetMonthInput = document.getElementById('finance-budget-month');
         if (budgetMonthInput) {
@@ -1991,6 +2019,9 @@ function updateInventory() {
     
     // Exibir itens agrupados
     Object.values(itemsByType).forEach(item => {
+        const itemActionHtml = item.effect === 'skip'
+            ? '<div class="inventory-item-meta">Consumido automaticamente ao clicar em Pular.</div>'
+            : `<button class="use-btn" data-id="${item.id}">Usar</button>`;
         const inventoryItem = document.createElement('div');
         inventoryItem.className = 'inventory-item';
         inventoryItem.innerHTML = `
@@ -2003,7 +2034,7 @@ function updateInventory() {
             </div>
             <div class="inventory-item-body">
                 <p class="inventory-item-desc">${item.description}</p>
-                <button class="use-btn" data-id="${item.id}">Usar</button>
+                ${itemActionHtml}
             </div>
         `;
         
@@ -2335,17 +2366,41 @@ function failMission(missionId, reason = '') {
 }
 
 // Atualizar missões
-async function trySpendSkipCoins(activityLabel) {
-    if (appData.hero.coins < SKIP_ACTIVITY_COST) {
-        showFeedback(`Voce precisa de ${SKIP_ACTIVITY_COST} moedas para pular ${activityLabel}.`, 'warn');
+function getSkipShopItem() {
+    return (appData.shopItems || []).find(item => item && item.effect === 'skip') || null;
+}
+
+function getSkipItemCount() {
+    const skipItem = getSkipShopItem();
+    if (!skipItem || !Array.isArray(appData.inventory)) return 0;
+    return appData.inventory.filter(item => String(item.id) === String(skipItem.id)).length;
+}
+
+async function tryConsumeSkipItem(activityLabel) {
+    const skipItem = getSkipShopItem();
+    if (!skipItem) {
+        showFeedback('Item de pulo não está disponível na loja.', 'warn');
         return false;
     }
-    const confirmed = await askConfirmation(`Pular ${activityLabel} custa ${SKIP_ACTIVITY_COST} moedas. Deseja continuar?`, {
-        title: 'Confirmar pulo',
-        confirmText: 'Pular'
-    });
+    const skipCount = getSkipItemCount();
+    if (skipCount <= 0) {
+        showFeedback(`Voce precisa comprar "${skipItem.name}" para pular ${activityLabel}.`, 'warn');
+        return false;
+    }
+    const confirmed = await askConfirmation(
+        `Pular ${activityLabel} consumira 1 ${skipItem.name}. Restantes apos uso: ${Math.max(0, skipCount - 1)}. Deseja continuar?`,
+        {
+            title: 'Confirmar pulo',
+            confirmText: 'Pular'
+        }
+    );
     if (!confirmed) return false;
-    appData.hero.coins -= SKIP_ACTIVITY_COST;
+    const index = appData.inventory.findIndex(item => String(item.id) === String(skipItem.id));
+    if (index === -1) {
+        showFeedback(`Voce precisa comprar "${skipItem.name}" para pular ${activityLabel}.`, 'warn');
+        return false;
+    }
+    appData.inventory.splice(index, 1);
     return true;
 }
 
@@ -2354,7 +2409,7 @@ async function skipMission(missionId) {
     if (missionIndex === -1) return;
 
     const mission = appData.missions[missionIndex];
-    if (!await trySpendSkipCoins(`a missao "${mission.name}"`)) return;
+    if (!await tryConsumeSkipItem(`a missao "${mission.name}"`)) return;
 
     const todayStr = getLocalDateString();
     appData.completedMissions.push({
@@ -2363,7 +2418,7 @@ async function skipMission(missionId) {
         failed: false,
         skipped: true,
         skippedDate: todayStr,
-        reason: `Atividade pulada (-${SKIP_ACTIVITY_COST} moedas)`
+        reason: 'Atividade pulada (1 item de pulo consumido)'
     });
     appData.missions.splice(missionIndex, 1);
 
@@ -2374,7 +2429,7 @@ async function skipMission(missionId) {
     addHeroLog(
         'mission',
         `Missao pulada: ${mission.name}`,
-        `-${SKIP_ACTIVITY_COST} moedas. Sem penalidade.`
+        '1 item de pulo consumido. Sem penalidade.'
     );
 
     updateUI({ mode: 'activity' });
@@ -2423,7 +2478,7 @@ async function skipWork(workId) {
     if (workIndex === -1) return;
 
     const work = appData.works[workIndex];
-    if (!await trySpendSkipCoins(`o trabalho "${work.name}"`)) return;
+    if (!await tryConsumeSkipItem(`o trabalho "${work.name}"`)) return;
 
     const todayStr = getLocalDateString();
     appData.completedWorks.push({
@@ -2432,7 +2487,7 @@ async function skipWork(workId) {
         failed: false,
         skipped: true,
         skippedDate: todayStr,
-        reason: `Atividade pulada (-${SKIP_ACTIVITY_COST} moedas)`
+        reason: 'Atividade pulada (1 item de pulo consumido)'
     });
     appData.statistics.worksIgnored = (appData.statistics.worksIgnored || 0) + 1;
     appData.works.splice(workIndex, 1);
@@ -2444,7 +2499,7 @@ async function skipWork(workId) {
     addHeroLog(
         'mission',
         `Trabalho pulado: ${work.name}`,
-        `-${SKIP_ACTIVITY_COST} moedas. Sem penalidade.`
+        '1 item de pulo consumido. Sem penalidade.'
     );
 
     updateUI({ mode: 'activity' });
@@ -2457,7 +2512,7 @@ async function skipDailyWorkout(workoutDayId) {
 
     const workout = appData.workouts.find(w => w.id === workoutDay.workoutId);
     if (!workout) return;
-    if (!await trySpendSkipCoins(`o treino "${workout.name}"`)) return;
+    if (!await tryConsumeSkipItem(`o treino "${workout.name}"`)) return;
 
     workoutDay.skipped = true;
     workoutDay.skippedDate = getLocalDateString();
@@ -2476,14 +2531,14 @@ async function skipDailyWorkout(workoutDayId) {
             skipped: true,
             skippedDate: workoutDay.skippedDate,
             failed: false,
-            reason: `Atividade pulada (-${SKIP_ACTIVITY_COST} moedas)`
+            reason: 'Atividade pulada (1 item de pulo consumido)'
         });
     }
 
     addHeroLog(
         'workout',
         `Treino pulado: ${workout.name}`,
-        `-${SKIP_ACTIVITY_COST} moedas. Sem penalidade.`
+        '1 item de pulo consumido. Sem penalidade.'
     );
 
     updateUI({ mode: 'activity' });
@@ -2496,7 +2551,7 @@ async function skipDailyStudy(studyDayId) {
 
     const study = appData.studies.find(s => s.id === studyDay.studyId);
     if (!study) return;
-    if (!await trySpendSkipCoins(`o estudo "${study.name}"`)) return;
+    if (!await tryConsumeSkipItem(`o estudo "${study.name}"`)) return;
 
     studyDay.skipped = true;
     studyDay.skippedDate = getLocalDateString();
@@ -2516,14 +2571,14 @@ async function skipDailyStudy(studyDayId) {
             skippedDate: studyDay.skippedDate,
             failed: false,
             applied: !!studyDay.applied,
-            reason: `Atividade pulada (-${SKIP_ACTIVITY_COST} moedas)`
+            reason: 'Atividade pulada (1 item de pulo consumido)'
         });
     }
 
     addHeroLog(
         'study',
         `Estudo pulado: ${study.name}`,
-        `-${SKIP_ACTIVITY_COST} moedas. Sem penalidade.`
+        '1 item de pulo consumido. Sem penalidade.'
     );
 
     updateUI({ mode: 'activity' });
@@ -2587,6 +2642,7 @@ function updateDailyWorks() {
         container.innerHTML = '<p class="empty-message">Nenhum trabalho para hoje. Adicione novos trabalhos na aba de gerenciamento.</p>';
         return;
     }
+    const skipCount = getSkipItemCount();
 
     dailyWorks.forEach(work => {
         const card = document.createElement('div');
@@ -2620,9 +2676,11 @@ function updateDailyWorks() {
                 <button class="complete-btn complete-work-btn" data-id="${work.id}">
                     <i class="fas fa-check"></i> Concluir
                 </button>
+                ${skipCount > 0 ? `
                 <button class="skip-btn skip-work-btn" data-id="${work.id}">
-                    <i class="fas fa-forward"></i> Pular (-${SKIP_ACTIVITY_COST})
+                    <i class="fas fa-forward"></i> Pular (x${skipCount})
                 </button>
+                ` : ''}
             </div>
         `;
 
@@ -2665,7 +2723,7 @@ function updateCompletedWorks() {
         const rewardText = work.failed
             ? 'Penalidade: -1 vida'
             : work.skipped
-            ? `Custo: -${SKIP_ACTIVITY_COST} moedas`
+            ? 'Custo: 1 item de pulo'
             : work.type === 'epica'
             ? 'Recompensa: 1 XP + 1 moeda'
             : 'Recompensa: 1 XP + 1 moeda';
@@ -2856,6 +2914,7 @@ function updateDailyMissions() {
         container.innerHTML = '<p class="empty-message">Nenhuma missão para hoje. Adicione novas missões na aba de gerenciamento.</p>';
         return;
     }
+    const skipCount = getSkipItemCount();
     
     dailyMissions.forEach(mission => {
         const missionCard = document.createElement('div');
@@ -2885,9 +2944,11 @@ function updateDailyMissions() {
                 <button class="complete-btn" data-id="${mission.id}">
                     <i class="fas fa-check"></i> Concluir
                 </button>
+                ${skipCount > 0 ? `
                 <button class="skip-btn skip-mission-btn" data-id="${mission.id}">
-                    <i class="fas fa-forward"></i> Pular (-${SKIP_ACTIVITY_COST})
+                    <i class="fas fa-forward"></i> Pular (x${skipCount})
                 </button>
+                ` : ''}
             </div>
         `;
         
@@ -2930,7 +2991,7 @@ function updateCompletedMissions() {
         const statusText = mission.failed ? 'FALHOU' : mission.skipped ? 'PULADA' : 'CONCLUIDA';
         const statusClass = mission.failed ? 'failed-status' : mission.skipped ? 'skipped-status' : 'completed-status';
         const rewardText = mission.failed ? 'Penalidade: -1 vida' : 
-                         mission.skipped ? `Custo: -${SKIP_ACTIVITY_COST} moedas` :
+                         mission.skipped ? 'Custo: 1 item de pulo' :
                          mission.type === 'epica' ? 'Recompensa: 20 XP + 10 moedas' : 
                          'Recompensa: 1 XP + 1 moeda';
         const eventDateLabel = mission.failed ? 'Falhou em' : mission.skipped ? 'Pulada em' : 'Concluida em';
@@ -3223,7 +3284,7 @@ function updateAdvancedStatistics() {
 
     syncStatisticsGoalsInputs();
     if (goalsStatusEl) {
-        const goals = appData.statisticsGoals || { missions: 14, workouts: 5, studies: 7, works: 5 };
+        const goals = appData.statisticsGoals || { missions: 60, workouts: 20, studies: 20, works: 30 };
         goalsStatusEl.innerHTML = `
             <p class="${getGoalStatusClass(weeklyCurrent.missions, goals.missions)}">Missões: ${weeklyCurrent.missions}/${goals.missions}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.works, goals.works)}">Trabalhos: ${weeklyCurrent.works}/${goals.works}</p>
@@ -3384,7 +3445,7 @@ function getGoalStatusClass(current, target) {
 }
 
 function syncStatisticsGoalsInputs() {
-    const goals = appData.statisticsGoals || { missions: 14, workouts: 5, studies: 7, works: 5 };
+    const goals = appData.statisticsGoals || { missions: 60, workouts: 20, studies: 20, works: 30 };
     const missionsInput = document.getElementById('goal-missions');
     const worksInput = document.getElementById('goal-works');
     const workoutsInput = document.getElementById('goal-workouts');
@@ -4559,6 +4620,7 @@ function updateDailyWorkouts() {
         container.innerHTML = '<p class="empty-message">Nenhum treino para hoje. Aproveite o descanso!</p>';
         return;
     }
+    const skipCount = getSkipItemCount();
     
     let renderedCount = 0;
     dailyWorkouts.forEach(workoutDay => {
@@ -4616,9 +4678,11 @@ function updateDailyWorkouts() {
                 <button class="complete-workout-btn" data-id="${workoutDay.id}">
                     <i class="fas fa-check"></i> Concluir Treino
                 </button>
+                ${skipCount > 0 ? `
                 <button class="skip-btn skip-workout-btn" data-id="${workoutDay.id}">
-                    <i class="fas fa-forward"></i> Pular (-${SKIP_ACTIVITY_COST})
+                    <i class="fas fa-forward"></i> Pular (x${skipCount})
                 </button>
+                ` : ''}
             </div>
         `;
         
@@ -4726,6 +4790,7 @@ function updateDailyStudies() {
         container.innerHTML = '<p class="empty-message">Nenhum estudo para hoje.</p>';
         return;
     }
+    const skipCount = getSkipItemCount();
     
     let renderedCount = 0;
     dailyStudies.forEach(studyDay => {
@@ -4755,9 +4820,11 @@ function updateDailyStudies() {
                 <button class="complete-study-btn" data-id="${studyDay.id}">
                     <i class="fas fa-check"></i> Concluir Estudo
                 </button>
+                ${skipCount > 0 ? `
                 <button class="skip-btn skip-study-btn" data-id="${studyDay.id}">
-                    <i class="fas fa-forward"></i> Pular (-${SKIP_ACTIVITY_COST})
+                    <i class="fas fa-forward"></i> Pular (x${skipCount})
                 </button>
+                ` : ''}
             </div>
         `;
         
@@ -7053,7 +7120,13 @@ async function useItem(itemId) {
                 addHeroLog('item', 'Bomba usada', `Dano de 50 no chefe ${boss.name}.`);
             }
             break;
-            
+
+        case 'skip':
+            // Token de pulo e consumido automaticamente ao pular atividades.
+            appData.inventory.push({ id: itemId, purchaseDate: new Date().toISOString() });
+            showFeedback('O item de pulo é usado ao clicar em "Pular" nas atividades.', 'info');
+            break;
+             
         case 'custom':
             showFeedback(`${item.name} usado! Recompensa: ${item.description}`, 'success');
             // Aqui você pode adicionar lógica personalizada para itens customizados
@@ -7141,38 +7214,46 @@ function addClassXP(classId, amount) {
 }
 
 function damageBossesByAttributes(attributeIds) {
-    // Contar atributos por chefe
-    const bossDamage = {
+    // Cada atributo associado gera um "hit" no chefe correspondente.
+    // O dano por hit e diferente por chefe para calibrar progressao.
+    const bossHits = {
         'Físico': 0,
         'Mental': 0,
         'Social': 0,
         'Espiritual': 0
+    };
+    const damagePerHit = {
+        'Físico': 2,
+        'Mental': 2,
+        'Social': 2,
+        'Espiritual': 20
     };
     
     // Mapear atributos para chefões
     attributeIds.forEach(attrId => {
         // Força, Vigor, Agilidade, Habilidade -> Físico
         if ([1, 2, 3, 4].includes(attrId)) {
-            bossDamage['Físico']++;
+            bossHits['Físico']++;
         }
         // Criatividade, Disciplina, Inteligência, Conhecimento -> Mental
         if ([5, 6, 7, 12].includes(attrId)) {
-            bossDamage['Mental']++;
+            bossHits['Mental']++;
         }
         // Liderança, Sociabilidade -> Social
         if ([9, 10].includes(attrId)) {
-            bossDamage['Social']++;
+            bossHits['Social']++;
         }
         // Fé, Justiça, Casamento -> Espiritual
         if ([8, 11, 13].includes(attrId)) {
-            bossDamage['Espiritual']++;
+            bossHits['Espiritual']++;
         }
     });
     
     // Aplicar dano
-    Object.entries(bossDamage).forEach(([bossName, damage]) => {
-        if (damage > 0) {
-            damageBoss(bossName, damage * 2);
+    Object.entries(bossHits).forEach(([bossName, hits]) => {
+        if (hits > 0) {
+            const totalDamage = hits * (damagePerHit[bossName] || 0);
+            damageBoss(bossName, totalDamage);
         }
     });
 }
@@ -7424,6 +7505,7 @@ function updateActivitiesChart() {
 function updateWeeklyChart() {
     const ctx = document.getElementById('weekly-chart');
     if (!ctx) return;
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
     
     // Destruir gráfico existente se houver
     if (ctx.chart) {
@@ -7542,6 +7624,21 @@ function updateWeeklyChart() {
         },
         options: {
             responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'line',
+                        boxWidth: isMobile ? 10 : 12,
+                        boxHeight: isMobile ? 6 : 8,
+                        padding: isMobile ? 8 : 10,
+                        font: {
+                            size: isMobile ? 10 : 11
+                        }
+                    }
+                }
+            },
             scales: {
                 y: {
                     beginAtZero: true,
@@ -7863,8 +7960,7 @@ function updateXpBySourceChart() {
         if (!entry?.date) return;
         const key = getLocalDateString(new Date(entry.date));
         if (!periodKeys.has(key)) return;
-        const attrs = Array.isArray(entry.attributes) ? entry.attributes.length : 0;
-        diaryXP += attrs * 2;
+        diaryXP += Number(entry.xpGained || 0);
     });
 
     ctx.chart = new Chart(ctx, {
@@ -7943,9 +8039,8 @@ function getNutritionEntriesByDate(dateStr) {
     return (appData.nutritionEntries || [])
         .filter(entry => entry.date === dateStr)
         .sort((a, b) => {
-            const mealOrder = ['cafe', 'almoco', 'jantar', 'lanche'];
-            const ai = mealOrder.indexOf(a.meal);
-            const bi = mealOrder.indexOf(b.meal);
+            const ai = NUTRITION_MEAL_ORDER.indexOf(a.meal);
+            const bi = NUTRITION_MEAL_ORDER.indexOf(b.meal);
             if (ai !== bi) return ai - bi;
             return Number(a.id) - Number(b.id);
         });
@@ -8174,10 +8269,33 @@ function renderNutritionGoalStatus(dateStr) {
     }).join('');
 }
 
-function getNutritionWeekStats() {
+function getSelectedNutritionReportDays() {
+    const value = Number(document.getElementById('nutrition-report-period')?.value || 30);
+    return [7, 30, 90, 120, 180, 365].includes(value) ? value : 30;
+}
+
+function getNutritionEntriesWithinDays(days) {
+    const periodDays = Number(days) > 0 ? Number(days) : 30;
+    const todayStr = getLocalDateString();
+    const start = parseLocalDateString(todayStr);
+    start.setDate(start.getDate() - (periodDays - 1));
+    const startStr = getLocalDateString(start);
+    return (appData.nutritionEntries || [])
+        .filter(entry => entry.date >= startStr && entry.date <= todayStr)
+        .sort((a, b) => {
+            if (a.date !== b.date) return String(a.date).localeCompare(String(b.date));
+            const ai = NUTRITION_MEAL_ORDER.indexOf(a.meal);
+            const bi = NUTRITION_MEAL_ORDER.indexOf(b.meal);
+            if (ai !== bi) return ai - bi;
+            return Number(a.id) - Number(b.id);
+        });
+}
+
+function getNutritionDailySeries(days) {
+    const periodDays = Number(days) > 0 ? Number(days) : 30;
     const today = parseLocalDateString(getLocalDateString());
     const daily = [];
-    for (let i = 6; i >= 0; i--) {
+    for (let i = periodDays - 1; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
         const key = getLocalDateString(d);
@@ -8185,6 +8303,45 @@ function getNutritionWeekStats() {
         daily.push({ key, totals });
     }
     return daily;
+}
+
+function aggregateNutritionByMeal(entries) {
+    const base = {};
+    NUTRITION_MEAL_ORDER.forEach(meal => {
+        base[meal] = { meal, kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, count: 0 };
+    });
+    (Array.isArray(entries) ? entries : []).forEach(entry => {
+        const key = Object.prototype.hasOwnProperty.call(base, entry.meal) ? entry.meal : 'lanche';
+        base[key].kcal += Number(entry.kcal || 0);
+        base[key].protein += Number(entry.protein || 0);
+        base[key].carbs += Number(entry.carbs || 0);
+        base[key].fat += Number(entry.fat || 0);
+        base[key].fiber += Number(entry.fiber || 0);
+        base[key].count += 1;
+    });
+    return NUTRITION_MEAL_ORDER.map(key => base[key]);
+}
+
+function getTopNutritionFoods(entries, limit = 8) {
+    const source = Array.isArray(entries) ? entries : [];
+    const map = new Map();
+    source.forEach(entry => {
+        const name = String(entry.foodName || 'Sem nome').trim() || 'Sem nome';
+        if (!map.has(name)) {
+            map.set(name, { name, kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, grams: 0, count: 0 });
+        }
+        const item = map.get(name);
+        item.kcal += Number(entry.kcal || 0);
+        item.protein += Number(entry.protein || 0);
+        item.carbs += Number(entry.carbs || 0);
+        item.fat += Number(entry.fat || 0);
+        item.fiber += Number(entry.fiber || 0);
+        item.grams += Number(entry.grams || 0);
+        item.count += 1;
+    });
+    return Array.from(map.values())
+        .sort((a, b) => b.kcal - a.kcal)
+        .slice(0, Math.max(1, Number(limit) || 8));
 }
 
 function getNutritionLogStreak() {
@@ -8203,44 +8360,71 @@ function getNutritionLogStreak() {
 function renderNutritionReports() {
     const statsGrid = document.getElementById('nutrition-stats-grid');
     if (!statsGrid) return;
-    const week = getNutritionWeekStats();
-    const kcalValues = week.map(item => item.totals.kcal);
-    const avgKcal = kcalValues.reduce((sum, value) => sum + value, 0) / Math.max(1, kcalValues.length);
-    const goalsHit = (appData.nutritionStats?.goalHitDates || []).length;
-    const logDays = (appData.nutritionStats?.logDates || []).length;
+    const days = getSelectedNutritionReportDays();
+    const dailySeries = getNutritionDailySeries(days);
+    const entries = getNutritionEntriesWithinDays(days);
+    const totals = calculateNutritionTotals(entries);
+    const avgKcal = totals.kcal / Math.max(1, days);
+    const avgProtein = totals.protein / Math.max(1, days);
+    const avgFiber = totals.fiber / Math.max(1, days);
+    const mealMap = aggregateNutritionByMeal(entries);
+    const mealsLogged = mealMap.reduce((sum, item) => sum + item.count, 0);
+    const topMeal = mealMap.slice().sort((a, b) => b.kcal - a.kcal)[0];
+    const todayStr = getLocalDateString();
+    const start = parseLocalDateString(todayStr);
+    start.setDate(start.getDate() - (days - 1));
+    const startStr = getLocalDateString(start);
+    const goalsHit = (appData.nutritionStats?.goalHitDates || [])
+        .map(String)
+        .filter(date => date >= startStr && date <= todayStr).length;
+    const logDays = Array.from(new Set(entries.map(entry => String(entry.date)))).length;
     const streak = getNutritionLogStreak();
 
     statsGrid.innerHTML = `
         <div class="stat-card"><h4><i class="fas fa-fire"></i> Streak de registro</h4><div class="stat-value">${streak}</div></div>
-        <div class="stat-card"><h4><i class="fas fa-calendar-check"></i> Dias registrados</h4><div class="stat-value">${logDays}</div></div>
-        <div class="stat-card"><h4><i class="fas fa-bullseye"></i> Metas batidas</h4><div class="stat-value">${goalsHit}</div></div>
-        <div class="stat-card"><h4><i class="fas fa-chart-line"></i> Média kcal (7 dias)</h4><div class="stat-value">${avgKcal.toFixed(0)}</div></div>
+        <div class="stat-card"><h4><i class="fas fa-calendar-check"></i> Dias com registro</h4><div class="stat-value">${logDays}</div></div>
+        <div class="stat-card"><h4><i class="fas fa-bullseye"></i> Metas batidas (${days}d)</h4><div class="stat-value">${goalsHit}</div></div>
+        <div class="stat-card"><h4><i class="fas fa-chart-line"></i> Média kcal/dia</h4><div class="stat-value">${avgKcal.toFixed(0)}</div></div>
+        <div class="stat-card"><h4><i class="fas fa-drumstick-bite"></i> Média proteína/dia</h4><div class="stat-value">${avgProtein.toFixed(1)}g</div></div>
+        <div class="stat-card"><h4><i class="fas fa-seedling"></i> Média fibra/dia</h4><div class="stat-value">${avgFiber.toFixed(1)}g</div></div>
+        <div class="stat-card"><h4><i class="fas fa-utensils"></i> Refeição destaque</h4><div class="stat-value">${topMeal && topMeal.kcal > 0 ? formatMealName(topMeal.meal) : '-'}</div></div>
+        <div class="stat-card"><h4><i class="fas fa-list-ol"></i> Registros no período</h4><div class="stat-value">${mealsLogged}</div></div>
     `;
 
-    updateNutritionWeeklyChart(week);
+    updateNutritionWeeklyChart(dailySeries, days);
+    updateNutritionMacroSplitChart(entries);
+    updateNutritionMealDistributionChart(entries);
+    updateNutritionTopFoodsChart(entries);
+    renderNutritionMealBreakdown(entries);
 }
 
-function updateNutritionWeeklyChart(weekData) {
+function updateNutritionWeeklyChart(weekData, days = 30) {
     const ctx = document.getElementById('nutrition-weekly-chart');
     if (!ctx || typeof Chart === 'undefined') return;
     if (ctx.chart) ctx.chart.destroy();
-    const data = Array.isArray(weekData) ? weekData : getNutritionWeekStats();
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    const data = Array.isArray(weekData) ? weekData : getNutritionDailySeries(days);
     const labels = data.map(item => {
         const d = parseLocalDateString(item.key);
         return `${d.getDate()}/${d.getMonth() + 1}`;
     });
     const kcal = data.map(item => Number(item.totals.kcal || 0));
     const goal = data.map(() => Number(appData.nutritionGoals?.kcal || 0));
+    const maxTicks = isMobile ? 8 : 12;
+    const tickStep = Math.max(1, Math.ceil(data.length / maxTicks));
+    const pointRadius = days >= 120 ? 0 : days >= 30 ? 1.5 : 2;
     ctx.chart = new Chart(ctx, {
         type: 'line',
         data: {
             labels,
             datasets: [
                 {
-                    label: 'Kcal consumidas',
+                    label: `Kcal consumidas (${days}d)`,
                     data: kcal,
                     borderColor: 'rgba(255, 159, 64, 1)',
                     backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                    pointRadius,
+                    pointHoverRadius: 3,
                     tension: 0.25
                 },
                 {
@@ -8256,13 +8440,149 @@ function updateNutritionWeeklyChart(weekData) {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
             scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 0,
+                        autoSkip: false,
+                        callback: function(value, index) {
+                            if (index % tickStep === 0 || index === labels.length - 1) {
+                                return labels[index];
+                            }
+                            return '';
+                        }
+                    }
+                },
                 y: {
                     beginAtZero: true
                 }
             }
         }
     });
+}
+
+function updateNutritionMacroSplitChart(entries) {
+    const ctx = document.getElementById('nutrition-macro-split-chart');
+    if (!ctx || typeof Chart === 'undefined') return;
+    if (ctx.chart) ctx.chart.destroy();
+    const totals = calculateNutritionTotals(entries);
+    const proteinKcal = Math.max(0, Number(totals.protein || 0) * 4);
+    const carbsKcal = Math.max(0, Number(totals.carbs || 0) * 4);
+    const fatKcal = Math.max(0, Number(totals.fat || 0) * 9);
+    const chartData = [proteinKcal, carbsKcal, fatKcal];
+    const hasData = chartData.some(value => value > 0);
+    ctx.chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: hasData ? ['Proteína', 'Carboidratos', 'Gorduras'] : ['Sem dados no período'],
+            datasets: [{
+                data: hasData ? chartData : [1],
+                backgroundColor: hasData
+                    ? ['rgba(54, 162, 235, 0.75)', 'rgba(255, 206, 86, 0.75)', 'rgba(255, 99, 132, 0.75)']
+                    : ['rgba(148, 163, 184, 0.5)'],
+                borderColor: hasData
+                    ? ['rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)', 'rgba(255, 99, 132, 1)']
+                    : ['rgba(148, 163, 184, 1)'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+}
+
+function updateNutritionMealDistributionChart(entries) {
+    const ctx = document.getElementById('nutrition-meal-kcal-chart');
+    if (!ctx || typeof Chart === 'undefined') return;
+    if (ctx.chart) ctx.chart.destroy();
+    const mealTotals = aggregateNutritionByMeal(entries);
+    const filtered = mealTotals.filter(item => item.kcal > 0);
+    const hasData = filtered.length > 0;
+    ctx.chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: hasData ? filtered.map(item => formatMealName(item.meal)) : ['Sem dados no período'],
+            datasets: [{
+                data: hasData ? filtered.map(item => Number(item.kcal.toFixed(1))) : [1],
+                backgroundColor: hasData
+                    ? ['rgba(255, 159, 64, 0.75)', 'rgba(75, 192, 192, 0.75)', 'rgba(153, 102, 255, 0.75)', 'rgba(255, 99, 132, 0.75)']
+                    : ['rgba(148, 163, 184, 0.5)'],
+                borderColor: hasData
+                    ? ['rgba(255, 159, 64, 1)', 'rgba(75, 192, 192, 1)', 'rgba(153, 102, 255, 1)', 'rgba(255, 99, 132, 1)']
+                    : ['rgba(148, 163, 184, 1)'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+}
+
+function updateNutritionTopFoodsChart(entries) {
+    const ctx = document.getElementById('nutrition-top-foods-chart');
+    if (!ctx || typeof Chart === 'undefined') return;
+    if (ctx.chart) ctx.chart.destroy();
+    const topFoods = getTopNutritionFoods(entries, 8);
+    const hasData = topFoods.length > 0 && topFoods.some(item => item.kcal > 0);
+    ctx.chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: hasData ? topFoods.map(item => item.name) : ['Sem dados no período'],
+            datasets: [{
+                label: 'Kcal acumuladas',
+                data: hasData ? topFoods.map(item => Number(item.kcal.toFixed(0))) : [0],
+                backgroundColor: hasData ? 'rgba(255, 159, 64, 0.7)' : 'rgba(148, 163, 184, 0.45)',
+                borderColor: hasData ? 'rgba(255, 159, 64, 1)' : 'rgba(148, 163, 184, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+function renderNutritionMealBreakdown(entries) {
+    const tbody = document.getElementById('nutrition-meal-breakdown-body');
+    if (!tbody) return;
+    const mealTotals = aggregateNutritionByMeal(entries);
+    const usedMeals = mealTotals.filter(item => item.count > 0);
+    if (usedMeals.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-message">Sem registros no período selecionado.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = usedMeals.map(item => `
+        <tr>
+            <td>${formatMealName(item.meal)}</td>
+            <td>${item.kcal.toFixed(0)}</td>
+            <td>${item.protein.toFixed(1)}g</td>
+            <td>${item.carbs.toFixed(1)}g</td>
+            <td>${item.fat.toFixed(1)}g</td>
+            <td>${item.fiber.toFixed(1)}g</td>
+            <td>${item.count}</td>
+        </tr>
+    `).join('');
 }
 
 function recalcNutritionStats() {
@@ -8499,52 +8819,54 @@ function updateCurrentDate() {
 
 // Salvar entrada no diário
 async function saveDiaryEntry() {
-    const title = document.getElementById('diary-title').value;
-    const content = document.getElementById('diary-content').value;
+    const title = (document.getElementById('diary-title').value || '').trim();
+    const content = (document.getElementById('diary-content').value || '').trim();
     
-    if (!content.trim()) {
+    if (!content) {
         showFeedback('Por favor, escreva algo no diário.', 'warn');
         return;
     }
-    
-    // Obter atributos selecionados
-    const attributeCheckboxes = document.querySelectorAll('#diary-attributes input[type="checkbox"]:checked');
-    const attributes = Array.from(attributeCheckboxes).map(cb => parseInt(cb.value));
-    
-    // Limitar a 3 atributos
-    const selectedAttributes = attributes.slice(0, 3);
+
+    const todayStr = getLocalDateString();
+    const diaryEntries = diaryDbAvailable ? (diaryCache || []) : (appData.diaryEntries || []);
+    const alreadyRewardedToday = diaryEntries.some(entry => {
+        if (!entry?.date) return false;
+        const entryDate = getLocalDateString(new Date(entry.date));
+        return entryDate === todayStr && Number(entry.xpGained || 0) > 0;
+    });
+    const diaryXpGained = alreadyRewardedToday ? 0 : 2;
     
     const newEntry = {
         id: createUniqueId(diaryDbAvailable ? diaryCache : appData.diaryEntries),
         title: title || 'Sem título',
         content,
-        attributes: selectedAttributes,
+        attributes: [],
         date: new Date().toISOString(),
-        xpGained: selectedAttributes.length * 5 // 5 XP por atributo
+        xpGained: diaryXpGained
     };
     
     await saveDiaryEntryToStorage(newEntry);
-    
-    // Adicionar XP aos atributos selecionados
-    selectedAttributes.forEach(attrId => {
-        addAttributeXP(attrId, 5);
-    });
-    
-    // Adicionar XP geral
-    addXP(selectedAttributes.length * 2); // 2 XP geral por atributo
+
+    if (diaryXpGained > 0) {
+        // Diario: recompensa fixa, no maximo uma vez por dia.
+        addAttributeXP(12, 1); // Conhecimento
+        addAttributeXP(7, 1);  // Inteligencia
+        appData.hero.coins += 1;
+    }
     
     // Limpar formulário
     document.getElementById('diary-title').value = '';
     document.getElementById('diary-content').value = '';
     
-    // Desmarcar checkboxes
-    attributeCheckboxes.forEach(cb => cb.checked = false);
-    
     // Atualizar UI
     updateUI();
     
     // Mostrar mensagem de sucesso
-    showFeedback('Entrada do diário salva com sucesso!', 'success');
+    if (diaryXpGained > 0) {
+        showFeedback('Entrada salva! +1 XP de Conhecimento, +1 XP de Inteligência e +1 moeda.', 'success');
+    } else {
+        showFeedback('Entrada salva! Recompensa de diário já foi aplicada hoje.', 'info');
+    }
 }
 
 // Resetar progresso

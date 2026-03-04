@@ -1353,9 +1353,53 @@
 
                     <div id="nutricao-relatorios" class="sub-tab">
                         <div class="stats-grid nutrition-stats-grid" id="nutrition-stats-grid"></div>
-                        <div class="chart-box">
-                            <h4>Últimos 7 dias (kcal)</h4>
-                            <canvas id="nutrition-weekly-chart" width="400" height="200"></canvas>
+                        <div class="nutrition-reports-toolbar">
+                            <div class="form-group">
+                                <label for="nutrition-report-period">Período</label>
+                                <select id="nutrition-report-period">
+                                    <option value="7">Últimos 7 dias</option>
+                                    <option value="30" selected>Últimos 30 dias</option>
+                                    <option value="90">Últimos 90 dias</option>
+                                    <option value="120">Últimos 120 dias</option>
+                                    <option value="180">Últimos 180 dias</option>
+                                    <option value="365">Últimos 365 dias</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="nutrition-reports-charts">
+                            <div class="chart-box nutrition-evolution-chart">
+                                <h4>Evolução diária de kcal</h4>
+                                <canvas id="nutrition-weekly-chart" width="400" height="200"></canvas>
+                            </div>
+                            <div class="chart-box">
+                                <h4>Distribuição de macros (kcal)</h4>
+                                <canvas id="nutrition-macro-split-chart" width="400" height="200"></canvas>
+                            </div>
+                            <div class="chart-box">
+                                <h4>Distribuição por refeição (kcal)</h4>
+                                <canvas id="nutrition-meal-kcal-chart" width="400" height="200"></canvas>
+                            </div>
+                            <div class="chart-box">
+                                <h4>Top alimentos por kcal</h4>
+                                <canvas id="nutrition-top-foods-chart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                        <div class="table-container nutrition-meal-table">
+                            <h4>Resumo por refeição</h4>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Refeição</th>
+                                        <th>Kcal</th>
+                                        <th>Proteína</th>
+                                        <th>Carbo</th>
+                                        <th>Gordura</th>
+                                        <th>Fibra</th>
+                                        <th>Registros</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="nutrition-meal-breakdown-body"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -1389,10 +1433,8 @@
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label>Atributos para Ganhar XP (selecione até 3)</label>
-                                    <div class="attributes-selector" id="diary-attributes">
-                                        <!-- Atributos serão adicionados via JavaScript -->
-                                    </div>
+                                    <label>Recompensa do Diário</label>
+                                    <p class="empty-message">Escrever no diário concede +1 Conhecimento e +1 Inteligência, no máximo 1 vez por dia.</p>
                                 </div>
                                 
                                 <button class="submit-btn" id="save-diary">Salvar Entrada no Diário</button>
