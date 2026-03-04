@@ -358,31 +358,31 @@ body {
 .items-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 4px;
     max-height: 380px;
     overflow-y: auto;
-    padding-right: 6px;
+    padding-right: 2px;
 }
 
 .item-card {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px;
+    padding: 8px 9px;
     background-color: var(--card-bg);
     border-radius: var(--border-radius);
-    border-left: 4px solid var(--primary-color);
+    border-left: 3px solid var(--primary-color);
     border: 1px solid var(--card-border);
 }
 
 .item-info {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .item-emoji {
-    font-size: 1.2rem;
+    font-size: 1.05rem;
 }
 
 .item-name {
@@ -390,21 +390,24 @@ body {
 }
 
 .item-level {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
+    line-height: 1.2;
     color: var(--gray-color);
 }
 
 .item-actions {
     display: flex;
-    gap: 10px;
+    gap: 4px;
 }
 
 .action-btn {
-    padding: 5px 10px;
+    padding: 4px 8px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     font-weight: 500;
+    font-size: 0.78rem;
+    line-height: 1.15;
     transition: var(--transition);
 }
 
@@ -911,6 +914,7 @@ body {
 .marker.workout { background: #FF6B6B; }
 .marker.study { background: #5DA9FF; }
 .marker.rest { background: #FFD700; }
+.marker.work-off { background: #FF9E4A; }
 
 .calendar-day.streak-day {
     border-color: rgba(0, 209, 143, 0.75);
@@ -966,6 +970,7 @@ body {
 .legend-dot.workout { background: #FF6B6B; }
 .legend-dot.study { background: #5DA9FF; }
 .legend-dot.rest { background: #FFD700; }
+.legend-dot.work-off { background: #FF9E4A; }
 .legend-border {
     width: 12px;
     height: 12px;
@@ -1091,15 +1096,15 @@ body.light-theme .calendar-day.death-day {
 .calendar-details-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 5px;
 }
 
 .calendar-details-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 8px;
+    padding: 6px 8px;
     border-radius: 10px;
     background: rgba(16, 21, 35, 0.75);
     border: 1px solid rgba(255,255,255,0.08);
@@ -1108,19 +1113,19 @@ body.light-theme .calendar-day.death-day {
 .calendar-details-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-weight: 500;
 }
 
 .calendar-details-tags {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     flex-wrap: wrap;
 }
 
 .calendar-tag {
-    font-size: 0.75rem;
-    padding: 3px 8px;
+    font-size: 0.68rem;
+    padding: 2px 6px;
     border-radius: 999px;
     background: rgba(124, 92, 255, 0.15);
     color: var(--light-color);
@@ -1330,28 +1335,28 @@ body.light-theme .calendar-day.death-day {
 .missions-list, .workouts-list, .studies-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 4px;
     max-height: 380px;
     overflow-y: auto;
-    padding-right: 6px;
+    padding-right: 2px;
 }
 
 .mission-card, .workout-card, .study-card {
     background-color: var(--card-bg);
-    padding: 15px;
+    padding: 7px 8px;
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
-    border-left: 4px solid var(--primary-color);
+    border-left: 3px solid var(--primary-color);
     border: 1px solid var(--card-border);
 }
 
 /* Histórico de treinos/estudos */
 .history-card {
     background-color: var(--card-bg);
-    padding: 15px;
+    padding: 8px 9px;
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
-    border-left: 4px solid var(--primary-color);
+    border-left: 3px solid var(--primary-color);
     border: 1px solid var(--card-border);
 }
 
@@ -1363,20 +1368,21 @@ body.light-theme .calendar-day.death-day {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 4px;
 }
 
 .history-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-weight: 500;
 }
 
 .history-details {
     font-size: 0.9rem;
     color: var(--gray-color);
-    margin-bottom: 10px;
+    margin-bottom: 4px;
+    line-height: 1.2;
 }
 
 .trend-up {
@@ -1393,19 +1399,26 @@ body.light-theme .calendar-day.death-day {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 4px;
 }
 
 .mission-name, .workout-name, .study-name {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-weight: 500;
 }
 
+.mission-name span:last-child,
+.workout-name span:last-child,
+.study-name span:last-child {
+    font-size: 0.9rem;
+    line-height: 1.2;
+}
+
 .mission-type, .workout-type, .study-type {
-    font-size: 0.8rem;
-    padding: 3px 8px;
+    font-size: 0.72rem;
+    padding: 1px 6px;
     border-radius: 20px;
     color: white;
     font-weight: 500;
@@ -1417,28 +1430,93 @@ body.light-theme .calendar-day.death-day {
 .mission-type.epica { background-color: var(--danger-color); }
 
 .mission-details, .workout-details, .study-details {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: var(--gray-color);
-    margin-bottom: 10px;
+    margin-bottom: 4px;
+    line-height: 1.2;
 }
 
 .mission-attributes, .workout-attributes {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
-    margin-bottom: 10px;
+    gap: 3px;
+    margin-bottom: 4px;
+}
+
+.mission-details p,
+.workout-details p,
+.study-details p,
+.mission-attributes p,
+.workout-attributes p {
+    margin: 0;
+    line-height: 1.2;
 }
 
 .attribute-tag {
-    font-size: 0.8rem;
-    padding: 3px 8px;
+    font-size: 0.72rem;
+    padding: 2px 6px;
     background-color: var(--light-gray);
     border-radius: 20px;
+    line-height: 1.15;
 }
 
 .mission-actions, .workout-actions, .study-actions {
     display: flex;
-    gap: 10px;
+    gap: 5px;
+}
+
+.mission-actions .complete-btn,
+.mission-actions .skip-btn,
+.workout-actions .complete-workout-btn,
+.workout-actions .skip-btn,
+.study-actions .complete-study-btn,
+.study-actions .skip-btn {
+    padding: 4px 7px;
+    font-size: 0.74rem;
+    line-height: 1.15;
+}
+
+/* Cards ativos: ações na lateral para reduzir altura vertical */
+.mission-card.with-side-actions,
+.workout-card.with-side-actions,
+.study-card.with-side-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 8px;
+    align-items: start;
+}
+
+.mission-card.with-side-actions .mission-header,
+.mission-card.with-side-actions .mission-details,
+.mission-card.with-side-actions .mission-attributes,
+.workout-card.with-side-actions .workout-header,
+.workout-card.with-side-actions .workout-details,
+.study-card.with-side-actions .study-header,
+.study-card.with-side-actions .study-details {
+    grid-column: 1;
+}
+
+.mission-card.with-side-actions .mission-actions,
+.workout-card.with-side-actions .workout-actions,
+.study-card.with-side-actions .study-actions {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-self: stretch;
+    justify-content: flex-start;
+    min-width: 110px;
+}
+
+.mission-card.with-side-actions .mission-actions .complete-btn,
+.mission-card.with-side-actions .mission-actions .skip-btn,
+.workout-card.with-side-actions .workout-actions .complete-workout-btn,
+.workout-card.with-side-actions .workout-actions .skip-btn,
+.study-card.with-side-actions .study-actions .complete-study-btn,
+.study-card.with-side-actions .study-actions .skip-btn {
+    width: 100%;
+    justify-content: center;
 }
 
 .complete-btn {
@@ -1737,6 +1815,8 @@ tr:hover {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 20px;
+    width: 100%;
+    min-width: 0;
 }
 
 .chart-box {
@@ -1745,6 +1825,15 @@ tr:hover {
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
     border: 1px solid var(--card-border);
+    min-width: 0;
+    overflow: hidden;
+}
+
+.chart-box canvas {
+    display: block;
+    width: 100% !important;
+    max-width: 100%;
+    height: auto !important;
 }
 
 /* Diários */
@@ -1766,15 +1855,15 @@ tr:hover {
 .diary-entries {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 6px;
     max-height: 440px;
     overflow-y: auto;
-    padding-right: 6px;
+    padding-right: 3px;
 }
 
 .diary-entry {
     background-color: var(--card-bg);
-    padding: 20px;
+    padding: 10px 11px;
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
     border: 1px solid var(--card-border);
@@ -1784,36 +1873,37 @@ tr:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
-    padding-bottom: 10px;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
     border-bottom: 1px solid var(--light-gray);
 }
 
 .diary-entry-title {
     font-weight: 600;
-    font-size: 1.1rem;
+    font-size: 0.98rem;
 }
 
 .diary-entry-date {
     color: var(--gray-color);
-    font-size: 0.9rem;
+    font-size: 0.78rem;
 }
 
 .diary-entry-content {
-    margin-bottom: 15px;
-    line-height: 1.6;
+    margin-bottom: 6px;
+    line-height: 1.35;
+    font-size: 0.88rem;
 }
 
 .diary-entry-attributes {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 4px;
 }
 
 .diary-entry-actions {
-    margin-top: 12px;
+    margin-top: 8px;
     display: flex;
-    gap: 8px;
+    gap: 6px;
     justify-content: flex-end;
 }
 
@@ -1821,11 +1911,11 @@ tr:hover {
     border: 1px solid rgba(255,255,255,0.12);
     background: rgba(255,255,255,0.05);
     color: var(--light-color);
-    padding: 6px 10px;
+    padding: 4px 8px;
     border-radius: 8px;
     cursor: pointer;
     transition: var(--transition);
-    font-size: 0.84rem;
+    font-size: 0.74rem;
 }
 
 .diary-action-btn.edit {
@@ -1935,6 +2025,17 @@ tr:hover {
     .charts-container {
         grid-template-columns: 1fr;
     }
+
+    .chart-box {
+        padding: 12px;
+    }
+
+    .chart-box canvas {
+        width: 100% !important;
+        max-width: 100%;
+        aspect-ratio: 2 / 1;
+        max-height: 190px !important;
+    }
     
     .page-header {
         flex-direction: column;
@@ -1962,6 +2063,8 @@ tr:hover {
     
     .finance-charts {
         grid-template-columns: 1fr;
+        width: 100%;
+        min-width: 0;
     }
     
     .table-container {
@@ -1977,6 +2080,20 @@ tr:hover {
 }
 
 @media (max-width: 480px) {
+    .chart-box {
+        padding: 10px;
+    }
+
+    .chart-box h4 {
+        font-size: 0.92rem;
+        margin-bottom: 8px;
+    }
+
+    .chart-box canvas {
+        aspect-ratio: 2.2 / 1;
+        max-height: 170px !important;
+    }
+
     .header-content {
         flex-direction: column;
         gap: 10px;
@@ -2018,6 +2135,24 @@ tr:hover {
     .finance-item-actions {
         width: 100%;
         justify-content: space-between;
+    }
+}
+
+@media (max-width: 640px) {
+    .mission-card.with-side-actions,
+    .workout-card.with-side-actions,
+    .study-card.with-side-actions {
+        display: block;
+    }
+
+    .mission-card.with-side-actions .mission-actions,
+    .workout-card.with-side-actions .workout-actions,
+    .study-card.with-side-actions .study-actions {
+        display: flex;
+        flex-direction: row;
+        min-width: 0;
+        gap: 5px;
+        margin-top: 4px;
     }
 }
 
@@ -3165,7 +3300,7 @@ tr:hover {
     .study-card,
     .history-card,
     .finance-item {
-        padding: 12px;
+        padding: 8px 9px;
     }
 
     .item-info,
@@ -3179,8 +3314,8 @@ tr:hover {
     .mission-name span:last-child,
     .workout-name span:last-child,
     .study-name span:last-child {
-        font-size: 0.95rem;
-        line-height: 1.25;
+        font-size: 0.88rem;
+        line-height: 1.2;
         overflow-wrap: anywhere;
     }
 
@@ -3189,8 +3324,8 @@ tr:hover {
     .workout-details,
     .study-details,
     .finance-item-meta {
-        font-size: 0.82rem;
-        line-height: 1.35;
+        font-size: 0.76rem;
+        line-height: 1.2;
     }
 
     .mission-type,
@@ -3198,8 +3333,8 @@ tr:hover {
     .study-type,
     .display-type,
     .attribute-tag {
-        font-size: 0.72rem;
-        padding: 2px 7px;
+        font-size: 0.68rem;
+        padding: 1px 6px;
     }
 
     .workouts-grid,
@@ -3273,14 +3408,14 @@ tr:hover {
     .study-card,
     .history-card,
     .finance-item {
-        padding: 10px;
+        padding: 8px;
     }
 
     .item-name,
     .mission-name span:last-child,
     .workout-name span:last-child,
     .study-name span:last-child {
-        font-size: 0.9rem;
+        font-size: 0.84rem;
     }
 
     .finance-item-actions {
@@ -4402,4 +4537,3 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
 #productive-days-table td.col-study {
     color: var(--cat-study);
 }
-

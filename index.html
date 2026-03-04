@@ -379,7 +379,7 @@
                                 </div>
                                 
                                 <div class="form-group" id="mission-date-container" style="display: none;">
-                                    <label for="mission-date">Data (para missões eventuais)</label>
+                                    <label for="mission-date">Prazo (para missões eventuais)</label>
                                     <input type="date" id="mission-date">
                                 </div>
                                 
@@ -473,7 +473,7 @@
                                 </div>
                                 
                                 <div class="form-group" id="work-date-container" style="display: none;">
-                                    <label for="work-date">Data (para trabalhos eventuais)</label>
+                                    <label for="work-date">Prazo (para trabalhos eventuais)</label>
                                     <input type="date" id="work-date">
                                 </div>
                                 
@@ -720,6 +720,7 @@
                             <div class="legend-item"><span class="legend-dot workout"></span> Treinos</div>
                             <div class="legend-item"><span class="legend-dot study"></span> Estudos</div>
                             <div class="legend-item"><span class="legend-dot rest"></span> Descanso</div>
+                            <div class="legend-item"><span class="legend-dot work-off"></span> Folga (trabalho)</div>
                             <div class="legend-item"><span class="legend-border streak"></span> Borda: streak</div>
                             <div class="legend-item"><span class="legend-border failure"></span> Borda: falha</div>
                             <div class="legend-item"><span class="legend-border death"></span> Borda: morte</div>
@@ -741,6 +742,10 @@
                         <div class="calendar-rest-control" id="cal-rest-control">
                             <span class="calendar-rest-status" id="cal-rest-status">Dia normal</span>
                             <button class="calendar-rest-btn" id="cal-rest-toggle">Marcar descanso</button>
+                        </div>
+                        <div class="calendar-rest-control" id="cal-work-off-control">
+                            <span class="calendar-rest-status" id="cal-work-off-status">Sem folga de trabalho</span>
+                            <button class="calendar-rest-btn" id="cal-work-off-toggle">Marcar folga</button>
                         </div>
                         <div class="calendar-details-list" id="cal-details-list">
                             <p class="empty-message">Selecione um dia para ver as missões.</p>

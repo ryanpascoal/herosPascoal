@@ -89,6 +89,7 @@ const appData = {
     dailyWorkouts: [],
     dailyStudies: [],
     restDays: [],
+    workOffDays: [],
     statisticsGoals: {
         missions: 14,
         workouts: 5,
@@ -110,7 +111,7 @@ let calendarState = {
     detailsFilter: 'all'
 };
 
-const REST_DAYS_PER_MONTH_LIMIT = 2;
+const REST_DAY_COST = 160;
 const SKIP_ACTIVITY_COST = 25;
 const CATEGORY_COLORS = {
     mission: {
@@ -437,6 +438,8 @@ function ensureCriticalDataShape() {
     if (!Array.isArray(appData.financeBudgets)) appData.financeBudgets = [];
     if (!Array.isArray(appData.financeRecurring)) appData.financeRecurring = [];
     if (!Array.isArray(appData.financeRecurringSkips)) appData.financeRecurringSkips = [];
+    if (!Array.isArray(appData.restDays)) appData.restDays = [];
+    if (!Array.isArray(appData.workOffDays)) appData.workOffDays = [];
     if (!appData.statisticsGoals || typeof appData.statisticsGoals !== 'object') {
         appData.statisticsGoals = {};
     }
@@ -456,17 +459,18 @@ function ensureCriticalDataShape() {
     appData.financeBudgets = appData.financeBudgets
         .filter(b => b && typeof b === 'object')
         .map(b => ({
-            id: Number.isFinite(Number(b.id)) ? Number(b.id) : Date.now() + Math.floor(Math.random() * 1000),
+            id: Number.isFinite(Number(b.id)) ? Number(b.id) : createUniqueId(appData.financeBudgets),
             month: typeof b.month === 'string' && /^\d{4}-\d{2}$/.test(b.month) ? b.month : getLocalDateString().slice(0, 7),
             category: String(b.category || '').trim(),
             limit: Number.isFinite(Number(b.limit)) && Number(b.limit) > 0 ? Number(b.limit) : 0
         }))
         .filter(b => b.category && b.limit > 0);
+    normalizeEntityIds(appData.financeBudgets);
 
     appData.financeRecurring = appData.financeRecurring
         .filter(r => r && typeof r === 'object')
         .map(r => ({
-            id: Number.isFinite(Number(r.id)) ? Number(r.id) : Date.now() + Math.floor(Math.random() * 1000),
+            id: Number.isFinite(Number(r.id)) ? Number(r.id) : createUniqueId(appData.financeRecurring),
             type: r.type === 'income' ? 'income' : 'expense',
             amount: Number.isFinite(Number(r.amount)) && Number(r.amount) > 0 ? Number(r.amount) : 0,
             category: String(r.category || '').trim(),
@@ -477,6 +481,7 @@ function ensureCriticalDataShape() {
             active: r.active !== false
         }))
         .filter(r => r.amount > 0);
+    normalizeEntityIds(appData.financeRecurring);
 
     appData.financeRecurringSkips = appData.financeRecurringSkips
         .map(s => String(s || '').trim())
@@ -676,7 +681,7 @@ function resetBossGroup(names) {
 function addHeroLog(type, title, content) {
     if (!appData.heroLogs) appData.heroLogs = [];
     appData.heroLogs.push({
-        id: Date.now() + Math.floor(Math.random() * 1000),
+        id: createUniqueId(appData.heroLogs),
         type,
         title,
         content,
@@ -726,6 +731,153 @@ function showToast(message, type = 'info', duration = 2200) {
         toast.classList.remove('visible');
         window.setTimeout(() => toast.remove(), 260);
     }, duration);
+}
+
+function showFeedback(message, type = 'info', duration = 2200) {
+    showToast(message, type, duration);
+}
+
+function getDialogModal() {
+    let modal = document.getElementById('fx-dialog-modal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.id = 'fx-dialog-modal';
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="fx-dialog-title">Confirmação</h3>
+                <button type="button" class="close-modal" data-dialog-close>&times;</button>
+            </div>
+            <div class="modal-body" id="fx-dialog-body"></div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    return modal;
+}
+
+function closeDialogModal() {
+    const modal = document.getElementById('fx-dialog-modal');
+    if (!modal) return;
+    modal.classList.remove('active');
+}
+
+function showDialog(options = {}) {
+    const {
+        title = 'Confirmação',
+        message = '',
+        confirmText = 'Confirmar',
+        cancelText = 'Cancelar',
+        requireInput = false,
+        inputValue = '',
+        inputPlaceholder = '',
+        validate
+    } = options;
+
+    return new Promise(resolve => {
+        const modal = getDialogModal();
+        const titleEl = modal.querySelector('#fx-dialog-title');
+        const bodyEl = modal.querySelector('#fx-dialog-body');
+        if (!titleEl || !bodyEl) {
+            resolve(null);
+            return;
+        }
+
+        titleEl.textContent = title;
+        const safeMessage = escapeHtml(message).replace(/\n/g, '<br>');
+        bodyEl.innerHTML = `
+            <p>${safeMessage}</p>
+            ${requireInput ? `<input type="text" id="fx-dialog-input" value="${escapeHtml(inputValue)}" placeholder="${escapeHtml(inputPlaceholder)}">` : ''}
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+                <button type="button" class="action-btn" data-dialog-cancel>${cancelText}</button>
+                <button type="button" class="submit-btn" data-dialog-confirm>${confirmText}</button>
+            </div>
+        `;
+
+        const cancelBtn = bodyEl.querySelector('[data-dialog-cancel]');
+        const confirmBtn = bodyEl.querySelector('[data-dialog-confirm]');
+        const closeBtn = modal.querySelector('[data-dialog-close]');
+        const input = requireInput ? bodyEl.querySelector('#fx-dialog-input') : null;
+        let done = false;
+
+        const finish = (value) => {
+            if (done) return;
+            done = true;
+            document.removeEventListener('keydown', onKeyDown);
+            modal.onclick = null;
+            if (closeBtn) closeBtn.onclick = null;
+            if (cancelBtn) cancelBtn.onclick = null;
+            if (confirmBtn) confirmBtn.onclick = null;
+            closeDialogModal();
+            resolve(value);
+        };
+
+        const onKeyDown = (event) => {
+            if (!modal.classList.contains('active')) return;
+            if (event.key === 'Escape') finish(null);
+            if (event.key === 'Enter') {
+                confirmBtn?.click();
+            }
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+        if (cancelBtn) cancelBtn.onclick = () => finish(null);
+        if (closeBtn) closeBtn.onclick = () => finish(null);
+        if (confirmBtn) confirmBtn.onclick = () => {
+            if (!requireInput) {
+                finish(true);
+                return;
+            }
+
+            const rawValue = input?.value ?? '';
+            if (typeof validate === 'function') {
+                const validationMessage = validate(rawValue);
+                if (validationMessage) {
+                    showFeedback(validationMessage, 'warn');
+                    return;
+                }
+            }
+            finish(rawValue);
+        };
+        modal.onclick = (event) => {
+            if (event.target !== modal) return;
+            finish(null);
+        };
+
+        modal.classList.add('active');
+        if (input) {
+            window.setTimeout(() => {
+                input.focus();
+                input.select();
+            }, 0);
+        }
+    });
+}
+
+async function askConfirmation(message, options = {}) {
+    const result = await showDialog({
+        title: options.title || 'Confirmar ação',
+        message,
+        confirmText: options.confirmText || 'Confirmar',
+        cancelText: options.cancelText || 'Cancelar'
+    });
+    return result === true;
+}
+
+async function askInput(message, options = {}) {
+    const result = await showDialog({
+        title: options.title || 'Inserir valor',
+        message,
+        confirmText: options.confirmText || 'Salvar',
+        cancelText: options.cancelText || 'Cancelar',
+        requireInput: true,
+        inputValue: options.defaultValue || '',
+        inputPlaceholder: options.placeholder || '',
+        validate: options.validate
+    });
+    if (result === null) return null;
+    return String(result);
 }
 
 function pulseElement(target, className = 'fx-pop') {
@@ -811,7 +963,7 @@ function applyActivityPenalties(config) {
         );
         if (!alreadyLogged) {
             completedList.push({
-                id: Date.now() + dayItem.id,
+                id: createUniqueId(completedList),
                 [idKey]: dayItem[idKey],
                 name: item ? item.name : nameFallback,
                 emoji: item ? item.emoji : emojiFallback,
@@ -837,7 +989,7 @@ function applyActivityPenalties(config) {
     });
 
     if (shieldUsed) {
-        alert(alertShield);
+        showFeedback(alertShield, 'warn');
         addHeroLog('penalty', logShieldTitle, logShieldContent);
     }
 
@@ -847,7 +999,7 @@ function applyActivityPenalties(config) {
         });
         addAttributeXP(6, -1);
         appData.statistics[statsKey] = (appData.statistics[statsKey] || 0) + incompleteItems.length;
-        alert(alertFail);
+        showFeedback(alertFail, 'error');
         addHeroLog('penalty', logFailTitle, logFailContent);
         handleGameOverIfNeeded();
     }
@@ -871,14 +1023,12 @@ function generateDailyActivities() {
         if (hasScheduledDay(workout.days)) {
             const alreadyExists = appData.dailyWorkouts.some(dw =>
                 sameId(dw.workoutId, workout.id) &&
-                dw.date === todayStr &&
-                !dw.completed &&
-                !dw.skipped
+                dw.date === todayStr
             );
             
             if (!alreadyExists) {
                 appData.dailyWorkouts.push({
-                    id: Date.now() + workout.id,
+                    id: createUniqueId(appData.dailyWorkouts),
                     workoutId: workout.id,
                     date: todayStr,
                     completed: false,
@@ -896,14 +1046,12 @@ function generateDailyActivities() {
         if (hasScheduledDay(study.days)) {
             const alreadyExists = appData.dailyStudies.some(ds =>
                 sameId(ds.studyId, study.id) &&
-                ds.date === todayStr &&
-                !ds.completed &&
-                !ds.skipped
+                ds.date === todayStr
             );
             
             if (!alreadyExists) {
                 appData.dailyStudies.push({
-                    id: Date.now() + study.id,
+                    id: createUniqueId(appData.dailyStudies),
                     studyId: study.id,
                     date: todayStr,
                     completed: false,
@@ -1048,6 +1196,10 @@ function initEvents() {
     document.getElementById('cal-rest-toggle')?.addEventListener('click', () => {
         if (!calendarState.selectedDate) return;
         toggleRestDay(calendarState.selectedDate);
+    });
+    document.getElementById('cal-work-off-toggle')?.addEventListener('click', () => {
+        if (!calendarState.selectedDate) return;
+        toggleWorkOffDay(calendarState.selectedDate);
     });
     document.getElementById('cal-details-filter')?.addEventListener('change', function() {
         calendarState.detailsFilter = this.value || 'all';
@@ -1769,12 +1921,12 @@ document.getElementById('shop-item-form')?.addEventListener('submit', function(e
     const level = parseInt(document.getElementById('item-level').value);
     
     if (!name || !price) {
-        alert('Por favor, preencha pelo menos nome e preço.');
+        showFeedback('Por favor, preencha pelo menos nome e preço.', 'warn');
         return;
     }
     
     const newItem = {
-        id: appData.shopItems.length > 0 ? Math.max(...appData.shopItems.map(i => i.id)) + 1 : 1,
+        id: createUniqueId(appData.shopItems),
         name,
         emoji: emoji || '🎁',
         cost: price,
@@ -1791,39 +1943,68 @@ document.getElementById('shop-item-form')?.addEventListener('submit', function(e
     // Atualizar UI
     updateUI();
     
-    alert('Item cadastrado com sucesso!');
+    showFeedback('Item cadastrado com sucesso!', 'success');
 });
 
 // Editar item da loja
-function editShopItem(id) {
+async function editShopItem(id) {
     const item = appData.shopItems.find(i => i.id === id);
     if (!item) return;
-    
-    const newName = prompt('Novo nome do item:', item.name);
-    if (newName) item.name = newName;
-    
-    const newEmoji = prompt('Novo emoji (opcional):', item.emoji);
-    if (newEmoji) item.emoji = newEmoji;
-    
-    const newPrice = prompt('Novo preço (moedas):', item.cost);
-    if (newPrice) item.cost = parseInt(newPrice);
-    
-    const newLevel = prompt('Novo nível mínimo:', item.level);
-    if (newLevel) item.level = parseInt(newLevel);
+
+    const newName = await askInput('Novo nome do item:', {
+        title: 'Editar item',
+        defaultValue: item.name
+    });
+    if (newName === null) return;
+    if (newName.trim()) item.name = newName.trim();
+
+    const newEmoji = await askInput('Novo emoji (opcional):', {
+        title: 'Editar item',
+        defaultValue: item.emoji || ''
+    });
+    if (newEmoji !== null && newEmoji.trim()) item.emoji = newEmoji.trim();
+
+    const newPrice = await askInput('Novo preço (moedas):', {
+        title: 'Editar item',
+        defaultValue: String(item.cost ?? '')
+    });
+    if (newPrice === null) return;
+    const parsedPrice = parseInt(newPrice, 10);
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+        showFeedback('Preço inválido.', 'warn');
+        return;
+    }
+    item.cost = parsedPrice;
+
+    const newLevel = await askInput('Novo nível mínimo:', {
+        title: 'Editar item',
+        defaultValue: String(item.level ?? 0)
+    });
+    if (newLevel === null) return;
+    const parsedLevel = parseInt(newLevel, 10);
+    if (!Number.isFinite(parsedLevel) || parsedLevel < 0) {
+        showFeedback('Nível mínimo inválido.', 'warn');
+        return;
+    }
+    item.level = parsedLevel;
     
     updateUI({ mode: 'shop' });
+    showFeedback('Item atualizado com sucesso!', 'success');
 }
 
 // Excluir item da loja
-function deleteShopItem(id) {
-    if (confirm('Tem certeza que deseja excluir este item da loja?')) {
-        const index = appData.shopItems.findIndex(i => i.id === id);
-        if (index !== -1) {
-            appData.shopItems.splice(index, 1);
-            updateUI({ mode: 'shop' });
-            alert('Item excluído com sucesso!');
-        }
-    }
+async function deleteShopItem(id) {
+    const confirmed = await askConfirmation('Tem certeza que deseja excluir este item da loja?', {
+        title: 'Excluir item',
+        confirmText: 'Excluir'
+    });
+    if (!confirmed) return;
+
+    const index = appData.shopItems.findIndex(i => i.id === id);
+    if (index === -1) return;
+    appData.shopItems.splice(index, 1);
+    updateUI({ mode: 'shop' });
+    showFeedback('Item excluído com sucesso!', 'success');
 }
 
 // Função para verificar e atualizar streaks
@@ -2042,27 +2223,30 @@ function failMission(missionId, reason = '') {
         `Missão falhada: ${mission.name}`,
         hadShield ? 'Escudo consumido para evitar penalidade.' : 'Perdeu 1 vida e streak geral.'
     );
-    alert(`Missão "${mission.name}" falhou! ${penaltyText}`);
+    showFeedback(`Missão "${mission.name}" falhou! ${penaltyText}`, 'error', 3200);
 }
 
 // Atualizar missões
-function trySpendSkipCoins(activityLabel) {
+async function trySpendSkipCoins(activityLabel) {
     if (appData.hero.coins < SKIP_ACTIVITY_COST) {
-        alert(`Voce precisa de ${SKIP_ACTIVITY_COST} moedas para pular ${activityLabel}.`);
+        showFeedback(`Voce precisa de ${SKIP_ACTIVITY_COST} moedas para pular ${activityLabel}.`, 'warn');
         return false;
     }
-    const confirmed = confirm(`Pular ${activityLabel} custa ${SKIP_ACTIVITY_COST} moedas. Deseja continuar?`);
+    const confirmed = await askConfirmation(`Pular ${activityLabel} custa ${SKIP_ACTIVITY_COST} moedas. Deseja continuar?`, {
+        title: 'Confirmar pulo',
+        confirmText: 'Pular'
+    });
     if (!confirmed) return false;
     appData.hero.coins -= SKIP_ACTIVITY_COST;
     return true;
 }
 
-function skipMission(missionId) {
+async function skipMission(missionId) {
     const missionIndex = appData.missions.findIndex(m => m.id === missionId);
     if (missionIndex === -1) return;
 
     const mission = appData.missions[missionIndex];
-    if (!trySpendSkipCoins(`a missao "${mission.name}"`)) return;
+    if (!await trySpendSkipCoins(`a missao "${mission.name}"`)) return;
 
     const todayStr = getLocalDateString();
     appData.completedMissions.push({
@@ -2086,7 +2270,7 @@ function skipMission(missionId) {
     );
 
     updateUI({ mode: 'activity' });
-    alert(`Missao "${mission.name}" pulada sem penalidade.`);
+    showFeedback(`Missao "${mission.name}" pulada sem penalidade.`, 'info');
 }
 
 function failWork(workId, reason = '') {
@@ -2126,12 +2310,12 @@ function failWork(workId, reason = '') {
     );
 }
 
-function skipWork(workId) {
+async function skipWork(workId) {
     const workIndex = appData.works.findIndex(w => w.id === workId);
     if (workIndex === -1) return;
 
     const work = appData.works[workIndex];
-    if (!trySpendSkipCoins(`o trabalho "${work.name}"`)) return;
+    if (!await trySpendSkipCoins(`o trabalho "${work.name}"`)) return;
 
     const todayStr = getLocalDateString();
     appData.completedWorks.push({
@@ -2156,16 +2340,16 @@ function skipWork(workId) {
     );
 
     updateUI({ mode: 'activity' });
-    alert(`Trabalho "${work.name}" pulado sem penalidade.`);
+    showFeedback(`Trabalho "${work.name}" pulado sem penalidade.`, 'info');
 }
 
-function skipDailyWorkout(workoutDayId) {
+async function skipDailyWorkout(workoutDayId) {
     const workoutDay = appData.dailyWorkouts.find(dw => dw.id === workoutDayId);
     if (!workoutDay || workoutDay.completed || workoutDay.skipped) return;
 
     const workout = appData.workouts.find(w => w.id === workoutDay.workoutId);
     if (!workout) return;
-    if (!trySpendSkipCoins(`o treino "${workout.name}"`)) return;
+    if (!await trySpendSkipCoins(`o treino "${workout.name}"`)) return;
 
     workoutDay.skipped = true;
     workoutDay.skippedDate = getLocalDateString();
@@ -2175,7 +2359,7 @@ function skipDailyWorkout(workoutDayId) {
     );
     if (!workoutHistoryExists) {
         appData.completedWorkouts.push({
-            id: Date.now() + workoutDay.id,
+            id: createUniqueId(appData.completedWorkouts),
             workoutId: workoutDay.workoutId,
             name: workout.name,
             emoji: workout.emoji,
@@ -2195,16 +2379,16 @@ function skipDailyWorkout(workoutDayId) {
     );
 
     updateUI({ mode: 'activity' });
-    alert(`Treino "${workout.name}" pulado sem penalidade.`);
+    showFeedback(`Treino "${workout.name}" pulado sem penalidade.`, 'info');
 }
 
-function skipDailyStudy(studyDayId) {
+async function skipDailyStudy(studyDayId) {
     const studyDay = appData.dailyStudies.find(ds => ds.id === studyDayId);
     if (!studyDay || studyDay.completed || studyDay.skipped) return;
 
     const study = appData.studies.find(s => s.id === studyDay.studyId);
     if (!study) return;
-    if (!trySpendSkipCoins(`o estudo "${study.name}"`)) return;
+    if (!await trySpendSkipCoins(`o estudo "${study.name}"`)) return;
 
     studyDay.skipped = true;
     studyDay.skippedDate = getLocalDateString();
@@ -2214,7 +2398,7 @@ function skipDailyStudy(studyDayId) {
     );
     if (!studyHistoryExists) {
         appData.completedStudies.push({
-            id: Date.now() + studyDay.id,
+            id: createUniqueId(appData.completedStudies),
             studyId: studyDay.studyId,
             name: study.name,
             emoji: study.emoji,
@@ -2235,7 +2419,7 @@ function skipDailyStudy(studyDayId) {
     );
 
     updateUI({ mode: 'activity' });
-    alert(`Estudo "${study.name}" pulado sem penalidade.`);
+    showFeedback(`Estudo "${study.name}" pulado sem penalidade.`, 'info');
 }
 
 function updateMissions() {
@@ -2260,6 +2444,11 @@ function updateDailyWorks() {
     const dayOfWeek = today.getDay();
     const todayStr = getLocalDateString();
 
+    if (isWorkOffDay(todayStr)) {
+        container.innerHTML = '<p class="empty-message">Hoje esta marcado como folga. Sem trabalhos no dia.</p>';
+        return;
+    }
+
     const dailyWorks = appData.works.filter(work => {
         if (work.completed || work.failed) return false;
 
@@ -2274,7 +2463,7 @@ function updateDailyWorks() {
         if (work.type === 'eventual') {
             if (!work.date) return false;
             const workDateStr = getLocalDateString(parseLocalDateString(work.date));
-            return workDateStr === todayStr;
+            return workDateStr >= todayStr;
         }
 
         if (work.type === 'epica') {
@@ -2293,7 +2482,7 @@ function updateDailyWorks() {
 
     dailyWorks.forEach(work => {
         const card = document.createElement('div');
-        card.className = 'mission-card';
+        card.className = 'mission-card with-side-actions';
 
         const attributesText = work.attributes.map(attrId => {
             const attr = appData.attributes.find(a => a.id === attrId);
@@ -2312,7 +2501,7 @@ function updateDailyWorks() {
             </div>
             <div class="mission-details">
                 ${work.type === 'epica' ? `<p>Prazo: ${formatDate(work.deadline)}</p>` : ''}
-                ${work.type === 'eventual' ? `<p>Data: ${formatDate(work.date)}</p>` : ''}
+                ${work.type === 'eventual' ? `<p>Prazo: ${formatDate(work.date)}</p>` : ''}
                 ${work.type === 'semanal' ? `<p>Dias: ${getDaysNames(work.days)}</p>` : ''}
                 ${classLine}
             </div>
@@ -2436,7 +2625,8 @@ function updateWorksList() {
 
     appData.works.forEach(work => {
         const today = new Date();
-        const isOverdue = work.type === 'epica' && work.deadline && parseLocalDateString(work.deadline) < today;
+        const isOverdue = (work.type === 'epica' && work.deadline && parseLocalDateString(work.deadline) < today) ||
+            (work.type === 'eventual' && work.date && parseLocalDateString(work.date) < today);
         const className = work.classId ? getClassNameById(work.classId) : '';
         const classInfo = className ? `<div class="item-type">Classe: ${className}</div>` : '';
 
@@ -2445,6 +2635,10 @@ function updateWorksList() {
             const deadline = parseLocalDateString(work.deadline);
             const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
             deadlineInfo = `<div class="mission-deadline">Prazo: ${formatDate(work.deadline)} (${daysLeft} dias)</div>`;
+        } else if (work.type === 'eventual' && work.date) {
+            const deadline = parseLocalDateString(work.date);
+            const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+            deadlineInfo = `<div class="mission-deadline">Prazo: ${formatDate(work.date)} (${daysLeft} dias)</div>`;
         }
 
         const card = document.createElement('div');
@@ -2485,9 +2679,14 @@ function updateWorksList() {
     });
 
     container.querySelectorAll('.fail-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             const id = parseInt(this.getAttribute('data-id'), 10);
-            const reason = prompt('Digite o motivo da falha (opcional):');
+            const reason = await askInput('Digite o motivo da falha (opcional):', {
+                title: 'Falhar trabalho',
+                defaultValue: '',
+                confirmText: 'Falhar'
+            });
+            if (reason === null) return;
             failWork(id, reason);
         });
     });
@@ -2530,7 +2729,7 @@ function updateDailyMissions() {
         if (mission.type === 'eventual') {
             if (!mission.date) return false;
             const missionDateStr = getLocalDateString(parseLocalDateString(mission.date));
-            return missionDateStr === todayStr;
+            return missionDateStr >= todayStr;
         }
         
         if (mission.type === 'epica') {
@@ -2552,7 +2751,7 @@ function updateDailyMissions() {
     
     dailyMissions.forEach(mission => {
         const missionCard = document.createElement('div');
-        missionCard.className = 'mission-card';
+        missionCard.className = 'mission-card with-side-actions';
         
         const attributesText = mission.attributes.map(attrId => {
             const attr = appData.attributes.find(a => a.id === attrId);
@@ -2568,7 +2767,7 @@ function updateDailyMissions() {
             </div>
             <div class="mission-details">
                 ${mission.type === 'epica' ? `<p>Prazo: ${formatDate(mission.deadline)}</p>` : ''}
-                ${mission.type === 'eventual' ? `<p>Data: ${formatDate(mission.date)}</p>` : ''}
+                ${mission.type === 'eventual' ? `<p>Prazo: ${formatDate(mission.date)}</p>` : ''}
                 ${mission.type === 'semanal' ? `<p>Dias: ${getDaysNames(mission.days)}</p>` : ''}
             </div>
             <div class="mission-attributes">
@@ -2702,9 +2901,12 @@ function updateMissionsList() {
     appData.missions.forEach(mission => {
         // Verificar se a missão está atrasada
         const today = new Date();
-        const isOverdue = mission.type === 'epica' && 
-                         mission.deadline && 
-                         parseLocalDateString(mission.deadline) < today;
+        const isOverdue = (mission.type === 'epica' &&
+                         mission.deadline &&
+                         parseLocalDateString(mission.deadline) < today) ||
+            (mission.type === 'eventual' &&
+                mission.date &&
+                parseLocalDateString(mission.date) < today);
         const missionCard = document.createElement('div');
         missionCard.className = `item-card ${isOverdue ? 'overdue' : ''}`;
         
@@ -2713,6 +2915,10 @@ function updateMissionsList() {
             const deadline = parseLocalDateString(mission.deadline);
             const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
             deadlineInfo = `<div class="mission-deadline">Prazo: ${formatDate(mission.deadline)} (${daysLeft} dias)</div>`;
+        } else if (mission.type === 'eventual' && mission.date) {
+            const deadline = parseLocalDateString(mission.date);
+            const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+            deadlineInfo = `<div class="mission-deadline">Prazo: ${formatDate(mission.date)} (${daysLeft} dias)</div>`;
         }
         
         missionCard.innerHTML = `
@@ -2752,9 +2958,14 @@ function updateMissionsList() {
     
     // Adicionar eventos aos botões de falhar
     container.querySelectorAll('.fail-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             const id = parseInt(this.getAttribute('data-id'));
-            const reason = prompt('Digite o motivo da falha (opcional):');
+            const reason = await askInput('Digite o motivo da falha (opcional):', {
+                title: 'Falhar missão',
+                defaultValue: '',
+                confirmText: 'Falhar'
+            });
+            if (reason === null) return;
             failMission(id, reason);
         });
     });
@@ -2789,7 +3000,7 @@ function updateBosses() {
         if (boss.hp <= 0 && !boss.defeated) {
             boss.defeated = true;
             boss.bonusActive = true;
-            alert(`Chefe ${boss.name} derrotado! Você ganha +1 XP de bônus em todas as atividades até a próxima restauração.`);
+            showFeedback(`Chefe ${boss.name} derrotado! Você ganha +1 XP de bônus em todas as atividades até a próxima restauração.`, 'success', 3200);
         }
     });
 }
@@ -3082,7 +3293,7 @@ function saveStatisticsGoals() {
     const workouts = parseInt(document.getElementById('goal-workouts')?.value || '0', 10);
     const studies = parseInt(document.getElementById('goal-studies')?.value || '0', 10);
     if (!Number.isFinite(missions) || missions <= 0 || !Number.isFinite(works) || works <= 0 || !Number.isFinite(workouts) || workouts <= 0 || !Number.isFinite(studies) || studies <= 0) {
-        alert('Informe metas válidas (números maiores que zero).');
+        showFeedback('Informe metas válidas (números maiores que zero).', 'warn');
         return;
     }
     appData.statisticsGoals = { missions, works, workouts, studies };
@@ -3673,15 +3884,19 @@ async function editDiaryEntry(entryId) {
     const entry = entries.find(item => String(item?.id) === String(entryId));
     if (!entry) return;
 
-    const titleInput = prompt('Editar título da entrada:', entry.title || '');
+    const titleInput = await askInput('Editar título da entrada:', {
+        title: 'Editar diário',
+        defaultValue: entry.title || ''
+    });
     if (titleInput === null) return;
 
-    const contentInput = prompt('Editar conteúdo da entrada:', entry.content || '');
+    const contentInput = await askInput('Editar conteúdo da entrada:', {
+        title: 'Editar diário',
+        defaultValue: entry.content || '',
+        confirmText: 'Salvar',
+        validate: value => value.trim() ? '' : 'O conteúdo não pode ficar vazio.'
+    });
     if (contentInput === null) return;
-    if (!contentInput.trim()) {
-        alert('O conteúdo não pode ficar vazio.');
-        return;
-    }
 
     const nextEntries = entries.map(item => {
         if (String(item?.id) !== String(entryId)) return item;
@@ -3699,7 +3914,11 @@ async function editDiaryEntry(entryId) {
 }
 
 async function deleteDiaryEntry(entryId) {
-    if (!confirm('Deseja excluir esta entrada do diário?')) return;
+    const confirmed = await askConfirmation('Deseja excluir esta entrada do diário?', {
+        title: 'Excluir diário',
+        confirmText: 'Excluir'
+    });
+    if (!confirmed) return;
     const entries = diaryDbAvailable ? (diaryCache || []) : (appData.diaryEntries || []);
     const nextEntries = entries.filter(item => String(item?.id) !== String(entryId));
     if (nextEntries.length === entries.length) return;
@@ -4099,8 +4318,12 @@ function updateFinanceCharts() {
     }
 }
 
-function deleteFinanceEntry(entryId) {
-    if (!confirm('Deseja excluir este lançamento?')) return;
+async function deleteFinanceEntry(entryId) {
+    const confirmed = await askConfirmation('Deseja excluir este lançamento?', {
+        title: 'Excluir lançamento',
+        confirmText: 'Excluir'
+    });
+    if (!confirmed) return;
     const index = appData.financeEntries.findIndex(e => e.id === entryId);
     if (index === -1) return;
     const entry = appData.financeEntries[index];
@@ -4121,7 +4344,7 @@ function handleFinanceBudgetSubmit(e) {
     const limit = parseFloat(document.getElementById('finance-budget-limit')?.value || '0');
 
     if (!month || !category || !Number.isFinite(limit) || limit <= 0) {
-        alert('Preencha mês, categoria e limite válido.');
+        showFeedback('Preencha mês, categoria e limite válido.', 'warn');
         return;
     }
 
@@ -4148,8 +4371,12 @@ function handleFinanceBudgetSubmit(e) {
     updateUI({ mode: 'finance' });
 }
 
-function deleteFinanceBudget(budgetId) {
-    if (!confirm('Deseja excluir este orçamento?')) return;
+async function deleteFinanceBudget(budgetId) {
+    const confirmed = await askConfirmation('Deseja excluir este orçamento?', {
+        title: 'Excluir orçamento',
+        confirmText: 'Excluir'
+    });
+    if (!confirmed) return;
     const idx = appData.financeBudgets.findIndex(b => b.id === budgetId);
     if (idx === -1) return;
     appData.financeBudgets.splice(idx, 1);
@@ -4167,11 +4394,11 @@ function handleFinanceRecurringSubmit(e) {
     const endDate = document.getElementById('finance-recurring-end')?.value || '';
 
     if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) {
-        alert('Preencha valor e dia do mês válidos.');
+        showFeedback('Preencha valor e dia do mês válidos.', 'warn');
         return;
     }
     if (endDate && endDate < startDate) {
-        alert('A data final não pode ser anterior à data inicial.');
+        showFeedback('A data final não pode ser anterior à data inicial.', 'warn');
         return;
     }
 
@@ -4193,8 +4420,12 @@ function handleFinanceRecurringSubmit(e) {
     updateUI({ mode: 'finance' });
 }
 
-function deleteFinanceRecurring(recurringId) {
-    if (!confirm('Deseja excluir este lançamento recorrente?')) return;
+async function deleteFinanceRecurring(recurringId) {
+    const confirmed = await askConfirmation('Deseja excluir este lançamento recorrente?', {
+        title: 'Excluir recorrente',
+        confirmText: 'Excluir'
+    });
+    if (!confirmed) return;
     const idx = appData.financeRecurring.findIndex(r => r.id === recurringId);
     if (idx === -1) return;
     appData.financeRecurring.splice(idx, 1);
@@ -4228,7 +4459,7 @@ function updateDailyWorkouts() {
         renderedCount++;
         
         const workoutCard = document.createElement('div');
-        workoutCard.className = 'workout-card';
+        workoutCard.className = 'workout-card with-side-actions';
         
         let inputFields = '';
         if (workout.type === 'repeticao') {
@@ -4291,13 +4522,41 @@ function updateDailyWorkouts() {
     }
 }
 
-function createUniqueId(list) {
-    const existingIds = new Set((Array.isArray(list) ? list : []).map(item => String(item?.id)));
+function createUniqueId(...lists) {
+    const existingIds = new Set();
+    lists.forEach(list => {
+        if (!Array.isArray(list)) return;
+        list.forEach(item => {
+            if (item && item.id !== undefined && item.id !== null) {
+                existingIds.add(String(item.id));
+            }
+        });
+    });
     let candidate = Date.now();
     while (existingIds.has(String(candidate))) {
         candidate += 1;
     }
     return candidate;
+}
+
+function normalizeEntityIds(list) {
+    if (!Array.isArray(list)) return;
+    const used = new Set();
+    let candidate = Date.now();
+
+    list.forEach(item => {
+        if (!item || typeof item !== 'object') return;
+        let id = Number(item.id);
+        if (!Number.isFinite(id) || used.has(String(id))) {
+            while (used.has(String(candidate))) {
+                candidate += 1;
+            }
+            id = candidate;
+            candidate += 1;
+        }
+        item.id = id;
+        used.add(String(id));
+    });
 }
 
 function getCheckedDays(selector) {
@@ -4367,7 +4626,7 @@ function updateDailyStudies() {
         renderedCount++;
         
         const studyCard = document.createElement('div');
-        studyCard.className = 'study-card';
+        studyCard.className = 'study-card with-side-actions';
         
         studyCard.innerHTML = `
             <div class="study-header">
@@ -4556,11 +4815,13 @@ function setCalendarSelection(cell) {
       }
   }
   
-  function renderCalendarDetails(dateStr) {
+function renderCalendarDetails(dateStr) {
       const detailsTitle = document.getElementById('cal-details-title');
       const detailsList = document.getElementById('cal-details-list');
       const restStatus = document.getElementById('cal-rest-status');
       const restToggle = document.getElementById('cal-rest-toggle');
+      const workOffStatus = document.getElementById('cal-work-off-status');
+      const workOffToggle = document.getElementById('cal-work-off-toggle');
       const detailsFilter = document.getElementById('cal-details-filter');
       if (!detailsTitle || !detailsList) return;
     
@@ -4569,9 +4830,15 @@ function setCalendarSelection(cell) {
     
     if (restStatus && restToggle) {
         const isRest = isRestDay(dateStr);
-        restStatus.textContent = isRest ? 'Descanso planejado' : 'Dia normal';
+        restStatus.textContent = isRest ? 'Descanso planejado (dia livre)' : 'Dia normal';
         restStatus.classList.toggle('active', isRest);
         restToggle.textContent = isRest ? 'Remover descanso' : 'Marcar descanso';
+    }
+    if (workOffStatus && workOffToggle) {
+        const isOffDay = isWorkOffDay(dateStr);
+        workOffStatus.textContent = isOffDay ? 'Folga de trabalho ativa' : 'Sem folga de trabalho';
+        workOffStatus.classList.toggle('active', isOffDay);
+        workOffToggle.textContent = isOffDay ? 'Remover folga' : 'Marcar folga';
     }
 
       if (detailsFilter) {
@@ -4624,6 +4891,8 @@ function resetCalendarDetails() {
     const detailsList = document.getElementById('cal-details-list');
     const restStatus = document.getElementById('cal-rest-status');
     const restToggle = document.getElementById('cal-rest-toggle');
+    const workOffStatus = document.getElementById('cal-work-off-status');
+    const workOffToggle = document.getElementById('cal-work-off-toggle');
     const detailsFilter = document.getElementById('cal-details-filter');
     if (!detailsTitle || !detailsList) return;
     
@@ -4634,6 +4903,11 @@ function resetCalendarDetails() {
         restStatus.textContent = 'Dia normal';
         restStatus.classList.remove('active');
         restToggle.textContent = 'Marcar descanso';
+    }
+    if (workOffStatus && workOffToggle) {
+        workOffStatus.textContent = 'Sem folga de trabalho';
+        workOffStatus.classList.remove('active');
+        workOffToggle.textContent = 'Marcar folga';
     }
 
     if (detailsFilter) {
@@ -4664,7 +4938,7 @@ function getCalendarItemsForDate(dateStr) {
         
         if (mission.type === 'eventual' && mission.date) {
             const missionDateStr = getLocalDateString(parseLocalDateString(mission.date));
-            if (missionDateStr === dateStr) {
+            if (dateStr <= missionDateStr) {
                 items.push({ ...typeInfo, ...mission, status: 'pending' });
             }
         }
@@ -4693,6 +4967,7 @@ function getCalendarItemsForDate(dateStr) {
 
     // Trabalhos ativos
     appData.works.forEach(work => {
+        if (isWorkOffDay(dateStr)) return;
         const typeInfo = getWorkTypeInfo(work.type);
         if (!typeInfo) return;
         
@@ -4709,7 +4984,7 @@ function getCalendarItemsForDate(dateStr) {
         
         if (work.type === 'eventual' && work.date) {
             const workDateStr = getLocalDateString(parseLocalDateString(work.date));
-            if (workDateStr === dateStr) {
+            if (dateStr <= workDateStr) {
                 items.push({ ...typeInfo, ...work, status: 'pending' });
             }
         }
@@ -4861,10 +5136,10 @@ function getCalendarMarkersForDate(date) {
     if (pendingItems.some(item => item.kindClass === 'workout')) markers.add('workout');
     if (pendingItems.some(item => item.kindClass === 'study')) markers.add('study');
 
-    // Descanso planejado
     if (isRestDay(dateStr)) {
         markers.add('rest');
     }
+    if (isWorkOffDay(dateStr)) markers.add('work-off');
 
     return Array.from(markers);
 }
@@ -4873,21 +5148,42 @@ function isRestDay(dateStr) {
     return appData.restDays && appData.restDays.includes(dateStr);
 }
 
-function toggleRestDay(dateStr) {
+function isWorkOffDay(dateStr) {
+    return appData.workOffDays && appData.workOffDays.includes(dateStr);
+}
+
+async function toggleRestDay(dateStr) {
     if (!appData.restDays) appData.restDays = [];
     const index = appData.restDays.indexOf(dateStr);
     if (index >= 0) {
         appData.restDays.splice(index, 1);
         addHeroLog('rest', 'Descanso removido', `Dia ${dateStr} voltou ao normal.`);
     } else {
-        const monthKey = getMonthKey(dateStr);
-        const monthCount = appData.restDays.filter(d => getMonthKey(d) === monthKey).length;
-        if (monthCount >= REST_DAYS_PER_MONTH_LIMIT) {
-            alert(`Limite de descanso do mês atingido (${REST_DAYS_PER_MONTH_LIMIT}).`);
+        if (appData.hero.coins < REST_DAY_COST) {
+            showFeedback(`Voce precisa de ${REST_DAY_COST} moedas para marcar descanso.`, 'warn');
             return;
         }
+        const confirmed = await askConfirmation(`Marcar descanso custa ${REST_DAY_COST} moedas. Deseja continuar?`, {
+            title: 'Marcar descanso',
+            confirmText: 'Confirmar'
+        });
+        if (!confirmed) return;
+        appData.hero.coins -= REST_DAY_COST;
         appData.restDays.push(dateStr);
-        addHeroLog('rest', 'Descanso planejado', `Dia ${dateStr} marcado como descanso.`);
+        addHeroLog('rest', 'Descanso planejado', `Dia ${dateStr} marcado como descanso (-${REST_DAY_COST} moedas).`);
+    }
+    updateUI({ mode: 'activity', forceCalendar: true });
+}
+
+function toggleWorkOffDay(dateStr) {
+    if (!appData.workOffDays) appData.workOffDays = [];
+    const index = appData.workOffDays.indexOf(dateStr);
+    if (index >= 0) {
+        appData.workOffDays.splice(index, 1);
+        addHeroLog('rest', 'Folga removida', `Dia ${dateStr} voltou a permitir trabalhos.`);
+    } else {
+        appData.workOffDays.push(dateStr);
+        addHeroLog('rest', 'Folga planejada', `Dia ${dateStr} marcado como folga de trabalho.`);
     }
     updateUI({ mode: 'activity', forceCalendar: true });
 }
@@ -5590,7 +5886,7 @@ function handleNewWorkout() {
     
     appData.workouts.push(newWorkout);
     updateUI();
-    alert('Treino cadastrado com sucesso!');
+    showFeedback('Treino cadastrado com sucesso!', 'success');
 }
 
 // Manipular novo estudo
@@ -5604,7 +5900,7 @@ function handleNewStudy() {
     
     appData.studies.push(newStudy);
     updateUI();
-    alert('Estudo cadastrado com sucesso!');
+    showFeedback('Estudo cadastrado com sucesso!', 'success');
 }
 
 // Manipular novo livro
@@ -5614,7 +5910,7 @@ function handleNewBook() {
     const emoji = document.getElementById('book-emoji').value;
     
     const newBook = {
-        id: appData.books.length > 0 ? Math.max(...appData.books.map(b => b.id)) + 1 : 1,
+        id: createUniqueId(appData.books),
         name,
         author: author || '',
         emoji: emoji || '📖',
@@ -5624,7 +5920,7 @@ function handleNewBook() {
     
     appData.books.push(newBook);
     updateUI();
-    alert('Livro cadastrado com sucesso!');
+    showFeedback('Livro cadastrado com sucesso!', 'success');
 }
 
 // Manipular conclusão de treino
@@ -5700,7 +5996,7 @@ function handleWorkoutCompletion() {
     );
     if (!workoutHistoryExists) {
         appData.completedWorkouts.push({
-            id: Date.now() + workoutDay.id,
+            id: createUniqueId(appData.completedWorkouts),
             workoutId: workoutDay.workoutId,
             name: workout.name,
             emoji: workout.emoji,
@@ -5814,7 +6110,7 @@ function completeStudy(studyDayId, feedbackText = '') {
     );
     if (!studyHistoryExists) {
         appData.completedStudies.push({
-            id: Date.now() + studyDay.id,
+            id: createUniqueId(appData.completedStudies),
             studyId: studyDay.studyId,
             name: study.name,
             emoji: study.emoji,
@@ -5928,7 +6224,7 @@ function completeBook(bookId) {
         '+20 XP'
     );
     
-    alert('Livro concluído com sucesso!');
+    showFeedback('Livro concluído com sucesso!', 'success');
     updateUI();
 }
 
@@ -5941,7 +6237,7 @@ function handleClassSubmit(e) {
     if (!name) return;
     
     const newClass = {
-        id: appData.classes.length > 0 ? Math.max(...appData.classes.map(c => c.id)) + 1 : 1,
+        id: createUniqueId(appData.classes),
         name,
         emoji: emoji || '💼',
         xp: 0,
@@ -5956,7 +6252,7 @@ function handleClassSubmit(e) {
     
     e.target.reset();
     updateUI();
-    alert('Classe cadastrada com sucesso!');
+    showFeedback('Classe cadastrada com sucesso!', 'success');
 }
 
 function handleMissionSubmit(e) {
@@ -5971,7 +6267,7 @@ function handleMissionSubmit(e) {
     const attributes = Array.from(attributeCheckboxes).map(cb => parseInt(cb.value));
     
     const newMission = {
-        id: appData.missions.length > 0 ? Math.max(...appData.missions.map(m => m.id)) + 1 : 1,
+        id: createUniqueId(appData.missions, appData.completedMissions),
         name,
         emoji: emoji || '🎯',
         type,
@@ -5983,7 +6279,12 @@ function handleMissionSubmit(e) {
     // Adicionar campos específicos por tipo
     if (type === 'semanal') {
         const dayCheckboxes = document.querySelectorAll('#mission-days-container input[type="checkbox"]:checked');
-        newMission.days = Array.from(dayCheckboxes).map(cb => parseInt(cb.value));
+        const selectedDays = Array.from(dayCheckboxes).map(cb => parseInt(cb.value, 10));
+        if (selectedDays.length === 0) {
+            showFeedback('Selecione pelo menos um dia da semana para missão semanal.', 'warn');
+            return;
+        }
+        newMission.days = selectedDays;
     } else if (type === 'eventual') {
         const date = document.getElementById('mission-date').value;
         newMission.date = date || getLocalDateString();
@@ -6001,7 +6302,7 @@ function handleMissionSubmit(e) {
     updateUI();
     
     // Mostrar mensagem de sucesso
-    alert('Missão cadastrada com sucesso!');
+    showFeedback('Missão cadastrada com sucesso!', 'success');
 }
 
 function handleWorkSubmit(e) {
@@ -6017,7 +6318,7 @@ function handleWorkSubmit(e) {
     const attributes = Array.from(attributeCheckboxes).map(cb => parseInt(cb.value, 10));
 
     const newWork = {
-        id: appData.works.length > 0 ? Math.max(...appData.works.map(w => w.id)) + 1 : 1,
+        id: createUniqueId(appData.works, appData.completedWorks),
         name,
         emoji: emoji || '💼',
         type,
@@ -6029,7 +6330,12 @@ function handleWorkSubmit(e) {
 
     if (type === 'semanal') {
         const dayCheckboxes = document.querySelectorAll('#work-days-container input[type="checkbox"]:checked');
-        newWork.days = Array.from(dayCheckboxes).map(cb => parseInt(cb.value, 10));
+        const selectedDays = Array.from(dayCheckboxes).map(cb => parseInt(cb.value, 10));
+        if (selectedDays.length === 0) {
+            showFeedback('Selecione pelo menos um dia da semana para trabalho semanal.', 'warn');
+            return;
+        }
+        newWork.days = selectedDays;
     } else if (type === 'eventual') {
         const date = document.getElementById('work-date').value;
         newWork.date = date || getLocalDateString();
@@ -6041,7 +6347,7 @@ function handleWorkSubmit(e) {
     appData.works.push(newWork);
     e.target.reset();
     updateUI();
-    alert('Trabalho cadastrado com sucesso!');
+    showFeedback('Trabalho cadastrado com sucesso!', 'success');
 }
 
 // Manipular envio do formulário de treino
@@ -6065,7 +6371,7 @@ function handleWorkoutSubmit(e) {
     updateUI();
     
     // Mostrar mensagem de sucesso
-    alert('Treino cadastrado com sucesso!');
+    showFeedback('Treino cadastrado com sucesso!', 'success');
 }
 
 // Manipular envio do formulário de estudo
@@ -6089,7 +6395,7 @@ function handleStudySubmit(e) {
     updateUI();
     
     // Mostrar mensagem de sucesso
-    alert('Estudo cadastrado com sucesso!');
+    showFeedback('Estudo cadastrado com sucesso!', 'success');
 }
 
 function handleFinanceSubmit(e) {
@@ -6101,7 +6407,7 @@ function handleFinanceSubmit(e) {
     const description = document.getElementById('finance-desc').value.trim();
     
     if (!type || isNaN(amount) || amount <= 0) {
-        alert('Informe um valor válido.');
+        showFeedback('Informe um valor válido.', 'warn');
         return;
     }
     
@@ -6286,6 +6592,14 @@ function completeWork(workId, feedbackText = '') {
 
     let xpGained = 1;
     let coinsGained = 1;
+    if (work.type === 'epica') {
+        xpGained = 20;
+        coinsGained = 10;
+        (work.attributes || []).forEach(attrId => {
+            const attrXp = attrId === 14 ? 100 : 20;
+            addAttributeXP(attrId, attrXp);
+        });
+    }
 
     if (work.classId) {
         addClassXP(work.classId, xpGained);
@@ -6322,7 +6636,7 @@ function recreateDailyMissionForTomorrow(originalMission) {
     
     // Criar nova missão com os mesmos dados, mas com data DE AMANHÃ
     const newMission = {
-        id: appData.missions.length > 0 ? Math.max(...appData.missions.map(m => m.id)) + 1 : 1,
+        id: createUniqueId(appData.missions, appData.completedMissions),
         name: originalMission.name,
         emoji: originalMission.emoji || '🎯',
         type: 'diaria',
@@ -6366,7 +6680,7 @@ function recreateDailyMissionsForToday() {
         
         if (!alreadyExists) {
             const newMission = {
-                id: appData.missions.length > 0 ? Math.max(...appData.missions.map(m => m.id)) + 1 : 1,
+                id: createUniqueId(appData.missions, appData.completedMissions),
                 name: originalMission.name,
                 emoji: originalMission.emoji || '🎯',
                 type: 'diaria',
@@ -6422,7 +6736,7 @@ function recreateDailyWorkForTomorrow(originalWork) {
     const tomorrowStr = getLocalDateString(tomorrow);
 
     const newWork = {
-        id: appData.works.length > 0 ? Math.max(...appData.works.map(w => w.id)) + 1 : 1,
+        id: createUniqueId(appData.works, appData.completedWorks),
         name: originalWork.name,
         emoji: originalWork.emoji || '💼',
         type: 'diaria',
@@ -6460,7 +6774,7 @@ function recreateDailyWorksForToday() {
 
         if (!alreadyExists) {
             appData.works.push({
-                id: appData.works.length > 0 ? Math.max(...appData.works.map(w => w.id)) + 1 : 1,
+                id: createUniqueId(appData.works, appData.completedWorks),
                 name: originalWork.name,
                 emoji: originalWork.emoji || '💼',
                 type: 'diaria',
@@ -6559,7 +6873,7 @@ function buyItem(itemId) {
 }
 
 // Usar item do inventário (atualizado para remover apenas 1 unidade)
-function useItem(itemId) {
+async function useItem(itemId) {
     // Encontrar o primeiro item deste tipo no inventário
     const itemIndex = appData.inventory.findIndex(i => i.id === itemId);
     if (itemIndex === -1) return;
@@ -6596,7 +6910,16 @@ function useItem(itemId) {
             break;
             
         case 'bomb':
-            const bossName = prompt('Selecione o chefe para atacar:\n1. Físico\n2. Mental\n3. Social\n4. Espiritual\n5. Trabalho');
+            const bossNameInput = await askInput('Selecione o chefe para atacar:\n1. Físico\n2. Mental\n3. Social\n4. Espiritual\n5. Trabalho', {
+                title: 'Usar bomba',
+                confirmText: 'Atacar',
+                validate: value => /^[1-5]$/.test(String(value).trim()) ? '' : 'Escolha um chefe entre 1 e 5.'
+            });
+            if (bossNameInput === null) {
+                appData.inventory.push({ id: itemId, purchaseDate: new Date().toISOString() });
+                return;
+            }
+            const bossName = String(bossNameInput).trim();
             let boss;
             
             switch(bossName) {
@@ -6606,7 +6929,7 @@ function useItem(itemId) {
                 case '4': boss = appData.bosses.find(b => b.name === 'Espiritual'); break;
                 case '5': boss = appData.bosses.find(b => b.name === 'Trabalho'); break;
                 default: 
-                    alert('Chefe inválido!');
+                    showFeedback('Chefe inválido!', 'warn');
                     appData.inventory.push({ id: itemId, purchaseDate: new Date().toISOString() });
                     return;
             }
@@ -6620,7 +6943,7 @@ function useItem(itemId) {
             break;
             
         case 'custom':
-            alert(`${item.name} usado! Recompensa: ${item.description}`);
+            showFeedback(`${item.name} usado! Recompensa: ${item.description}`, 'success');
             // Aqui você pode adicionar lógica personalizada para itens customizados
             addHeroLog('item', `Item usado: ${item.name}`, item.description || 'Recompensa aplicada.');
             break;
@@ -7516,7 +7839,7 @@ async function saveDiaryEntry() {
     const content = document.getElementById('diary-content').value;
     
     if (!content.trim()) {
-        alert('Por favor, escreva algo no diário.');
+        showFeedback('Por favor, escreva algo no diário.', 'warn');
         return;
     }
     
@@ -7528,7 +7851,7 @@ async function saveDiaryEntry() {
     const selectedAttributes = attributes.slice(0, 3);
     
     const newEntry = {
-        id: Date.now(),
+        id: createUniqueId(diaryDbAvailable ? diaryCache : appData.diaryEntries),
         title: title || 'Sem título',
         content,
         attributes: selectedAttributes,
@@ -7557,15 +7880,24 @@ async function saveDiaryEntry() {
     updateUI();
     
     // Mostrar mensagem de sucesso
-    alert('Entrada do diário salva com sucesso!');
+    showFeedback('Entrada do diário salva com sucesso!', 'success');
 }
 
 // Resetar progresso
-function resetProgress() {
-    if (!confirm('Tem certeza que deseja resetar todo o progresso? Isso não pode ser desfeito.')) return;
-    const confirmationText = prompt('Digite RESETAR para confirmar a exclusão total do progresso:');
-    if (confirmationText !== 'RESETAR') {
-        alert('Reset cancelado.');
+async function resetProgress() {
+    const confirmed = await askConfirmation('Tem certeza que deseja resetar todo o progresso? Isso não pode ser desfeito.', {
+        title: 'Resetar progresso',
+        confirmText: 'Continuar'
+    });
+    if (!confirmed) return;
+
+    const confirmationText = await askInput('Digite RESETAR para confirmar a exclusão total do progresso:', {
+        title: 'Confirmar reset',
+        confirmText: 'Resetar',
+        validate: value => value === 'RESETAR' ? '' : 'Digite exatamente RESETAR.'
+    });
+    if (confirmationText === null || confirmationText !== 'RESETAR') {
+        showFeedback('Reset cancelado.', 'info');
         return;
     }
 
@@ -7597,7 +7929,7 @@ async function exportData() {
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
     
-    alert('Dados exportados com sucesso!');
+    showFeedback('Dados exportados com sucesso!', 'success');
 }
 
 // Importar dados
@@ -7649,9 +7981,9 @@ function importData() {
                 // Atualizar UI
                 updateUI();
                 
-                alert('Dados importados com sucesso!');
+                showFeedback('Dados importados com sucesso!', 'success');
             } catch (error) {
-                alert('Erro ao importar dados: ' + error.message);
+                showFeedback('Erro ao importar dados: ' + error.message, 'error', 3400);
             }
         };
         
@@ -7716,30 +8048,42 @@ function formatDate(dateString) {
     });
 }
 
-function editNamedEmojiItem(config) {
+async function editNamedEmojiItem(config) {
     const { list, id, namePrompt, emojiPrompt, updateMode } = config;
     const item = list.find(i => i.id === id);
     if (!item) return;
-    
-    const newName = prompt(namePrompt, item.name);
-    if (newName) item.name = newName;
-    
-    const newEmoji = prompt(emojiPrompt, item.emoji);
-    if (newEmoji) item.emoji = newEmoji;
+
+    const newName = await askInput(namePrompt, {
+        title: 'Editar item',
+        defaultValue: item.name || ''
+    });
+    if (newName === null) return;
+    if (newName.trim()) item.name = newName.trim();
+
+    const newEmoji = await askInput(emojiPrompt, {
+        title: 'Editar item',
+        defaultValue: item.emoji || ''
+    });
+    if (newEmoji !== null && newEmoji.trim()) item.emoji = newEmoji.trim();
     
     updateUI({ mode: updateMode });
+    showFeedback('Item atualizado com sucesso!', 'success');
 }
 
-function deleteNamedEmojiItem(config) {
+async function deleteNamedEmojiItem(config) {
     const { list, id, confirmText, successText, updateMode } = config;
-    if (!confirm(confirmText)) return;
+    const confirmed = await askConfirmation(confirmText, {
+        title: 'Confirmar exclusão',
+        confirmText: 'Excluir'
+    });
+    if (!confirmed) return;
     
     const index = list.findIndex(i => i.id === id);
     if (index === -1) return;
     
     list.splice(index, 1);
     updateUI({ mode: updateMode });
-    alert(successText);
+    showFeedback(successText, 'success');
 }
 
 // Editar e excluir funções (implementações básicas)
@@ -7834,8 +8178,12 @@ function editClass(id) {
     });
 }
 
-function deleteClass(id) {
-    if (!confirm('Tem certeza que deseja excluir esta classe?')) return;
+async function deleteClass(id) {
+    const confirmed = await askConfirmation('Tem certeza que deseja excluir esta classe?', {
+        title: 'Excluir classe',
+        confirmText: 'Excluir'
+    });
+    if (!confirmed) return;
     
     const index = appData.classes.findIndex(c => c.id === id);
     if (index === -1) return;
@@ -7854,12 +8202,12 @@ function deleteClass(id) {
     }
     
     updateUI({ mode: 'activity' });
-    alert('Classe excluída com sucesso!');
+    showFeedback('Classe excluída com sucesso!', 'success');
 }
 
 function applyPenalties(dateStr = getLocalDateString()) {
     const targetDateStr = dateStr;
-    
+
     if (isRestDay(targetDateStr)) {
         return;
     }
