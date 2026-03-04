@@ -99,7 +99,22 @@ const appData = {
     financeEntries: [],
     financeBudgets: [],
     financeRecurring: [],
-    financeRecurringSkips: []
+    financeRecurringSkips: [],
+    foodItems: [],
+    nutritionEntries: [],
+    nutritionGoals: {
+        kcal: 2200,
+        protein: 140,
+        carbs: 240,
+        fat: 70,
+        fiber: 30
+    },
+    nutritionStats: {
+        logDates: [],
+        goalHitDates: [],
+        rewardedGoalDates: [],
+        rewardedMealKeys: []
+    }
 };;
 const APP_DEFAULTS = JSON.parse(JSON.stringify(appData));
 
@@ -113,6 +128,12 @@ let calendarState = {
 
 const REST_DAY_COST = 160;
 const SKIP_ACTIVITY_COST = 25;
+const NUTRITION_MEALS = {
+    cafe: 'Café da manhã',
+    almoco: 'Almoço',
+    jantar: 'Jantar',
+    lanche: 'Lanche'
+};
 const CATEGORY_COLORS = {
     mission: {
         solid: 'rgba(255, 99, 132, 0.7)',
@@ -486,6 +507,80 @@ function ensureCriticalDataShape() {
     appData.financeRecurringSkips = appData.financeRecurringSkips
         .map(s => String(s || '').trim())
         .filter(s => /^\d+\|\d{4}-\d{2}$/.test(s));
+
+    if (!Array.isArray(appData.foodItems)) appData.foodItems = [];
+    if (!Array.isArray(appData.nutritionEntries)) appData.nutritionEntries = [];
+    if (!appData.nutritionGoals || typeof appData.nutritionGoals !== 'object') {
+        appData.nutritionGoals = {};
+    }
+    if (!appData.nutritionStats || typeof appData.nutritionStats !== 'object') {
+        appData.nutritionStats = {};
+    }
+
+    const nutritionGoalDefaults = {
+        kcal: 2200,
+        protein: 140,
+        carbs: 240,
+        fat: 70,
+        fiber: 30
+    };
+    Object.keys(nutritionGoalDefaults).forEach(key => {
+        const parsed = Number(appData.nutritionGoals[key]);
+        appData.nutritionGoals[key] = Number.isFinite(parsed) && parsed > 0 ? parsed : nutritionGoalDefaults[key];
+    });
+
+    appData.foodItems = appData.foodItems
+        .filter(item => item && typeof item === 'object')
+        .map(item => ({
+            id: Number.isFinite(Number(item.id)) ? Number(item.id) : createUniqueId(appData.foodItems),
+            name: String(item.name || '').trim(),
+            brand: String(item.brand || '').trim(),
+            portionGrams: Number.isFinite(Number(item.portionGrams)) && Number(item.portionGrams) > 0 ? Number(item.portionGrams) : 100,
+            kcal: Number.isFinite(Number(item.kcal)) && Number(item.kcal) >= 0 ? Number(item.kcal) : 0,
+            protein: Number.isFinite(Number(item.protein)) && Number(item.protein) >= 0 ? Number(item.protein) : 0,
+            carbs: Number.isFinite(Number(item.carbs)) && Number(item.carbs) >= 0 ? Number(item.carbs) : 0,
+            fat: Number.isFinite(Number(item.fat)) && Number(item.fat) >= 0 ? Number(item.fat) : 0,
+            fiber: Number.isFinite(Number(item.fiber)) && Number(item.fiber) >= 0 ? Number(item.fiber) : 0
+        }))
+        .filter(item => item.name);
+    normalizeEntityIds(appData.foodItems);
+
+    appData.nutritionEntries = appData.nutritionEntries
+        .filter(entry => entry && typeof entry === 'object')
+        .map(entry => ({
+            id: Number.isFinite(Number(entry.id)) ? Number(entry.id) : createUniqueId(appData.nutritionEntries),
+            date: typeof entry.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entry.date) ? entry.date : getLocalDateString(),
+            meal: Object.prototype.hasOwnProperty.call(NUTRITION_MEALS, entry.meal) ? entry.meal : 'lanche',
+            foodId: entry.foodId !== undefined && entry.foodId !== null ? Number(entry.foodId) : null,
+            foodName: String(entry.foodName || '').trim(),
+            quantity: Number.isFinite(Number(entry.quantity)) && Number(entry.quantity) > 0 ? Number(entry.quantity) : 1,
+            grams: Number.isFinite(Number(entry.grams)) && Number(entry.grams) > 0 ? Number(entry.grams) : 0,
+            kcal: Number.isFinite(Number(entry.kcal)) && Number(entry.kcal) >= 0 ? Number(entry.kcal) : 0,
+            protein: Number.isFinite(Number(entry.protein)) && Number(entry.protein) >= 0 ? Number(entry.protein) : 0,
+            carbs: Number.isFinite(Number(entry.carbs)) && Number(entry.carbs) >= 0 ? Number(entry.carbs) : 0,
+            fat: Number.isFinite(Number(entry.fat)) && Number(entry.fat) >= 0 ? Number(entry.fat) : 0,
+            fiber: Number.isFinite(Number(entry.fiber)) && Number(entry.fiber) >= 0 ? Number(entry.fiber) : 0,
+            notes: String(entry.notes || '').trim()
+        }))
+        .filter(entry => entry.foodName);
+    normalizeEntityIds(appData.nutritionEntries);
+
+    if (!Array.isArray(appData.nutritionStats.logDates)) appData.nutritionStats.logDates = [];
+    if (!Array.isArray(appData.nutritionStats.goalHitDates)) appData.nutritionStats.goalHitDates = [];
+    if (!Array.isArray(appData.nutritionStats.rewardedGoalDates)) appData.nutritionStats.rewardedGoalDates = [];
+    if (!Array.isArray(appData.nutritionStats.rewardedMealKeys)) appData.nutritionStats.rewardedMealKeys = [];
+    appData.nutritionStats.logDates = appData.nutritionStats.logDates
+        .map(v => String(v || '').trim())
+        .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v));
+    appData.nutritionStats.goalHitDates = appData.nutritionStats.goalHitDates
+        .map(v => String(v || '').trim())
+        .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v));
+    appData.nutritionStats.rewardedGoalDates = appData.nutritionStats.rewardedGoalDates
+        .map(v => String(v || '').trim())
+        .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v));
+    appData.nutritionStats.rewardedMealKeys = appData.nutritionStats.rewardedMealKeys
+        .map(v => String(v || '').trim())
+        .filter(v => /^\d{4}-\d{2}-\d{2}\|(cafe|almoco|jantar|lanche)$/.test(v));
 }
 
 function ensureWeeklyBossResets() {
@@ -1099,6 +1194,7 @@ function initUI() {
     if (budgetMonthInput) budgetMonthInput.value = financeMonth === 'all' ? getLocalDateString().slice(0, 7) : financeMonth;
     const recurringStartInput = document.getElementById('finance-recurring-start');
     if (recurringStartInput && !recurringStartInput.value) recurringStartInput.value = getLocalDateString();
+    initNutritionForms();
     
     
     // Inicializar gráficos
@@ -1161,6 +1257,13 @@ function initEvents() {
     document.getElementById('finance-form')?.addEventListener('submit', handleFinanceSubmit);
     document.getElementById('finance-budget-form')?.addEventListener('submit', handleFinanceBudgetSubmit);
     document.getElementById('finance-recurring-form')?.addEventListener('submit', handleFinanceRecurringSubmit);
+    document.getElementById('nutrition-food-form')?.addEventListener('submit', handleNutritionFoodSubmit);
+    document.getElementById('nutrition-entry-form')?.addEventListener('submit', handleNutritionEntrySubmit);
+    document.getElementById('nutrition-goals-form')?.addEventListener('submit', handleNutritionGoalsSubmit);
+    document.getElementById('nutrition-diary-date')?.addEventListener('change', updateNutritionView);
+    document.getElementById('nutrition-entry-food')?.addEventListener('change', updateNutritionEntryPreview);
+    document.getElementById('nutrition-entry-qty')?.addEventListener('input', updateNutritionEntryPreview);
+    document.getElementById('nutrition-entry-date')?.addEventListener('change', updateNutritionView);
     document.getElementById('finance-month')?.addEventListener('change', function() {
         const budgetMonthInput = document.getElementById('finance-budget-month');
         if (budgetMonthInput) {
@@ -1289,6 +1392,7 @@ function updateUI(options = {}) {
     const shouldUpdateShop = isFull || isShop;
     const shouldUpdateDiary = isFull;
     const shouldUpdateFinance = isFull || isFinance;
+    const shouldUpdateNutrition = (isFull || isActivity || options.forceNutrition) && isTabActive('alimentacao');
     const shouldUpdateCalendar = (isFull || isActivity || options.forceCalendar) && isTabActive('calendarios');
 
     // Atualizar informações do herói
@@ -1393,6 +1497,10 @@ function updateUI(options = {}) {
 
     if (shouldUpdateFinance) {
         updateFinanceView();
+    }
+
+    if (shouldUpdateNutrition) {
+        updateNutritionView();
     }
     
     // Salvar dados
@@ -5437,6 +5545,8 @@ function switchTab(tabName) {
         updateCharts();
     } else if (tabName === 'calendarios') {
         renderMissionsCalendar();
+    } else if (tabName === 'alimentacao') {
+        updateNutritionView();
     }
 }
 
@@ -5462,6 +5572,8 @@ function switchSubTab(subTabName, parentElement) {
     parentElement.querySelector(`.sub-nav-btn[data-subtab="${subTabName}"]`)?.classList.add('active');
     if (subTabName === 'graficos') {
         updateCharts();
+    } else if (typeof subTabName === 'string' && subTabName.startsWith('nutricao-')) {
+        updateNutritionView();
     }
 }
 
@@ -7794,6 +7906,558 @@ function updateXpBySourceChart() {
             }
         }
     });
+}
+
+function initNutritionForms() {
+    const today = getLocalDateString();
+    const dateInput = document.getElementById('nutrition-entry-date');
+    if (dateInput && !dateInput.value) dateInput.value = today;
+    const diaryInput = document.getElementById('nutrition-diary-date');
+    if (diaryInput && !diaryInput.value) diaryInput.value = today;
+}
+
+function formatMealName(mealKey) {
+    return NUTRITION_MEALS[mealKey] || NUTRITION_MEALS.lanche;
+}
+
+function getNutritionEntryDate() {
+    return document.getElementById('nutrition-entry-date')?.value || getLocalDateString();
+}
+
+function getNutritionDiaryDate() {
+    return document.getElementById('nutrition-diary-date')?.value || getLocalDateString();
+}
+
+function calculateNutritionTotals(entries) {
+    const source = Array.isArray(entries) ? entries : [];
+    return source.reduce((totals, entry) => ({
+        kcal: totals.kcal + Number(entry.kcal || 0),
+        protein: totals.protein + Number(entry.protein || 0),
+        carbs: totals.carbs + Number(entry.carbs || 0),
+        fat: totals.fat + Number(entry.fat || 0),
+        fiber: totals.fiber + Number(entry.fiber || 0)
+    }), { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
+}
+
+function getNutritionEntriesByDate(dateStr) {
+    return (appData.nutritionEntries || [])
+        .filter(entry => entry.date === dateStr)
+        .sort((a, b) => {
+            const mealOrder = ['cafe', 'almoco', 'jantar', 'lanche'];
+            const ai = mealOrder.indexOf(a.meal);
+            const bi = mealOrder.indexOf(b.meal);
+            if (ai !== bi) return ai - bi;
+            return Number(a.id) - Number(b.id);
+        });
+}
+
+function evaluateNutritionGoalStatus(totals) {
+    const goals = appData.nutritionGoals || {};
+    const kcalRatio = goals.kcal > 0 ? totals.kcal / goals.kcal : 0;
+    const proteinRatio = goals.protein > 0 ? totals.protein / goals.protein : 0;
+    const carbsRatio = goals.carbs > 0 ? totals.carbs / goals.carbs : 0;
+    const fatRatio = goals.fat > 0 ? totals.fat / goals.fat : 0;
+    const fiberRatio = goals.fiber > 0 ? totals.fiber / goals.fiber : 0;
+
+    const isGoalHit = kcalRatio >= 0.9 && kcalRatio <= 1.1 &&
+        proteinRatio >= 0.85 &&
+        carbsRatio <= 1.15 &&
+        fatRatio <= 1.15 &&
+        fiberRatio >= 0.75;
+
+    return {
+        isGoalHit,
+        items: [
+            { key: 'kcal', label: 'Kcal', current: totals.kcal, target: goals.kcal, mode: 'range' },
+            { key: 'protein', label: 'Proteína', current: totals.protein, target: goals.protein, mode: 'min' },
+            { key: 'carbs', label: 'Carbo', current: totals.carbs, target: goals.carbs, mode: 'max' },
+            { key: 'fat', label: 'Gordura', current: totals.fat, target: goals.fat, mode: 'max' },
+            { key: 'fiber', label: 'Fibra', current: totals.fiber, target: goals.fiber, mode: 'min' }
+        ]
+    };
+}
+
+function getNutritionStatusClass(item) {
+    if (!Number.isFinite(item.target) || item.target <= 0) return 'warn';
+    const ratio = item.current / item.target;
+    if (item.mode === 'min') return ratio >= 1 ? 'ok' : ratio >= 0.75 ? 'warn' : 'bad';
+    if (item.mode === 'max') return ratio <= 1 ? 'ok' : ratio <= 1.15 ? 'warn' : 'bad';
+    if (item.mode === 'range') return ratio >= 0.9 && ratio <= 1.1 ? 'ok' : ratio >= 0.75 && ratio <= 1.25 ? 'warn' : 'bad';
+    return 'warn';
+}
+
+function formatNutritionValue(value, unit = 'g') {
+    const parsed = Number(value || 0);
+    const decimals = unit === 'kcal' ? 0 : 1;
+    return `${parsed.toFixed(decimals)}${unit === 'kcal' ? '' : unit}`;
+}
+
+function updateNutritionFoodSelect() {
+    const select = document.getElementById('nutrition-entry-food');
+    if (!select) return;
+    const previous = select.value;
+    const options = (appData.foodItems || [])
+        .slice()
+        .sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR'))
+        .map(item => `<option value="${item.id}">${escapeHtml(item.name)}${item.brand ? ` (${escapeHtml(item.brand)})` : ''}</option>`)
+        .join('');
+    select.innerHTML = '<option value="">Selecione um alimento</option>' + options;
+    if ((appData.foodItems || []).some(item => String(item.id) === String(previous))) {
+        select.value = previous;
+    }
+}
+
+function renderNutritionFoodList() {
+    const list = document.getElementById('nutrition-food-list');
+    if (!list) return;
+    const items = appData.foodItems || [];
+    list.innerHTML = '';
+    if (items.length === 0) {
+        list.innerHTML = '<p class="empty-message">Nenhum alimento cadastrado.</p>';
+        return;
+    }
+
+    items
+        .slice()
+        .sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR'))
+        .forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.innerHTML = `
+                <div class="item-info">
+                    <span class="item-emoji">🍽️</span>
+                    <div>
+                        <div class="item-name">${escapeHtml(item.name)}${item.brand ? ` (${escapeHtml(item.brand)})` : ''}</div>
+                        <div class="nutrition-food-meta">
+                            ${item.portionGrams}g • ${item.kcal.toFixed(0)} kcal • P ${item.protein.toFixed(1)}g • C ${item.carbs.toFixed(1)}g • G ${item.fat.toFixed(1)}g • F ${item.fiber.toFixed(1)}g
+                        </div>
+                    </div>
+                </div>
+                <div class="item-actions">
+                    <button class="action-btn delete-btn" data-food-delete="${item.id}"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+
+    list.querySelectorAll('[data-food-delete]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const foodId = parseInt(btn.getAttribute('data-food-delete'), 10);
+            await deleteNutritionFood(foodId);
+        });
+    });
+}
+
+function updateNutritionEntryPreview() {
+    const preview = document.getElementById('nutrition-entry-preview');
+    if (!preview) return;
+    const foodId = parseInt(document.getElementById('nutrition-entry-food')?.value || '', 10);
+    const qty = Math.max(0.1, Number(document.getElementById('nutrition-entry-qty')?.value || 1));
+    const food = (appData.foodItems || []).find(item => Number(item.id) === foodId);
+    if (!food) {
+        preview.innerHTML = '<p class="empty-message">Selecione um alimento para visualizar os macros.</p>';
+        return;
+    }
+
+    const kcal = food.kcal * qty;
+    const protein = food.protein * qty;
+    const carbs = food.carbs * qty;
+    const fat = food.fat * qty;
+    const fiber = food.fiber * qty;
+    const grams = food.portionGrams * qty;
+    preview.innerHTML = `
+        <div class="nutrition-preview-grid">
+            <div class="nutrition-macro-chip"><strong>Peso</strong><span>${grams.toFixed(0)}g</span></div>
+            <div class="nutrition-macro-chip"><strong>Kcal</strong><span>${kcal.toFixed(0)}</span></div>
+            <div class="nutrition-macro-chip"><strong>Proteína</strong><span>${protein.toFixed(1)}g</span></div>
+            <div class="nutrition-macro-chip"><strong>Carbo</strong><span>${carbs.toFixed(1)}g</span></div>
+            <div class="nutrition-macro-chip"><strong>Gordura</strong><span>${fat.toFixed(1)}g</span></div>
+        </div>
+    `;
+}
+
+async function deleteNutritionFood(foodId) {
+    const usedCount = (appData.nutritionEntries || []).filter(entry => Number(entry.foodId) === Number(foodId)).length;
+    if (usedCount > 0) {
+        showFeedback('Este alimento já foi usado no diário e não pode ser excluído.', 'warn');
+        return;
+    }
+    const confirmed = await askConfirmation('Deseja excluir este alimento cadastrado?', {
+        title: 'Excluir alimento',
+        confirmText: 'Excluir'
+    });
+    if (!confirmed) return;
+    appData.foodItems = (appData.foodItems || []).filter(item => Number(item.id) !== Number(foodId));
+    updateNutritionView();
+    showFeedback('Alimento excluído com sucesso!', 'success');
+}
+
+async function deleteNutritionEntry(entryId) {
+    const confirmed = await askConfirmation('Deseja excluir esta refeição do diário?', {
+        title: 'Excluir refeição',
+        confirmText: 'Excluir'
+    });
+    if (!confirmed) return;
+    appData.nutritionEntries = (appData.nutritionEntries || []).filter(entry => Number(entry.id) !== Number(entryId));
+    recalcNutritionStats();
+    updateNutritionView();
+    showFeedback('Refeição removida.', 'success');
+}
+
+function renderNutritionDaySummary(dateStr) {
+    const container = document.getElementById('nutrition-day-summary');
+    if (!container) return;
+    const totals = calculateNutritionTotals(getNutritionEntriesByDate(dateStr));
+    container.innerHTML = `
+        <div class="nutrition-summary-card"><div class="label">Kcal</div><div class="value">${totals.kcal.toFixed(0)}</div></div>
+        <div class="nutrition-summary-card"><div class="label">Proteína</div><div class="value">${totals.protein.toFixed(1)}g</div></div>
+        <div class="nutrition-summary-card"><div class="label">Carbo</div><div class="value">${totals.carbs.toFixed(1)}g</div></div>
+        <div class="nutrition-summary-card"><div class="label">Gordura</div><div class="value">${totals.fat.toFixed(1)}g</div></div>
+        <div class="nutrition-summary-card"><div class="label">Fibra</div><div class="value">${totals.fiber.toFixed(1)}g</div></div>
+    `;
+}
+
+function renderNutritionDayEntries(dateStr) {
+    const list = document.getElementById('nutrition-day-list');
+    if (!list) return;
+    const entries = getNutritionEntriesByDate(dateStr);
+    list.innerHTML = '';
+    if (entries.length === 0) {
+        list.innerHTML = '<p class="empty-message">Nenhuma refeição registrada para o dia.</p>';
+        return;
+    }
+
+    entries.forEach(entry => {
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        const notes = entry.notes ? `<div class="nutrition-entry-meta">Obs: ${escapeHtml(entry.notes)}</div>` : '';
+        card.innerHTML = `
+            <div class="item-info">
+                <span class="item-emoji">🍴</span>
+                <div>
+                    <div class="item-name">${formatMealName(entry.meal)} • ${escapeHtml(entry.foodName)}</div>
+                    <div class="nutrition-entry-meta">${entry.grams.toFixed(0)}g • ${entry.kcal.toFixed(0)} kcal • P ${entry.protein.toFixed(1)}g • C ${entry.carbs.toFixed(1)}g • G ${entry.fat.toFixed(1)}g • F ${entry.fiber.toFixed(1)}g</div>
+                    ${notes}
+                </div>
+            </div>
+            <div class="item-actions">
+                <button class="action-btn delete-btn" data-nutrition-delete="${entry.id}"><i class="fas fa-trash"></i></button>
+            </div>
+        `;
+        list.appendChild(card);
+    });
+
+    list.querySelectorAll('[data-nutrition-delete]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const entryId = parseInt(btn.getAttribute('data-nutrition-delete'), 10);
+            await deleteNutritionEntry(entryId);
+        });
+    });
+}
+
+function renderNutritionGoalStatus(dateStr) {
+    const container = document.getElementById('nutrition-goal-status');
+    if (!container) return;
+    const totals = calculateNutritionTotals(getNutritionEntriesByDate(dateStr));
+    const evaluation = evaluateNutritionGoalStatus(totals);
+    container.innerHTML = evaluation.items.map(item => {
+        const statusClass = getNutritionStatusClass(item);
+        const targetUnit = item.key === 'kcal' ? '' : 'g';
+        const currentLabel = item.key === 'kcal' ? item.current.toFixed(0) : item.current.toFixed(1);
+        const targetLabel = item.key === 'kcal' ? Number(item.target).toFixed(0) : Number(item.target).toFixed(1);
+        return `
+            <div class="nutrition-goal-item ${statusClass}">
+                <strong>${item.label}</strong>
+                <div>${currentLabel}${targetUnit} / ${targetLabel}${targetUnit}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getNutritionWeekStats() {
+    const today = parseLocalDateString(getLocalDateString());
+    const daily = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const key = getLocalDateString(d);
+        const totals = calculateNutritionTotals(getNutritionEntriesByDate(key));
+        daily.push({ key, totals });
+    }
+    return daily;
+}
+
+function getNutritionLogStreak() {
+    const dates = new Set((appData.nutritionStats?.logDates || []).map(v => String(v)));
+    let streak = 0;
+    const cursor = new Date();
+    while (true) {
+        const key = getLocalDateString(cursor);
+        if (!dates.has(key)) break;
+        streak += 1;
+        cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+}
+
+function renderNutritionReports() {
+    const statsGrid = document.getElementById('nutrition-stats-grid');
+    if (!statsGrid) return;
+    const week = getNutritionWeekStats();
+    const kcalValues = week.map(item => item.totals.kcal);
+    const avgKcal = kcalValues.reduce((sum, value) => sum + value, 0) / Math.max(1, kcalValues.length);
+    const goalsHit = (appData.nutritionStats?.goalHitDates || []).length;
+    const logDays = (appData.nutritionStats?.logDates || []).length;
+    const streak = getNutritionLogStreak();
+
+    statsGrid.innerHTML = `
+        <div class="stat-card"><h4><i class="fas fa-fire"></i> Streak de registro</h4><div class="stat-value">${streak}</div></div>
+        <div class="stat-card"><h4><i class="fas fa-calendar-check"></i> Dias registrados</h4><div class="stat-value">${logDays}</div></div>
+        <div class="stat-card"><h4><i class="fas fa-bullseye"></i> Metas batidas</h4><div class="stat-value">${goalsHit}</div></div>
+        <div class="stat-card"><h4><i class="fas fa-chart-line"></i> Média kcal (7 dias)</h4><div class="stat-value">${avgKcal.toFixed(0)}</div></div>
+    `;
+
+    updateNutritionWeeklyChart(week);
+}
+
+function updateNutritionWeeklyChart(weekData) {
+    const ctx = document.getElementById('nutrition-weekly-chart');
+    if (!ctx || typeof Chart === 'undefined') return;
+    if (ctx.chart) ctx.chart.destroy();
+    const data = Array.isArray(weekData) ? weekData : getNutritionWeekStats();
+    const labels = data.map(item => {
+        const d = parseLocalDateString(item.key);
+        return `${d.getDate()}/${d.getMonth() + 1}`;
+    });
+    const kcal = data.map(item => Number(item.totals.kcal || 0));
+    const goal = data.map(() => Number(appData.nutritionGoals?.kcal || 0));
+    ctx.chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Kcal consumidas',
+                    data: kcal,
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                    tension: 0.25
+                },
+                {
+                    label: 'Meta kcal',
+                    data: goal,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.15)',
+                    borderDash: [6, 4],
+                    pointRadius: 0,
+                    tension: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function recalcNutritionStats() {
+    const logDates = Array.from(new Set((appData.nutritionEntries || []).map(entry => entry.date))).sort();
+    const previousGoalHitSet = new Set((appData.nutritionStats?.goalHitDates || []).map(v => String(v)));
+    const rewardedGoalSet = new Set((appData.nutritionStats?.rewardedGoalDates || []).map(v => String(v)));
+    const goalHitDates = logDates.filter(date => {
+        const totals = calculateNutritionTotals(getNutritionEntriesByDate(date));
+        const evaluation = evaluateNutritionGoalStatus(totals);
+        return evaluation.isGoalHit || previousGoalHitSet.has(date) || rewardedGoalSet.has(date);
+    });
+    const rewardedMealKeys = Array.from(new Set((appData.nutritionStats?.rewardedMealKeys || []).map(v => String(v))))
+        .filter(v => /^\d{4}-\d{2}-\d{2}\|(cafe|almoco|jantar|lanche)$/.test(v));
+    appData.nutritionStats = {
+        logDates,
+        goalHitDates,
+        rewardedGoalDates: Array.from(rewardedGoalSet),
+        rewardedMealKeys
+    };
+}
+
+function maybeRewardNutritionGoal(dateStr) {
+    const totals = calculateNutritionTotals(getNutritionEntriesByDate(dateStr));
+    const evaluation = evaluateNutritionGoalStatus(totals);
+    if (!evaluation.isGoalHit) return;
+    const today = getLocalDateString();
+    if (dateStr !== today) return;
+    if (!appData.nutritionStats.rewardedGoalDates.includes(dateStr)) {
+        appData.nutritionStats.rewardedGoalDates.push(dateStr);
+        if (!appData.nutritionStats.goalHitDates.includes(dateStr)) {
+            appData.nutritionStats.goalHitDates.push(dateStr);
+        }
+        addXP(2);
+        addAttributeXP(2, 1);
+        appData.hero.coins += 2;
+        addHeroLog('system', 'Meta de alimentação batida', `${dateStr}: bônus +2 XP e +2 moedas.`);
+        showFeedback('Meta nutricional do dia atingida! +2 XP e +2 moedas.', 'success');
+    }
+}
+
+function updateNutritionCurrentDateLabel() {
+    const element = document.getElementById('nutrition-current-date');
+    if (!element) return;
+    const date = parseLocalDateString(getNutritionDiaryDate());
+    element.textContent = date.toLocaleDateString('pt-BR');
+}
+
+function updateNutritionView() {
+    recalcNutritionStats();
+    initNutritionForms();
+    const goals = appData.nutritionGoals || {};
+    const kcalInput = document.getElementById('nutrition-goal-kcal');
+    const proteinInput = document.getElementById('nutrition-goal-protein');
+    const carbsInput = document.getElementById('nutrition-goal-carbs');
+    const fatInput = document.getElementById('nutrition-goal-fat');
+    const fiberInput = document.getElementById('nutrition-goal-fiber');
+    if (kcalInput && document.activeElement !== kcalInput) kcalInput.value = Number(goals.kcal || 0);
+    if (proteinInput && document.activeElement !== proteinInput) proteinInput.value = Number(goals.protein || 0);
+    if (carbsInput && document.activeElement !== carbsInput) carbsInput.value = Number(goals.carbs || 0);
+    if (fatInput && document.activeElement !== fatInput) fatInput.value = Number(goals.fat || 0);
+    if (fiberInput && document.activeElement !== fiberInput) fiberInput.value = Number(goals.fiber || 0);
+    updateNutritionCurrentDateLabel();
+    updateNutritionFoodSelect();
+    renderNutritionFoodList();
+    updateNutritionEntryPreview();
+
+    const diaryDate = getNutritionDiaryDate();
+    renderNutritionDaySummary(diaryDate);
+    renderNutritionDayEntries(diaryDate);
+    renderNutritionGoalStatus(diaryDate);
+    renderNutritionReports();
+}
+
+function handleNutritionFoodSubmit(event) {
+    event.preventDefault();
+    const name = (document.getElementById('nutrition-food-name')?.value || '').trim();
+    const brand = (document.getElementById('nutrition-food-brand')?.value || '').trim();
+    const portionGrams = Number(document.getElementById('nutrition-food-portion')?.value || 0);
+    const kcal = Number(document.getElementById('nutrition-food-kcal')?.value || 0);
+    const protein = Number(document.getElementById('nutrition-food-protein')?.value || 0);
+    const carbs = Number(document.getElementById('nutrition-food-carbs')?.value || 0);
+    const fat = Number(document.getElementById('nutrition-food-fat')?.value || 0);
+    const fiber = Number(document.getElementById('nutrition-food-fiber')?.value || 0);
+
+    if (!name || !Number.isFinite(portionGrams) || portionGrams <= 0) {
+        showFeedback('Informe nome e porção base válidos.', 'warn');
+        return;
+    }
+    const numbers = [kcal, protein, carbs, fat, fiber];
+    if (numbers.some(value => !Number.isFinite(value) || value < 0)) {
+        showFeedback('Macros inválidos. Use apenas números positivos.', 'warn');
+        return;
+    }
+
+    appData.foodItems.push({
+        id: createUniqueId(appData.foodItems),
+        name,
+        brand,
+        portionGrams,
+        kcal,
+        protein,
+        carbs,
+        fat,
+        fiber
+    });
+    event.target.reset();
+    const portionInput = document.getElementById('nutrition-food-portion');
+    if (portionInput) portionInput.value = '100';
+    const fiberInput = document.getElementById('nutrition-food-fiber');
+    if (fiberInput) fiberInput.value = '0';
+    updateNutritionView();
+    showFeedback('Alimento cadastrado com sucesso!', 'success');
+}
+
+function handleNutritionEntrySubmit(event) {
+    event.preventDefault();
+    const date = getNutritionEntryDate();
+    const meal = document.getElementById('nutrition-entry-meal')?.value || 'lanche';
+    const foodId = Number(document.getElementById('nutrition-entry-food')?.value || 0);
+    const quantity = Number(document.getElementById('nutrition-entry-qty')?.value || 0);
+    const notes = (document.getElementById('nutrition-entry-notes')?.value || '').trim();
+    const food = (appData.foodItems || []).find(item => Number(item.id) === foodId);
+
+    if (!food) {
+        showFeedback('Selecione um alimento válido.', 'warn');
+        return;
+    }
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+        showFeedback('Quantidade inválida.', 'warn');
+        return;
+    }
+
+    const today = getLocalDateString();
+    const mealRewardKey = `${date}|${meal}`;
+    const hasMealReward = appData.nutritionStats.rewardedMealKeys.includes(mealRewardKey);
+    const entry = {
+        id: createUniqueId(appData.nutritionEntries),
+        date,
+        meal,
+        foodId: food.id,
+        foodName: food.name,
+        quantity,
+        grams: food.portionGrams * quantity,
+        kcal: food.kcal * quantity,
+        protein: food.protein * quantity,
+        carbs: food.carbs * quantity,
+        fat: food.fat * quantity,
+        fiber: food.fiber * quantity,
+        notes
+    };
+    appData.nutritionEntries.push(entry);
+
+    if (date === today && !hasMealReward) {
+        appData.nutritionStats.rewardedMealKeys.push(mealRewardKey);
+        addXP(1);
+        addAttributeXP(6, 1);
+        appData.hero.coins += 1;
+        updateProductiveDay(0, 0, 0, 1, 0);
+        addHeroLog('study', `Refeição registrada: ${formatMealName(meal)}`, `+1 XP, +1 moeda (${food.name})`);
+    }
+
+    if (!appData.nutritionStats.logDates.includes(date)) {
+        appData.nutritionStats.logDates.push(date);
+    }
+    maybeRewardNutritionGoal(date);
+    recalcNutritionStats();
+
+    event.target.reset();
+    const dateInput = document.getElementById('nutrition-entry-date');
+    if (dateInput) dateInput.value = date;
+    const qtyInput = document.getElementById('nutrition-entry-qty');
+    if (qtyInput) qtyInput.value = '1';
+    const diaryInput = document.getElementById('nutrition-diary-date');
+    if (diaryInput) diaryInput.value = date;
+    updateNutritionView();
+    showFeedback('Refeição registrada!', 'success');
+}
+
+function handleNutritionGoalsSubmit(event) {
+    event.preventDefault();
+    const kcal = Number(document.getElementById('nutrition-goal-kcal')?.value || 0);
+    const protein = Number(document.getElementById('nutrition-goal-protein')?.value || 0);
+    const carbs = Number(document.getElementById('nutrition-goal-carbs')?.value || 0);
+    const fat = Number(document.getElementById('nutrition-goal-fat')?.value || 0);
+    const fiber = Number(document.getElementById('nutrition-goal-fiber')?.value || 0);
+    const values = [kcal, protein, carbs, fat, fiber];
+    if (values.some(value => !Number.isFinite(value) || value <= 0)) {
+        showFeedback('Preencha metas válidas (maiores que zero).', 'warn');
+        return;
+    }
+
+    appData.nutritionGoals = { kcal, protein, carbs, fat, fiber };
+    recalcNutritionStats();
+    updateNutritionView();
+    showFeedback('Metas nutricionais atualizadas!', 'success');
 }
 
 

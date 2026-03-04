@@ -756,6 +756,121 @@ body {
     margin-bottom: 20px;
 }
 
+.nutrition-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.nutrition-card {
+    margin-bottom: 0;
+}
+
+.nutrition-macros-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.nutrition-preview {
+    margin-bottom: 14px;
+}
+
+.nutrition-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(70px, 1fr));
+    gap: 8px;
+}
+
+.nutrition-macro-chip {
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 8px;
+    background: rgba(255,255,255,0.03);
+}
+
+.nutrition-macro-chip strong {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--gray-color);
+}
+
+.nutrition-macro-chip span {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.nutrition-food-list .item-card,
+.nutrition-day-list .item-card {
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.nutrition-food-meta,
+.nutrition-entry-meta {
+    font-size: 0.82rem;
+    color: var(--gray-color);
+}
+
+.nutrition-day-head {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.nutrition-day-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.nutrition-summary-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 9px 10px;
+}
+
+.nutrition-summary-card .label {
+    font-size: 0.78rem;
+    color: var(--gray-color);
+}
+
+.nutrition-summary-card .value {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.nutrition-goal-status {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.nutrition-goal-item {
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 10px;
+    background: rgba(255,255,255,0.03);
+}
+
+.nutrition-goal-item.ok {
+    border-color: rgba(124, 255, 178, 0.45);
+}
+
+.nutrition-goal-item.warn {
+    border-color: rgba(255, 196, 76, 0.45);
+}
+
+.nutrition-goal-item.bad {
+    border-color: rgba(255, 77, 141, 0.45);
+}
+
+.nutrition-day-list {
+    max-height: 420px;
+}
+
 .finance-item {
     display: flex;
     justify-content: space-between;
@@ -2066,6 +2181,18 @@ tr:hover {
         width: 100%;
         min-width: 0;
     }
+
+    .nutrition-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .nutrition-preview-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .nutrition-day-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     
     .table-container {
         overflow-x: auto;
@@ -2092,6 +2219,12 @@ tr:hover {
     .chart-box canvas {
         aspect-ratio: 2.2 / 1;
         max-height: 170px !important;
+    }
+
+    .nutrition-macros-grid,
+    .nutrition-goal-status,
+    .nutrition-day-summary {
+        grid-template-columns: 1fr;
     }
 
     .header-content {
@@ -2142,17 +2275,34 @@ tr:hover {
     .mission-card.with-side-actions,
     .workout-card.with-side-actions,
     .study-card.with-side-actions {
-        display: block;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 92px;
+        column-gap: 6px;
+        align-items: start;
     }
 
     .mission-card.with-side-actions .mission-actions,
     .workout-card.with-side-actions .workout-actions,
     .study-card.with-side-actions .study-actions {
         display: flex;
-        flex-direction: row;
+        flex-direction: column;
+        gap: 4px;
         min-width: 0;
-        gap: 5px;
-        margin-top: 4px;
+        margin-top: 0;
+        grid-column: 2;
+        grid-row: 1 / span 3;
+        align-self: stretch;
+    }
+
+    .mission-card.with-side-actions .mission-actions .complete-btn,
+    .mission-card.with-side-actions .mission-actions .skip-btn,
+    .workout-card.with-side-actions .workout-actions .complete-workout-btn,
+    .workout-card.with-side-actions .workout-actions .skip-btn,
+    .study-card.with-side-actions .study-actions .complete-study-btn,
+    .study-card.with-side-actions .study-actions .skip-btn {
+        width: 100%;
+        min-width: 0;
+        white-space: nowrap;
     }
 }
 
@@ -3145,14 +3295,17 @@ tr:hover {
     .finance-delete-btn,
     .mobile-more-item,
     .close-modal {
-        min-height: 44px;
+        min-height: 40px;
+        padding: 6px 10px;
+        font-size: 0.88rem;
     }
 
     .form-group input,
     .form-group select,
     .form-group textarea {
-        min-height: 44px;
-        font-size: 16px;
+        min-height: 40px;
+        font-size: 15px;
+        padding: 8px 10px;
     }
 
     .item-actions,
@@ -3289,7 +3442,8 @@ tr:hover {
     .records-container,
     .finance-list,
     .calendar-details-list {
-        max-height: 300px;
+        max-height: 280px;
+        gap: 3px;
         padding-right: 2px;
         overscroll-behavior: contain;
     }
@@ -3300,7 +3454,7 @@ tr:hover {
     .study-card,
     .history-card,
     .finance-item {
-        padding: 8px 9px;
+        padding: 6px 7px;
     }
 
     .item-info,
@@ -3335,6 +3489,64 @@ tr:hover {
     .attribute-tag {
         font-size: 0.68rem;
         padding: 1px 6px;
+    }
+
+    .history-header,
+    .mission-header,
+    .workout-header,
+    .study-header {
+        margin-bottom: 3px;
+    }
+
+    .history-details,
+    .mission-details,
+    .workout-details,
+    .study-details,
+    .mission-attributes {
+        margin-bottom: 3px;
+    }
+
+    .mission-actions .complete-btn,
+    .mission-actions .skip-btn,
+    .workout-actions .complete-workout-btn,
+    .workout-actions .skip-btn,
+    .study-actions .complete-study-btn,
+    .study-actions .skip-btn,
+    .item-actions .action-btn {
+        min-height: 34px;
+        padding: 5px 8px;
+        font-size: 0.78rem;
+    }
+
+    .day-checkbox,
+    .attribute-checkbox {
+        font-size: 0.82rem;
+        gap: 4px;
+    }
+
+    .attribute-checkbox {
+        padding: 6px;
+    }
+
+    .days-selector {
+        gap: 6px;
+    }
+
+    .attributes-selector {
+        grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+        gap: 6px;
+    }
+
+    .form-group input[type="checkbox"],
+    .form-group input[type="radio"],
+    .day-checkbox input[type="checkbox"],
+    .attribute-checkbox input[type="checkbox"],
+    .attribute-checkbox input[type="radio"] {
+        min-height: 0;
+        width: 14px;
+        height: 14px;
+        padding: 0;
+        margin: 0;
     }
 
     .workouts-grid,
@@ -3390,6 +3602,59 @@ tr:hover {
 }
 
 @media (max-width: 480px) {
+    .submit-btn,
+    .action-btn,
+    .buy-btn,
+    .use-btn,
+    .complete-btn,
+    .skip-btn,
+    .complete-workout-btn,
+    .complete-study-btn,
+    .finance-delete-btn,
+    .mobile-more-item,
+    .close-modal {
+        min-height: 36px;
+        padding: 5px 8px;
+        font-size: 0.82rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        min-height: 36px;
+        font-size: 14px;
+        padding: 7px 9px;
+    }
+
+    .items-list,
+    .missions-list,
+    .workouts-list,
+    .studies-list {
+        gap: 2px;
+    }
+
+    .item-card,
+    .mission-card,
+    .workout-card,
+    .study-card,
+    .history-card {
+        padding: 5px 6px;
+    }
+
+    .day-checkbox,
+    .attribute-checkbox {
+        font-size: 0.78rem;
+    }
+
+    .form-group input[type="checkbox"],
+    .form-group input[type="radio"],
+    .day-checkbox input[type="checkbox"],
+    .attribute-checkbox input[type="checkbox"],
+    .attribute-checkbox input[type="radio"] {
+        width: 12px;
+        height: 12px;
+    }
+
     .profile-info {
         text-align: center;
     }
@@ -3408,7 +3673,7 @@ tr:hover {
     .study-card,
     .history-card,
     .finance-item {
-        padding: 8px;
+        padding: 5px 6px;
     }
 
     .item-name,
@@ -3929,7 +4194,7 @@ textarea:focus {
     .action-btn,
     .calendar-nav-btn,
     .calendar-rest-btn {
-        min-height: 42px;
+        min-height: 38px;
     }
 }
 
