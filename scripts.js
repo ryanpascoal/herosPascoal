@@ -1256,6 +1256,22 @@ function initEvents() {
         });
     });
     
+    // Abas principais: Arena e Biblioteca (Preparação)
+    document.querySelectorAll('.main-prep-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const mainTab = this.getAttribute('data-main-tab');
+            if (!mainTab) return;
+            
+            // Atualizar botões ativos
+            document.querySelectorAll('.main-prep-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Atualizar painéis visíveis
+            document.querySelectorAll('.main-prep-tab').forEach(panel => panel.classList.remove('active'));
+            document.getElementById(`${mainTab}-panel`)?.classList.add('active');
+        });
+    });
+    
     document.querySelectorAll('.sub-nav-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const subtab = this.getAttribute('data-subtab');
@@ -2718,7 +2734,7 @@ function updateCompletedWorks() {
         return;
     }
 
-    const recentWorks = appData.completedWorks.slice(-10).reverse();
+    const recentWorks = appData.completedWorks.slice(-30).reverse();
     recentWorks.forEach(work => {
         const card = document.createElement('div');
         card.className = `mission-card ${work.failed ? 'failed' : work.skipped ? 'skipped' : 'completed'}`;
@@ -2987,8 +3003,8 @@ function updateCompletedMissions() {
         return;
     }
     
-    // Mostrar apenas as últimas 10 missões (concluídas ou falhadas)
-    const recentMissions = appData.completedMissions.slice(-10).reverse();
+    // Mostrar apenas as últimas 30 missões (concluídas ou falhadas)
+    const recentMissions = appData.completedMissions.slice(-30).reverse();
     
     recentMissions.forEach(mission => {
         const missionCard = document.createElement('div');
