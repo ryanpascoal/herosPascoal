@@ -1258,6 +1258,12 @@
                                     </div>
                                     <button type="submit" class="submit-btn">Salvar alimento</button>
                                 </form>
+                                <div class="import-section">
+                                    <button type="button" class="submit-btn" id="import-foods-btn" style="background: #28a745; margin-top: 10px;">
+                                        <i class="fas fa-file-upload"></i> Importar de JSON
+                                    </button>
+                                    <input type="file" id="import-foods-file" accept=".json" style="display: none;">
+                                </div>
                             </div>
 
                             <div class="form-container nutrition-card">
@@ -1277,10 +1283,10 @@
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label for="nutrition-entry-food">Alimento</label>
-                                        <select id="nutrition-entry-food" required>
-                                            <option value="">Selecione um alimento</option>
-                                        </select>
+                                        <label for="nutrition-entry-food-search">Alimento</label>
+                                        <input type="text" id="nutrition-entry-food-search" list="nutrition-food-datalist" placeholder="Digite para buscar..." autocomplete="off">
+                                        <datalist id="nutrition-food-datalist"></datalist>
+                                        <input type="hidden" id="nutrition-entry-food">
                                     </div>
                                     <div class="form-group">
                                         <label for="nutrition-entry-qty">Quantidade (x porção base)</label>

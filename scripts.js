@@ -791,11 +791,14 @@ function resetBossGroup(names) {
         const boss = appData.bosses.find(b => b.name === name);
         if (!boss) return;
         if (!boss.defeated) {
-            boss.hp = boss.maxHp + 1;
+            boss.maxHp = boss.maxHp + 1;
         } else {
-            boss.hp = boss.maxHp;
+            if (boss.maxHp >= 95) {
+                boss.maxHp = boss.maxHp - 1;
+            }
             boss.defeated = false;
         }
+        boss.hp = boss.maxHp;
         boss.bonusActive = false;
     });
 }
@@ -1110,11 +1113,6 @@ function applyActivityPenalties(config) {
         livesLost++;
     });
 
-    if (shieldUsed) {
-        showFeedback(alertShield, 'warn');
-        addHeroLog('penalty', logShieldTitle, logShieldContent);
-    }
-
     if (livesLost > 0) {
         streakKeys.forEach(key => {
             appData.hero.streak[key] = 0;
@@ -1124,6 +1122,9 @@ function applyActivityPenalties(config) {
         showFeedback(alertFail, 'error');
         addHeroLog('penalty', logFailTitle, logFailContent);
         handleGameOverIfNeeded();
+    } else if (shieldUsed) {
+        showFeedback(alertShield, 'warn');
+        addHeroLog('penalty', logShieldTitle, logShieldContent);
     }
 }
 
@@ -1269,6 +1270,7 @@ function initEvents() {
     
     // Formulários
     document.getElementById('mission-form')?.addEventListener('submit', handleMissionSubmit);
+    document.getElementById('shop-item-form')?.addEventListener('submit', handleShopItemSubmit);
     document.getElementById('work-form')?.addEventListener('submit', handleWorkSubmit);
     document.getElementById('workout-form')?.addEventListener('submit', handleWorkoutSubmit);
     document.getElementById('study-form')?.addEventListener('submit', handleStudySubmit);
@@ -1285,10 +1287,22 @@ function initEvents() {
     document.getElementById('finance-budget-form')?.addEventListener('submit', handleFinanceBudgetSubmit);
     document.getElementById('finance-recurring-form')?.addEventListener('submit', handleFinanceRecurringSubmit);
     document.getElementById('nutrition-food-form')?.addEventListener('submit', handleNutritionFoodSubmit);
+    document.getElementById('import-foods-btn')?.addEventListener('click', () => {
+        document.getElementById('import-foods-file')?.click();
+    });
+    document.getElementById('import-foods-file')?.addEventListener('change', handleImportFoods);
     document.getElementById('nutrition-entry-form')?.addEventListener('submit', handleNutritionEntrySubmit);
     document.getElementById('nutrition-goals-form')?.addEventListener('submit', handleNutritionGoalsSubmit);
     document.getElementById('nutrition-diary-date')?.addEventListener('change', updateNutritionView);
-    document.getElementById('nutrition-entry-food')?.addEventListener('change', updateNutritionEntryPreview);
+    document.getElementById('nutrition-entry-food-search')?.addEventListener('input', function() {
+        const hidden = document.getElementById('nutrition-entry-food');
+        const datalist = document.getElementById('nutrition-food-datalist');
+        if (!hidden || !datalist) return;
+        const typed = this.value.trim();
+        const matched = Array.from(datalist.options).find(opt => opt.value === typed);
+        hidden.value = matched ? matched.getAttribute('data-id') : '';
+        updateNutritionEntryPreview();
+    });
     document.getElementById('nutrition-entry-qty')?.addEventListener('input', updateNutritionEntryPreview);
     document.getElementById('nutrition-entry-date')?.addEventListener('change', updateNutritionView);
     document.getElementById('nutrition-report-period')?.addEventListener('change', renderNutritionReports);
@@ -1423,12 +1437,6 @@ function updateUI(options = {}) {
     const shouldUpdateNutrition = (isFull || isActivity || options.forceNutrition) && isTabActive('alimentacao');
     const shouldUpdateCalendar = (isFull || isActivity || options.forceCalendar) && isTabActive('calendarios');
 
-    // Atualizar informações do herói
-    const primaryClass = getPrimaryClass();
-    const heroClassEl = document.getElementById('hero-class');
-    if (heroClassEl) {
-        heroClassEl.textContent = primaryClass ? primaryClass.name : 'Sem classe';
-    }
     document.getElementById('level').textContent = appData.hero.level;
     document.getElementById('current-xp').textContent = appData.hero.xp;
     document.getElementById('max-xp').textContent = appData.hero.maxXp;
@@ -2050,8 +2058,7 @@ function updateInventory() {
     });
 }
 
-// Adicionar evento para o formulário de item da loja
-document.getElementById('shop-item-form')?.addEventListener('submit', function(e) {
+function handleShopItemSubmit(e) {
     e.preventDefault();
     
     const name = document.getElementById('item-name').value;
@@ -2076,14 +2083,12 @@ document.getElementById('shop-item-form')?.addEventListener('submit', function(e
     
     appData.shopItems.push(newItem);
     
-    // Limpar formulário
     e.target.reset();
     
-    // Atualizar UI
     updateUI();
     
     showFeedback('Item cadastrado com sucesso!', 'success');
-});
+}
 
 // Editar item da loja
 async function editShopItem(id) {
@@ -2791,8 +2796,9 @@ function updateWorksList() {
 
     appData.works.forEach(work => {
         const today = new Date();
-        const isOverdue = (work.type === 'epica' && work.deadline && parseLocalDateString(work.deadline) < today) ||
-            (work.type === 'eventual' && work.date && parseLocalDateString(work.date) < today);
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const isOverdue = (work.type === 'epica' && work.deadline && parseLocalDateString(work.deadline) < startOfToday) ||
+            (work.type === 'eventual' && work.date && parseLocalDateString(work.date) < startOfToday);
         const className = work.classId ? getClassNameById(work.classId) : '';
         const classInfo = className ? `<div class="item-type">Classe: ${className}</div>` : '';
 
@@ -3070,12 +3076,13 @@ function updateMissionsList() {
     appData.missions.forEach(mission => {
         // Verificar se a missão está atrasada
         const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const isOverdue = (mission.type === 'epica' &&
                          mission.deadline &&
-                         parseLocalDateString(mission.deadline) < today) ||
+                         parseLocalDateString(mission.deadline) < startOfToday) ||
             (mission.type === 'eventual' &&
                 mission.date &&
-                parseLocalDateString(mission.date) < today);
+                parseLocalDateString(mission.date) < startOfToday);
         const missionCard = document.createElement('div');
         missionCard.className = `item-card ${isOverdue ? 'overdue' : ''}`;
         
@@ -4611,6 +4618,12 @@ function updateDailyWorkouts() {
     container.innerHTML = '';
     
     const today = getLocalDateString();
+
+    if (isRestDay(today)) {
+        container.innerHTML = '<p class="empty-message">Dia de descanso! Aproveite.</p>';
+        return;
+    }
+
     const dailyWorkoutsSource = Array.isArray(appData.dailyWorkouts) ? appData.dailyWorkouts : [];
     const workoutsSource = Array.isArray(appData.workouts) ? appData.workouts : [];
     const dailyWorkouts = dailyWorkoutsSource.filter(dw => dw && dw.date === today && !dw.completed && !dw.skipped);
@@ -4781,6 +4794,12 @@ function updateDailyStudies() {
     container.innerHTML = '';
     
     const today = getLocalDateString();
+
+    if (isRestDay(today)) {
+        container.innerHTML = '<p class="empty-message">Dia de descanso! Aproveite.</p>';
+        return;
+    }
+
     const dailyStudiesSource = Array.isArray(appData.dailyStudies) ? appData.dailyStudies : [];
     const studiesSource = Array.isArray(appData.studies) ? appData.studies : [];
     const dailyStudies = dailyStudiesSource.filter(ds => ds && ds.date === today && !ds.completed && !ds.skipped);
@@ -5563,22 +5582,6 @@ function initAttributesSelectors() {
                 <label for="work-attr-${attr.id}">${attr.emoji} ${attr.name}</label>
             `;
             workAttributesContainer.appendChild(checkbox);
-        });
-    }
-    
-    // Seletor para diário
-    const diaryAttributesContainer = document.getElementById('diary-attributes');
-    if (diaryAttributesContainer) {
-        diaryAttributesContainer.innerHTML = '';
-        
-        appData.attributes.forEach(attr => {
-            const checkbox = document.createElement('div');
-            checkbox.className = 'attribute-checkbox';
-            checkbox.innerHTML = `
-                <input type="checkbox" id="diary-attr-${attr.id}" value="${attr.id}" name="diary-attributes">
-                <label for="diary-attr-${attr.id}">${attr.emoji} ${attr.name}</label>
-            `;
-            diaryAttributesContainer.appendChild(checkbox);
         });
     }
 }
@@ -6778,6 +6781,10 @@ function completeWork(workId, feedbackText = '') {
             const attrXp = attrId === 14 ? 100 : 20;
             addAttributeXP(attrId, attrXp);
         });
+    } else {
+        (work.attributes || []).forEach(attrId => {
+            addAttributeXP(attrId, 1);
+        });
     }
 
     if (work.classId) {
@@ -6816,13 +6823,14 @@ function recreateDailyMissionForTomorrow(originalMission) {
     // Criar nova missão com os mesmos dados, mas com data DE AMANHÃ
     const newMission = {
         id: createUniqueId(appData.missions, appData.completedMissions),
+        originalId: originalMission.originalId || originalMission.id,
         name: originalMission.name,
         emoji: originalMission.emoji || '🎯',
         type: 'diaria',
         attributes: [...originalMission.attributes],
         completed: false,
-        dateAdded: tomorrowStr,  // Data de amanhã
-        availableDate: tomorrowStr  // NOVO: Data em que estará disponível
+        dateAdded: tomorrowStr,
+        availableDate: tomorrowStr
     };
     
     // Adicionar à lista de missões
@@ -6851,15 +6859,16 @@ function recreateDailyMissionsForToday() {
         // Verificar se já existe uma missão igual disponível HOJE
         const alreadyExists = appData.missions.some(mission => 
             mission.type === 'diaria' && 
-            mission.name === originalMission.name &&
+            mission.originalId === originalMission.originalId &&
             !mission.completed &&
             !mission.failed &&
-            mission.dateAdded === todayStr  // Adicionada hoje
+            mission.dateAdded === todayStr
         );
         
         if (!alreadyExists) {
             const newMission = {
                 id: createUniqueId(appData.missions, appData.completedMissions),
+                originalId: originalMission.originalId || originalMission.id,
                 name: originalMission.name,
                 emoji: originalMission.emoji || '🎯',
                 type: 'diaria',
@@ -6895,11 +6904,11 @@ function cleanupOldDailyMissions() {
             mission.dateAdded < todayStr) {
             
             console.log(`Removendo missão diária antiga: ${mission.name} (adicionada em ${mission.dateAdded})`);
-            missionsToRemove.unshift(index); // Adicionar no início para remover do final
+            missionsToRemove.push(index);
         }
     });
     
-    // Remover do final para não afetar índices
+    missionsToRemove.sort((a, b) => b - a);
     missionsToRemove.forEach(index => {
         appData.missions.splice(index, 1);
     });
@@ -6916,6 +6925,7 @@ function recreateDailyWorkForTomorrow(originalWork) {
 
     const newWork = {
         id: createUniqueId(appData.works, appData.completedWorks),
+        originalId: originalWork.originalId || originalWork.id,
         name: originalWork.name,
         emoji: originalWork.emoji || '💼',
         type: 'diaria',
@@ -6945,7 +6955,7 @@ function recreateDailyWorksForToday() {
     yesterdayCompletedWorks.forEach(originalWork => {
         const alreadyExists = appData.works.some(work =>
             work.type === 'diaria' &&
-            work.name === originalWork.name &&
+            work.originalId === originalWork.originalId &&
             !work.completed &&
             !work.failed &&
             work.dateAdded === todayStr
@@ -6954,6 +6964,7 @@ function recreateDailyWorksForToday() {
         if (!alreadyExists) {
             appData.works.push({
                 id: createUniqueId(appData.works, appData.completedWorks),
+                originalId: originalWork.originalId || originalWork.id,
                 name: originalWork.name,
                 emoji: originalWork.emoji || '💼',
                 type: 'diaria',
@@ -6979,10 +6990,11 @@ function cleanupOldDailyWorks() {
             work.dateAdded &&
             work.dateAdded < todayStr
         ) {
-            worksToRemove.unshift(index);
+            worksToRemove.push(index);
         }
     });
 
+    worksToRemove.sort((a, b) => b - a);
     worksToRemove.forEach(index => {
         appData.works.splice(index, 1);
     });
@@ -7155,7 +7167,7 @@ function addXP(amount) {
         // Mostrar mensagem de novo nível
         showToast(`Parabéns! Você alcançou o nível ${appData.hero.level}!`, 'success', 2800);
         celebrateAction({
-            target: document.getElementById('current-level'),
+            target: document.getElementById('level'),
             message: 'Novo nível alcançado!'
         });
         addHeroLog(
@@ -7547,7 +7559,7 @@ function updateWeeklyChart() {
     
     // Formatar datas para exibição
     const labels = periodDates.map(date => {
-        const d = new Date(date);
+        const d = parseLocalDateString(date);
         return `${d.getDate()}/${d.getMonth() + 1}`;
     });
     
@@ -8088,17 +8100,22 @@ function formatNutritionValue(value, unit = 'g') {
 }
 
 function updateNutritionFoodSelect() {
-    const select = document.getElementById('nutrition-entry-food');
-    if (!select) return;
-    const previous = select.value;
-    const options = (appData.foodItems || [])
+    const datalist = document.getElementById('nutrition-food-datalist');
+    const hidden = document.getElementById('nutrition-entry-food');
+    if (!datalist || !hidden) return;
+    const previousId = hidden.value;
+    const items = (appData.foodItems || [])
         .slice()
-        .sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR'))
-        .map(item => `<option value="${item.id}">${escapeHtml(item.name)}${item.brand ? ` (${escapeHtml(item.brand)})` : ''}</option>`)
+        .sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR'));
+    datalist.innerHTML = items
+        .map(item => `<option value="${escapeHtml(item.name)}${item.brand ? ` (${escapeHtml(item.brand)})` : ''}" data-id="${item.id}"></option>`)
         .join('');
-    select.innerHTML = '<option value="">Selecione um alimento</option>' + options;
-    if ((appData.foodItems || []).some(item => String(item.id) === String(previous))) {
-        select.value = previous;
+    if (previousId && items.some(item => String(item.id) === String(previousId))) {
+        const prev = items.find(item => String(item.id) === String(previousId));
+        const searchInput = document.getElementById('nutrition-entry-food-search');
+        if (searchInput && prev) {
+            searchInput.value = prev.name + (prev.brand ? ` (${prev.brand})` : '');
+        }
     }
 }
 
@@ -8697,6 +8714,85 @@ function handleNutritionFoodSubmit(event) {
     showFeedback('Alimento cadastrado com sucesso!', 'success');
 }
 
+function handleImportFoods(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.json')) {
+        showFeedback('Por favor, selecione um arquivo JSON válido.', 'warn');
+        event.target.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const jsonData = JSON.parse(e.target.result);
+            let importedCount = 0;
+            let skippedCount = 0;
+
+            if (!Array.isArray(jsonData)) {
+                throw new Error('O arquivo JSON deve conter um array de alimentos.');
+            }
+
+            jsonData.forEach(item => {
+                const name = (item.name || item.nome || '').trim();
+                const brand = (item.brand || item.marca || '').trim();
+                const portionGrams = Number(item.portionGrams || item.porcao || item.porção || 100);
+                const kcal = Number(item.kcal || item.calorias || 0);
+                const protein = Number(item.protein || item.proteina || item.proteína || 0);
+                const carbs = Number(item.carbs || item.carboidratos || 0);
+                const fat = Number(item.fat || item.gordura || 0);
+                const fiber = Number(item.fiber || item.fibra || 0);
+
+                if (!name || !Number.isFinite(portionGrams) || portionGrams <= 0) {
+                    skippedCount++;
+                    return;
+                }
+
+                const numbers = [kcal, protein, carbs, fat, fiber];
+                if (numbers.some(value => !Number.isFinite(value) || value < 0)) {
+                    skippedCount++;
+                    return;
+                }
+
+                appData.foodItems.push({
+                    id: createUniqueId(appData.foodItems),
+                    name,
+                    brand,
+                    portionGrams,
+                    kcal,
+                    protein,
+                    carbs,
+                    fat,
+                    fiber
+                });
+                importedCount++;
+            });
+
+            updateNutritionView();
+            
+            if (importedCount > 0) {
+                showFeedback(`${importedCount} alimento(s) importado(s) com sucesso!${skippedCount > 0 ? ` (${skippedCount} ignorado(s))` : ''}`, 'success');
+            } else {
+                showFeedback('Nenhum alimento válido foi encontrado no arquivo.', 'warn');
+            }
+        } catch (error) {
+            console.error('Erro ao importar alimentos:', error);
+            showFeedback('Erro ao processar o arquivo JSON. Verifique o formato.', 'error');
+        }
+        event.target.value = '';
+    };
+
+    reader.onerror = function() {
+        showFeedback('Erro ao ler o arquivo.', 'error');
+        event.target.value = '';
+    };
+
+    reader.readAsText(file);
+}
+
+
 function handleNutritionEntrySubmit(event) {
     event.preventDefault();
     const date = getNutritionEntryDate();
@@ -8751,6 +8847,8 @@ function handleNutritionEntrySubmit(event) {
     recalcNutritionStats();
 
     event.target.reset();
+    const searchInput = document.getElementById('nutrition-entry-food-search');
+    if (searchInput) searchInput.value = '';
     const dateInput = document.getElementById('nutrition-entry-date');
     if (dateInput) dateInput.value = date;
     const qtyInput = document.getElementById('nutrition-entry-qty');
@@ -8840,7 +8938,6 @@ async function saveDiaryEntry() {
         id: createUniqueId(diaryDbAvailable ? diaryCache : appData.diaryEntries),
         title: title || 'Sem título',
         content,
-        attributes: [],
         date: new Date().toISOString(),
         xpGained: diaryXpGained
     };
@@ -8849,8 +8946,9 @@ async function saveDiaryEntry() {
 
     if (diaryXpGained > 0) {
         // Diario: recompensa fixa, no maximo uma vez por dia.
+        addAttributeXP(6, 1);  // Disciplina
+        addAttributeXP(7, 1);  // Inteligência
         addAttributeXP(12, 1); // Conhecimento
-        addAttributeXP(7, 1);  // Inteligencia
         appData.hero.coins += 1;
     }
     
@@ -8863,7 +8961,7 @@ async function saveDiaryEntry() {
     
     // Mostrar mensagem de sucesso
     if (diaryXpGained > 0) {
-        showFeedback('Entrada salva! +1 XP de Conhecimento, +1 XP de Inteligência e +1 moeda.', 'success');
+        showFeedback('Entrada salva! +1 XP de Disciplina, +1 XP de Inteligência, +1 XP de Conhecimento e +1 moeda.', 'success');
     } else {
         showFeedback('Entrada salva! Recompensa de diário já foi aplicada hoje.', 'info');
     }
