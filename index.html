@@ -1224,96 +1224,188 @@
 
                 <div class="sub-content">
                     <div id="nutricao-registro" class="sub-tab active">
-                        <div class="nutrition-grid">
-                            <div class="form-container nutrition-card">
-                                <h3>Cadastro de Alimentos</h3>
-                                <form id="nutrition-food-form">
-                                    <div class="form-group">
-                                        <label for="nutrition-food-name">Nome</label>
-                                        <input type="text" id="nutrition-food-name" placeholder="Ex: Arroz cozido" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="nutrition-food-brand">Marca (opcional)</label>
-                                        <input type="text" id="nutrition-food-brand" placeholder="Ex: Tio João">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="nutrition-food-portion">Porção base (g)</label>
-                                        <input type="number" id="nutrition-food-portion" min="1" step="1" value="100" required>
-                                    </div>
-                                    <div class="nutrition-macros-grid">
+                        <!-- Sub-abas internas para Alimentação (painel único com abas) -->
+                        <div class="inner-sub-nav">
+                            <button class="inner-sub-btn active" data-inner-tab="registrar-refeicao">Registro de Refeições</button>
+                            <button class="inner-sub-btn" data-inner-tab="cadastrar-alimento">Cadastro de Alimentos</button>
+                            <button class="inner-sub-btn" data-inner-tab="hidratacao">💧 Hidratação</button>
+                        </div>
+                        
+                        <!-- Conteúdo das abas internas -->
+                        <div class="inner-sub-content">
+                            <!-- Painel: Registro de Refeições (principal - aparece primeiro) -->
+                            <div id="registrar-refeicao" class="inner-tab active">
+                                <div class="form-container nutrition-card">
+                                    <h3>Registrar Refeição</h3>
+                                    <form id="nutrition-entry-form">
                                         <div class="form-group">
-                                            <label for="nutrition-food-kcal">Kcal</label>
-                                            <input type="number" id="nutrition-food-kcal" min="0" step="0.1" required>
+                                            <label for="nutrition-entry-date">Data</label>
+                                            <input type="date" id="nutrition-entry-date" required>
                                         </div>
                                         <div class="form-group">
-                                            <label for="nutrition-food-protein">Proteína (g)</label>
-                                            <input type="number" id="nutrition-food-protein" min="0" step="0.1" required>
+                                            <label for="nutrition-entry-meal">Refeição</label>
+                                            <select id="nutrition-entry-meal" required>
+                                                <option value="cafe">Café da manhã</option>
+                                                <option value="almoco">Almoço</option>
+                                                <option value="jantar">Jantar</option>
+                                                <option value="lanche">Lanche</option>
+                                            </select>
                                         </div>
                                         <div class="form-group">
-                                            <label for="nutrition-food-carbs">Carbo (g)</label>
-                                            <input type="number" id="nutrition-food-carbs" min="0" step="0.1" required>
+                                            <label for="nutrition-entry-food-search">Alimento</label>
+                                            <input type="text" id="nutrition-entry-food-search" list="nutrition-food-datalist" placeholder="Digite para buscar..." autocomplete="off">
+                                            <datalist id="nutrition-food-datalist"></datalist>
+                                            <input type="hidden" id="nutrition-entry-food">
                                         </div>
                                         <div class="form-group">
-                                            <label for="nutrition-food-fat">Gordura (g)</label>
-                                            <input type="number" id="nutrition-food-fat" min="0" step="0.1" required>
+                                            <label for="nutrition-entry-qty">Quantidade (x porção base)</label>
+                                            <input type="number" id="nutrition-entry-qty" min="0.1" step="0.1" value="1" required>
                                         </div>
                                         <div class="form-group">
-                                            <label for="nutrition-food-fiber">Fibra (g)</label>
-                                            <input type="number" id="nutrition-food-fiber" min="0" step="0.1" value="0">
+                                            <label for="nutrition-entry-notes">Observações (opcional)</label>
+                                            <input type="text" id="nutrition-entry-notes" placeholder="Ex: pós-treino">
                                         </div>
-                                    </div>
-                                    <button type="submit" class="submit-btn">Salvar alimento</button>
-                                </form>
-                                <div class="import-section">
-                                    <button type="button" class="submit-btn" id="import-foods-btn" style="background: #28a745; margin-top: 10px;">
-                                        <i class="fas fa-file-upload"></i> Importar de JSON
-                                    </button>
-                                    <input type="file" id="import-foods-file" accept=".json" style="display: none;">
+                                        <div class="nutrition-preview" id="nutrition-entry-preview">
+                                            <p class="empty-message">Selecione um alimento para visualizar os macros.</p>
+                                        </div>
+                                        <button type="submit" class="submit-btn">Registrar refeição</button>
+                                    </form>
                                 </div>
                             </div>
 
-                            <div class="form-container nutrition-card">
-                                <h3>Registrar Refeição</h3>
-                                <form id="nutrition-entry-form">
-                                    <div class="form-group">
-                                        <label for="nutrition-entry-date">Data</label>
-                                        <input type="date" id="nutrition-entry-date" required>
+                            <!-- Painel: Cadastro de Alimentos -->
+                            <div id="cadastrar-alimento" class="inner-tab">
+                                <div class="form-container nutrition-card">
+                                    <h3>Cadastrar Alimento</h3>
+                                    <form id="nutrition-food-form">
+                                        <div class="form-group">
+                                            <label for="nutrition-food-name">Nome</label>
+                                            <input type="text" id="nutrition-food-name" placeholder="Ex: Arroz cozido" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="nutrition-food-brand">Marca (opcional)</label>
+                                            <input type="text" id="nutrition-food-brand" placeholder="Ex: Tio João">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="nutrition-food-portion">Porção base (g)</label>
+                                            <input type="number" id="nutrition-food-portion" min="1" step="1" value="100" required>
+                                        </div>
+                                        <div class="nutrition-macros-grid">
+                                            <div class="form-group">
+                                                <label for="nutrition-food-kcal">Kcal</label>
+                                                <input type="number" id="nutrition-food-kcal" min="0" step="0.1" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="nutrition-food-protein">Proteína (g)</label>
+                                                <input type="number" id="nutrition-food-protein" min="0" step="0.1" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="nutrition-food-carbs">Carbo (g)</label>
+                                                <input type="number" id="nutrition-food-carbs" min="0" step="0.1" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="nutrition-food-fat">Gordura (g)</label>
+                                                <input type="number" id="nutrition-food-fat" min="0" step="0.1" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="nutrition-food-fiber">Fibra (g)</label>
+                                                <input type="number" id="nutrition-food-fiber" min="0" step="0.1" value="0">
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="submit-btn">Salvar alimento</button>
+                                    </form>
+                                    <div class="import-section">
+                                        <button type="button" class="submit-btn" id="import-foods-btn" style="background: #28a745; margin-top: 10px;">
+                                            <i class="fas fa-file-upload"></i> Importar de JSON
+                                        </button>
+                                        <input type="file" id="import-foods-file" accept=".json" style="display: none;">
                                     </div>
-                                    <div class="form-group">
-                                        <label for="nutrition-entry-meal">Refeição</label>
-                                        <select id="nutrition-entry-meal" required>
-                                            <option value="cafe">Café da manhã</option>
-                                            <option value="almoco">Almoço</option>
-                                            <option value="jantar">Jantar</option>
-                                            <option value="lanche">Lanche</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="nutrition-entry-food-search">Alimento</label>
-                                        <input type="text" id="nutrition-entry-food-search" list="nutrition-food-datalist" placeholder="Digite para buscar..." autocomplete="off">
-                                        <datalist id="nutrition-food-datalist"></datalist>
-                                        <input type="hidden" id="nutrition-entry-food">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="nutrition-entry-qty">Quantidade (x porção base)</label>
-                                        <input type="number" id="nutrition-entry-qty" min="0.1" step="0.1" value="1" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="nutrition-entry-notes">Observações (opcional)</label>
-                                        <input type="text" id="nutrition-entry-notes" placeholder="Ex: pós-treino">
-                                    </div>
-                                    <div class="nutrition-preview" id="nutrition-entry-preview">
-                                        <p class="empty-message">Selecione um alimento para visualizar os macros.</p>
-                                    </div>
-                                    <button type="submit" class="submit-btn">Registrar refeição</button>
-                                </form>
-                            </div>
-                        </div>
+                                </div>
 
-                        <div class="existing-items">
-                            <h3>Alimentos cadastrados</h3>
-                            <div class="items-list nutrition-food-list" id="nutrition-food-list">
-                                <p class="empty-message">Nenhum alimento cadastrado.</p>
+                                <div class="existing-items">
+                                    <h3>Alimentos cadastrados</h3>
+                                    <div class="items-list nutrition-food-list" id="nutrition-food-list">
+                                        <p class="empty-message">Nenhum alimento cadastrado.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Painel: Hidratação -->
+                            <div id="hidratacao" class="inner-tab">
+                                <div class="hydration-container">
+                                    <div class="hydration-header">
+                                        <h3><i class="fas fa-tint"></i> Controle de Hidratação</h3>
+                                        <p class="hydration-subtitle">Meta: 8 copos por dia</p>
+                                    </div>
+                                    
+                                    <div class="hydration-progress-container">
+                                        <div class="hydration-glass-display">
+                                            <div class="hydration-glass">
+                                                <div class="hydration-water" id="hydration-water">
+                                                    <div class="hydration-wave"></div>
+                                                    <div class="hydration-wave hydration-wave-2"></div>
+                                                </div>
+                                                <div class="hydration-glass-overlay"></div>
+                                            </div>
+                                            <div class="hydration-count">
+                                                <span id="hydration-current">0</span>
+                                                <span class="hydration-divider">/</span>
+                                                <span id="hydration-goal">8</span>
+                                                <span class="hydration-label">copos</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="hydration-bar-container">
+                                            <div class="hydration-bar">
+                                                <div class="hydration-bar-fill" id="hydration-bar-fill"></div>
+                                                <div class="hydration-bar-markers">
+                                                    <span>0</span>
+                                                    <span>1</span>
+                                                    <span>2</span>
+                                                    <span>3</span>
+                                                    <span>4</span>
+                                                    <span>5</span>
+                                                    <span>6</span>
+                                                    <span>7</span>
+                                                    <span>8</span>
+                                                </div>
+                                            </div>
+                                            <div class="hydration-percentage" id="hydration-percentage">0%</div>
+                                        </div>
+                                        
+                                        <div class="hydration-icons-row" id="hydration-icons-row">
+                                            <!-- Copos serão adicionados via JavaScript -->
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="hydration-actions">
+                                        <button class="hydration-btn" id="hydration-add-btn">
+                                            <i class="fas fa-plus"></i> 1 Copo
+                                        </button>
+                                        <button class="hydration-btn hydration-btn-remove" id="hydration-remove-btn">
+                                            <i class="fas fa-minus"></i> Remover
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="hydration-info">
+                                        <div class="hydration-streak">
+                                            <i class="fas fa-fire"></i>
+                                            <span>Sequência atual: </span>
+                                            <strong id="hydration-streak-current">0</strong>
+                                            <span> dias</span>
+                                        </div>
+                                        <div class="hydration-best">
+                                            <i class="fas fa-trophy"></i>
+                                            <span>Melhor sequência: </span>
+                                            <strong id="hydration-streak-best">0</strong>
+                                            <span> dias</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="hydration-motivation" id="hydration-motivation">
+                                        <!-- Mensagens motivacionais serão adicionadas via JavaScript -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

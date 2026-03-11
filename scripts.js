@@ -115,8 +115,15 @@ const appData = {
         goalHitDates: [],
         rewardedGoalDates: [],
         rewardedMealKeys: []
+    },
+    hydration: {
+        glasses: 0,
+        goal: 8,
+        lastDate: null,
+        currentStreak: 0,
+        bestStreak: 0
     }
-};;
+};
 const APP_DEFAULTS = JSON.parse(JSON.stringify(appData));
 
 // Estado do calendário (aba Calendários)
@@ -318,6 +325,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStreaks();
     initUI();
     initEvents();
+    initHydrationUI();
     initDiaryStorage().then(() => updateDiaryEntries());
     updateUI();
     updateMidnightCountdown();
@@ -1280,6 +1288,26 @@ function initEvents() {
         });
     });
 
+    // Abas internas (inner-sub) para Alimentação
+    document.querySelectorAll('.inner-sub-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const innerTab = this.getAttribute('data-inner-tab');
+            const parent = this.closest('.inner-sub-nav').parentElement;
+            
+            // Atualizar botões ativos
+            parent.querySelectorAll('.inner-sub-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Atualizar painéis visíveis
+            parent.querySelectorAll('.inner-tab').forEach(panel => panel.classList.remove('active'));
+            parent.querySelector(`#${innerTab}`)?.classList.add('active');
+        });
+    });
+
+    
+    // Botões de controle de hidratação
+    document.getElementById('hydration-add-btn')?.addEventListener('click', addHydrationGlass);
+    document.getElementById('hydration-remove-btn')?.addEventListener('click', removeHydrationGlass);
     
     // Botões de adicionar
     document.getElementById('add-book-btn')?.addEventListener('click', () => showBookModal());
@@ -8661,6 +8689,165 @@ function updateNutritionCurrentDateLabel() {
     if (!element) return;
     const date = parseLocalDateString(getNutritionDiaryDate());
     element.textContent = date.toLocaleDateString('pt-BR');
+}
+
+// Funções de Hidratação
+function addHydrationGlass() {
+    const today = getLocalDateString();
+    
+    // Verificar se é um novo dia
+    if (appData.hydration.lastDate !== today) {
+        // Verificar se atingiu a meta no dia anterior para manter streak
+        if (appData.hydration.lastDate) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = getLocalDateString(yesterday);
+            if (appData.hydration.lastDate === yesterdayStr && appData.hydration.glasses >= appData.hydration.goal) {
+                appData.hydration.currentStreak++;
+            } else if (appData.hydration.lastDate !== yesterdayStr) {
+                appData.hydration.currentStreak = 0;
+            }
+        }
+        
+        // Resetar para novo dia
+        appData.hydration.glasses = 0;
+        appData.hydration.lastDate = today;
+    }
+    
+    // Adicionar copo (máximo 8)
+    if (appData.hydration.glasses < 8) {
+        appData.hydration.glasses++;
+    }
+    
+    // Atualizar melhor streak
+    if (appData.hydration.currentStreak > appData.hydration.bestStreak) {
+        appData.hydration.bestStreak = appData.hydration.currentStreak;
+    }
+    
+    updateHydrationUI();
+    saveToLocalStorage();
+    
+    // Feedback se atingiu a meta
+    if (appData.hydration.glasses >= appData.hydration.goal) {
+        showFeedback('🎉 Meta diária atingida! 8 copos de água!', 'success');
+    } else {
+        showFeedback('💧 +1 copo de água!', 'info');
+    }
+}
+
+function removeHydrationGlass() {
+    const today = getLocalDateString();
+    
+    // Verificar se é um novo dia
+    if (appData.hydration.lastDate !== today) {
+        appData.hydration.glasses = 0;
+        appData.hydration.lastDate = today;
+    }
+    
+    // Remover copo (mínimo 0)
+    if (appData.hydration.glasses > 0) {
+        appData.hydration.glasses--;
+    }
+    
+    updateHydrationUI();
+    saveToLocalStorage();
+}
+
+function updateHydrationUI() {
+    const currentEl = document.getElementById('hydration-current');
+    const goalEl = document.getElementById('hydration-goal');
+    const waterEl = document.getElementById('hydration-water');
+    const barFillEl = document.getElementById('hydration-bar-fill');
+    const percentageEl = document.getElementById('hydration-percentage');
+    const iconsRowEl = document.getElementById('hydration-icons-row');
+    const streakCurrentEl = document.getElementById('hydration-streak-current');
+    const streakBestEl = document.getElementById('hydration-streak-best');
+    const motivationEl = document.getElementById('hydration-motivation');
+    
+    const glasses = appData.hydration.glasses || 0;
+    const goal = appData.hydration.goal || 8;
+    const percentage = Math.min(100, (glasses / goal) * 100);
+    
+    if (currentEl) currentEl.textContent = glasses;
+    if (goalEl) goalEl.textContent = goal;
+    
+    // Atualizar nível de água no copo
+    if (waterEl) {
+        waterEl.style.height = `${percentage}%`;
+    }
+    
+    // Atualizar barra de progresso
+    if (barFillEl) {
+        barFillEl.style.width = `${percentage}%`;
+    }
+    
+    // Atualizar percentual
+    if (percentageEl) {
+        percentageEl.textContent = `${Math.round(percentage)}%`;
+    }
+    
+    // Atualizar ícones de copos
+    if (iconsRowEl) {
+        iconsRowEl.innerHTML = '';
+        for (let i = 0; i < glasses; i++) {
+            const icon = document.createElement('span');
+            icon.className = 'hydration-cup-icon';
+            icon.innerHTML = '💧';
+            iconsRowEl.appendChild(icon);
+        }
+    }
+    
+    // Atualizar streaks
+    if (streakCurrentEl) streakCurrentEl.textContent = appData.hydration.currentStreak || 0;
+    if (streakBestEl) streakBestEl.textContent = appData.hydration.bestStreak || 0;
+    
+    // Atualizar mensagem motivacional
+    if (motivationEl) {
+        const messages = {
+            0: '☀️ Comece seu dia bebendo água!',
+            1: '💧 Bom início! Continue assim!',
+            2: '💧 Você está no caminho certo!',
+            3: '💪 Quase na metade! Continue!',
+            4: '🔥 Metade do caminho! Você consegue!',
+            5: '💪 Muito bem! Falta pouco!',
+            6: '🌟 Quase lá! Só mais 2 copos!',
+            7: '🎉 Você está quase na meta!',
+            8: '🎊 PARABÉNS! Meta atingida!'
+        };
+        
+        if (glasses >= goal) {
+            motivationEl.className = 'hydration-motivation success';
+            motivationEl.textContent = messages[8];
+        } else {
+            motivationEl.className = 'hydration-motivation info';
+            motivationEl.textContent = messages[glasses] || messages[0];
+        }
+    }
+}
+
+// Inicializar UI de hidratação
+function initHydrationUI() {
+    const today = getLocalDateString();
+    
+    // Verificar se é um novo dia
+    if (appData.hydration.lastDate !== today) {
+        // Verificar streak do dia anterior
+        if (appData.hydration.lastDate) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = getLocalDateString(yesterday);
+            if (appData.hydration.lastDate === yesterdayStr && appData.hydration.glasses >= appData.hydration.goal) {
+                // Mantém a streak
+            } else if (appData.hydration.lastDate !== yesterdayStr) {
+                appData.hydration.currentStreak = 0;
+            }
+        }
+        
+        appData.hydration.glasses = 0;
+        appData.hydration.lastDate = today;
+    }
+    
+    updateHydrationUI();
 }
 
 function updateNutritionView() {

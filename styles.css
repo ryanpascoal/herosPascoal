@@ -4881,6 +4881,50 @@ body.light-theme .mobile-more-item {
     --cat-book: #4bc0c0;
 }
 
+/* Abas internas (sub-abas) para Alimentação */
+.inner-sub-nav {
+    display: flex;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 15px;
+    gap: 5px;
+}
+
+.inner-sub-btn {
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--gray-color);
+    transition: var(--transition);
+    border-radius: 8px 8px 0 0;
+}
+
+.inner-sub-btn.active {
+    color: #FFFFFF;
+    border-bottom-color: var(--secondary-color);
+    background: rgba(16, 242, 255, 0.1);
+}
+
+.inner-sub-btn:hover:not(.active) {
+    color: var(--secondary-color);
+    background: rgba(16, 242, 255, 0.05);
+}
+
+.inner-sub-content {
+    min-height: 200px;
+}
+
+.inner-tab {
+    display: none;
+}
+
+.inner-tab.active {
+    display: block;
+    animation: fadeIn 0.3s;
+}
+
 .stat-card[class*="cat-"] {
     border-top-width: 3px;
 }
@@ -4948,4 +4992,373 @@ body.light-theme .mobile-more-item {
 #productive-days-table th.col-study,
 #productive-days-table td.col-study {
     color: var(--cat-study);
+}
+
+/* ========================= */
+/* 💧 HIDRATAÇÃO (Hydration Control System) */
+/* ========================= */
+.hydration-container {
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.15), rgba(96, 165, 250, 0.1));
+    border: 1px solid rgba(20, 184, 166, 0.3);
+    border-radius: 20px;
+    padding: 25px;
+    margin-top: 15px;
+}
+
+.hydration-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.hydration-header h3 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 1.5rem;
+    color: var(--light-color);
+    margin-bottom: 5px;
+}
+
+.hydration-header h3 i {
+    color: #14b8a6;
+    animation: dropletPulse 2s ease-in-out infinite;
+}
+
+@keyframes dropletPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.hydration-subtitle {
+    color: var(--gray-color);
+    font-size: 0.95rem;
+}
+
+.hydration-progress-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.hydration-glass-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.hydration-glass {
+    width: 100px;
+    height: 140px;
+    border: 3px solid rgba(20, 184, 166, 0.5);
+    border-radius: 10px 10px 30px 30px;
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 20px rgba(20, 184, 166, 0.2), inset 0 0 20px rgba(20, 184, 166, 0.1);
+}
+
+.hydration-water {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0%;
+    background: linear-gradient(to top, #0ea5e9, #14b8a6, #22d3ee);
+    transition: height 0.5s ease-out;
+    border-radius: 0 0 27px 27px;
+}
+
+.hydration-wave {
+    position: absolute;
+    top: -8px;
+    left: -50%;
+    width: 200%;
+    height: 15px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120'%3E%3Cpath fill='%2314b8a6' fill-opacity='0.6' d='M0,60 C150,120 350,0 600,60 C850,120 1050,0 1200,60 L1200,120 L0,120 Z'/%3E%3C/svg%3E") repeat-x;
+    background-size: 600px 100%;
+    animation: wave 3s linear infinite;
+    opacity: 0.8;
+}
+
+.hydration-wave-2 {
+    top: -4px;
+    animation: wave 2s linear infinite reverse;
+    opacity: 0.4;
+}
+
+@keyframes wave {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.hydration-glass-overlay {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    right: 5px;
+    height: 30px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.2), transparent);
+    border-radius: 8px 8px 0 0;
+    pointer-events: none;
+}
+
+.hydration-count {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.hydration-count #hydration-current {
+    color: #14b8a6;
+    font-size: 2.2rem;
+}
+
+.hydration-divider {
+    color: var(--gray-color);
+}
+
+.hydration-goal {
+    color: var(--gray-color);
+}
+
+.hydration-label {
+    font-size: 0.9rem;
+    color: var(--gray-color);
+    font-weight: 400;
+    margin-left: 5px;
+}
+
+.hydration-bar-container {
+    width: 100%;
+    max-width: 400px;
+}
+
+.hydration-bar {
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(20, 184, 166, 0.3);
+}
+
+.hydration-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0ea5e9, #14b8a6, #22d3ee);
+    border-radius: 12px;
+    transition: width 0.5s ease-out;
+    position: relative;
+    min-width: 0%;
+}
+
+.hydration-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.3), transparent);
+    border-radius: 12px 12px 0 0;
+}
+
+.hydration-bar-markers {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    font-size: 0.7rem;
+    color: var(--gray-color);
+    padding: 0 2px;
+}
+
+.hydration-percentage {
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #14b8a6;
+    margin-top: 10px;
+}
+
+.hydration-icons-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    min-height: 30px;
+}
+
+.hydration-cup-icon {
+    font-size: 1.4rem;
+    color: #14b8a6;
+    animation: cupPopIn 0.3s ease-out;
+    filter: drop-shadow(0 0 3px rgba(20, 184, 166, 0.5));
+}
+
+@keyframes cupPopIn {
+    0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+    70% { transform: scale(1.2) rotate(10deg); }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.hydration-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.hydration-btn {
+    padding: 14px 28px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #0d9488, #14b8a6);
+    color: white;
+    box-shadow: 0 4px 15px rgba(20, 184, 166, 0.4);
+}
+
+.hydration-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(20, 184, 166, 0.5);
+    filter: brightness(1.1);
+}
+
+.hydration-btn:active {
+    transform: translateY(0);
+}
+
+.hydration-btn i {
+    font-size: 1.1rem;
+}
+
+.hydration-btn-remove {
+    background: linear-gradient(135deg, #64748b, #475569);
+    box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
+}
+
+.hydration-btn-remove:hover {
+    box-shadow: 0 6px 20px rgba(100, 116, 139, 0.4);
+}
+
+.hydration-info {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+}
+
+.hydration-streak,
+.hydration-best {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+}
+
+.hydration-streak i {
+    color: #f97316;
+}
+
+.hydration-best i {
+    color: #eab308;
+}
+
+.hydration-streak strong,
+.hydration-best strong {
+    color: var(--light-color);
+    font-size: 1.1rem;
+}
+
+.hydration-motivation {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 1rem;
+    color: var(--gray-color);
+    min-height: 24px;
+    transition: all 0.3s ease;
+}
+
+.hydration-motivation.success {
+    color: #22c55e;
+    font-weight: 600;
+}
+
+.hydration-motivation.info {
+    color: #14b8a6;
+}
+
+.hydration-complete {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(20, 184, 166, 0.2));
+    border-radius: 15px;
+    margin-top: 15px;
+    animation: completePulse 1s ease-in-out;
+}
+
+@keyframes completePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+.hydration-complete-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.hydration-complete-text {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #22c55e;
+}
+
+/* Mobile hydration styles */
+@media (max-width: 480px) {
+    .hydration-container {
+        padding: 20px 15px;
+    }
+    
+    .hydration-header h3 {
+        font-size: 1.3rem;
+    }
+    
+    .hydration-glass {
+        width: 80px;
+        height: 115px;
+    }
+    
+    .hydration-count {
+        font-size: 1.5rem;
+    }
+    
+    .hydration-count #hydration-current {
+        font-size: 1.8rem;
+    }
+    
+    .hydration-btn {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+    }
+    
+    .hydration-info {
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+    }
 }
