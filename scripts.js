@@ -1340,12 +1340,63 @@ function initEvents() {
     document.getElementById('nutrition-diary-date')?.addEventListener('change', updateNutritionView);
     document.getElementById('nutrition-entry-food-search')?.addEventListener('input', function() {
         const hidden = document.getElementById('nutrition-entry-food');
-        const datalist = document.getElementById('nutrition-food-datalist');
-        if (!hidden || !datalist) return;
-        const typed = this.value.trim();
-        const matched = Array.from(datalist.options).find(opt => opt.value === typed);
-        hidden.value = matched ? matched.getAttribute('data-id') : '';
-        updateNutritionEntryPreview();
+        const dropdown = document.getElementById('nutrition-food-suggestions');
+        if (!hidden || !dropdown) return;
+        
+        const typed = this.value.trim().toLowerCase();
+        const items = window._nutritionFoodItems || [];
+        
+        // Filter items based on search
+        const filtered = typed ? items.filter(item => 
+            item.name.toLowerCase().includes(typed) || 
+            (item.brand && item.brand.toLowerCase().includes(typed))
+        ) : items.slice(0, 10); // Show first 10 items when empty
+        
+        // Render dropdown
+        if (filtered.length > 0) {
+            dropdown.innerHTML = filtered.map(item => `
+                <div class="custom-autocomplete-item" data-id="${item.id}" data-name="${escapeHtml(item.name)}" data-brand="${escapeHtml(item.brand || '')}">
+                    <span class="food-name">${escapeHtml(item.name)}</span>
+                    ${item.brand ? `<span class="food-brand">(${escapeHtml(item.brand)})</span>` : ''}
+                    <div class="food-macros">${item.kcal} kcal | P: ${item.protein}g | C: ${item.carbs}g | G: ${item.fat}g</div>
+                </div>
+            `).join('');
+            dropdown.classList.add('active');
+            
+            // Add click handlers to items
+            dropdown.querySelectorAll('.custom-autocomplete-item').forEach(el => {
+                el.addEventListener('click', function() {
+                    const foodId = this.getAttribute('data-id');
+                    const foodName = this.getAttribute('data-name');
+                    const foodBrand = this.getAttribute('data-brand');
+                    
+                    hidden.value = foodId;
+                    document.getElementById('nutrition-entry-food-search').value = foodBrand ? `${foodName} (${foodBrand})` : foodName;
+                    dropdown.classList.remove('active');
+                    updateNutritionEntryPreview();
+                });
+            });
+        } else {
+            dropdown.innerHTML = '<div class="custom-autocomplete-no-results">Nenhum alimento encontrado</div>';
+            dropdown.classList.add('active');
+        }
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        const searchInput = document.getElementById('nutrition-entry-food-search');
+        const dropdown = document.getElementById('nutrition-food-suggestions');
+        if (searchInput && dropdown && !searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('active');
+        }
+    });
+    
+    // Also close on focusout with delay
+    document.getElementById('nutrition-entry-food-search')?.addEventListener('blur', function() {
+        setTimeout(() => {
+            const dropdown = document.getElementById('nutrition-food-suggestions');
+            if (dropdown) dropdown.classList.remove('active');
+        }, 200);
     });
     document.getElementById('nutrition-entry-qty')?.addEventListener('input', updateNutritionEntryPreview);
     document.getElementById('nutrition-entry-date')?.addEventListener('change', updateNutritionView);
@@ -8144,16 +8195,28 @@ function formatNutritionValue(value, unit = 'g') {
 }
 
 function updateNutritionFoodSelect() {
+    // Update datalist (for desktop compatibility)
     const datalist = document.getElementById('nutrition-food-datalist');
     const hidden = document.getElementById('nutrition-entry-food');
-    if (!datalist || !hidden) return;
+    const dropdown = document.getElementById('nutrition-food-suggestions');
+    
+    if (!hidden) return;
+    
     const previousId = hidden.value;
     const items = (appData.foodItems || [])
         .slice()
         .sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR'));
-    datalist.innerHTML = items
-        .map(item => `<option value="${escapeHtml(item.name)}${item.brand ? ` (${escapeHtml(item.brand)})` : ''}" data-id="${item.id}"></option>`)
-        .join('');
+    
+    // Update datalist for desktop
+    if (datalist) {
+        datalist.innerHTML = items
+            .map(item => `<option value="${escapeHtml(item.name)}${item.brand ? ` (${escapeHtml(item.brand)})` : ''}" data-id="${item.id}"></option>`)
+            .join('');
+    }
+    
+    // Store items for custom dropdown
+    window._nutritionFoodItems = items;
+    
     if (previousId && items.some(item => String(item.id) === String(previousId))) {
         const prev = items.find(item => String(item.id) === String(previousId));
         const searchInput = document.getElementById('nutrition-entry-food-search');
@@ -9499,44 +9562,129 @@ function applyPenalties(dateStr = getLocalDateString()) {
         return;
     }
     
-    applyActivityPenalties({
-        targetDateStr,
-        dailyList: appData.dailyWorkouts,
-        itemList: appData.workouts,
-        completedList: appData.completedWorkouts,
-        idKey: 'workoutId',
-        nameFallback: 'Treino',
-        emojiFallback: '💪',
-        typeFallback: 'repeticao',
-        statsKey: 'workoutsIgnored',
-        streakKeys: ['general', 'physical'],
-        alertFail: 'Você perdeu 1 vida por não completar treinos! Streak físico quebrado.',
-        alertShield: 'Escudo consumido! Você evitou perder 1 vida e streaks.',
-        logShieldTitle: 'Escudo consumido',
-        logShieldContent: 'Treino não concluído, penalidade evitada.',
-        logFailTitle: 'Treino não concluído',
-        logFailContent: 'Perdeu 1 vida, streaks e -1 Disciplina.'
+    // Check for failed activities by type - only 1 life lost per type
+    let livesLost = 0;
+    let shieldUsed = false;
+    const failedTypes = [];
+    
+    // Check workouts - was there any failed workout on this day?
+    const failedWorkouts = appData.dailyWorkouts.filter(item => 
+        item.date === targetDateStr && !item.completed && !item.skipped);
+    if (failedWorkouts.length > 0) {
+        failedTypes.push('workout');
+    }
+    
+    // Check studies - was there any failed study on this day?
+    const failedStudies = appData.dailyStudies.filter(item => 
+        item.date === targetDateStr && !item.completed && !item.skipped);
+    if (failedStudies.length > 0) {
+        failedTypes.push('study');
+    }
+    
+    // Check missions - was there any failed mission on this day?
+    const failedMissions = appData.completedMissions.filter(m => 
+        m.failedDate === targetDateStr && m.failed);
+    if (failedMissions.length > 0) {
+        failedTypes.push('mission');
+    }
+    
+    // Check works - was there any failed work on this day?
+    const failedWorks = appData.completedWorks.filter(w => 
+        w.failedDate === targetDateStr && w.failed);
+    if (failedWorks.length > 0) {
+        failedTypes.push('work');
+    }
+    
+    // Check nutrition - was there any food logged on this day?
+    // Only penalize if not a rest day and nutrition tracking is active
+    const hasNutritionLog = appData.nutritionStats?.logDates?.includes(targetDateStr);
+    if (!hasNutritionLog && !isRestDay(targetDateStr)) {
+        // Check if there's any nutrition goal/activity that was expected
+        // For now, we assume nutrition should be logged daily
+        // You can modify this condition if nutrition should not be required every day
+        failedTypes.push('nutrition');
+    }
+    
+    // Check diary - was there any diary entry on this day?
+    // Only penalize if not a rest day
+    const hasDiaryEntry = diaryDbAvailable 
+        ? diaryCache.some(e => e.date === targetDateStr)
+        : (appData.diaryEntries || []).some(e => e.date === targetDateStr);
+    if (!hasDiaryEntry && !isRestDay(targetDateStr)) {
+        failedTypes.push('diary');
+    }
+    
+    // Now apply penalties - 1 life per failed type
+    failedTypes.forEach(type => {
+        if (appData.hero.protection?.shield) {
+            appData.hero.protection.shield = false;
+            shieldUsed = true;
+            return;
+        }
+        appData.hero.lives = Math.max(0, appData.hero.lives - 1);
+        livesLost++;
     });
     
-    applyActivityPenalties({
-        targetDateStr,
-        dailyList: appData.dailyStudies,
-        itemList: appData.studies,
-        completedList: appData.completedStudies,
-        idKey: 'studyId',
-        nameFallback: 'Estudo',
-        emojiFallback: '📚',
-        typeFallback: 'logico',
-        statsKey: 'studiesIgnored',
-        streakKeys: ['general', 'mental'],
-        alertFail: 'Você perdeu 1 vida por não completar estudos! Streak mental quebrado.',
-        alertShield: 'Escudo consumido! Você evitou perder 1 vida e streaks.',
-        logShieldTitle: 'Escudo consumido',
-        logShieldContent: 'Estudo não concluído, penalidade evitada.',
-        logFailTitle: 'Estudo não concluído',
-        logFailContent: 'Perdeu 1 vida, streaks e -1 Disciplina.'
-    });
-    
+    // Apply streak and XP penalties based on the types that failed
+    if (livesLost > 0) {
+        // Reset streaks
+        appData.hero.streak.general = 0;
+        
+        // Reset physical streak if workout failed
+        if (failedTypes.includes('workout')) {
+            appData.hero.streak.physical = 0;
+        }
+        
+        // Reset mental streak if study failed
+        if (failedTypes.includes('study')) {
+            appData.hero.streak.mental = 0;
+        }
+        
+        // Remove XP from Disciplina attribute
+        addAttributeXP(6, -1);
+        
+        // Update statistics
+        if (failedTypes.includes('mission')) {
+            appData.statistics.missionsFailed = (appData.statistics.missionsFailed || 0) + 1;
+        }
+        if (failedTypes.includes('work')) {
+            appData.statistics.worksFailed = (appData.statistics.worksFailed || 0) + 1;
+        }
+        if (failedTypes.includes('workout')) {
+            appData.statistics.workoutsIgnored = (appData.statistics.workoutsIgnored || 0) + failedWorkouts.length;
+        }
+        if (failedTypes.includes('study')) {
+            appData.statistics.studiesIgnored = (appData.statistics.studiesIgnored || 0) + failedStudies.length;
+        }
+        
+        // Mark daily items as failed
+        failedWorkouts.forEach(item => { item.failed = true; });
+        failedStudies.forEach(item => { item.failed = true; });
+        
+        // Build failure message
+        let failMessage = 'Você perdeu vidas por não completar atividades: ';
+        failMessage += failedTypes.map(t => {
+            if (t === 'workout') return 'treino';
+            if (t === 'study') return 'estudo';
+            if (t === 'mission') return 'missão';
+            if (t === 'work') return 'trabalho';
+            if (t === 'nutrition') return 'alimentação';
+            if (t === 'diary') return 'diário';
+            return t;
+        }).join(', ') + '.';
+        
+        showFeedback(failMessage, 'error');
+        
+        // Log to hero log
+        addHeroLog('penalty', 'Atividades não concluídas', 
+            `Você perdeu ${livesLost} vida(s). Tipos com falha: ${failedTypes.join(', ')}. Streaks resetados.`);
+        
+        handleGameOverIfNeeded();
+    } else if (shieldUsed) {
+        showFeedback('Escudo consumido! Você evitou perder vidas.', 'warn');
+        addHeroLog('penalty', 'Escudo consumido', 'Atividades não concluídas, penalidade evitada pelo escudo.');
+    }
+
     updateUI({ mode: 'activity' });
 }
 

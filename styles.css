@@ -5362,3 +5362,68 @@ body.light-theme .mobile-more-item {
         align-items: center;
     }
 }
+
+/* Custom Autocomplete for Food Search */
+.custom-autocomplete-container {
+    position: relative;
+    width: 100%;
+}
+
+.custom-autocomplete-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 250px;
+    overflow-y: auto;
+    background: var(--card-bg, #111b2f);
+    border: 1px solid var(--card-border, rgba(96, 165, 250, 0.24));
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+}
+
+.custom-autocomplete-dropdown.active {
+    display: block;
+}
+
+.custom-autocomplete-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.15s ease;
+}
+
+.custom-autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.custom-autocomplete-item:hover,
+.custom-autocomplete-item.selected {
+    background: rgba(20, 184, 166, 0.2);
+}
+
+.custom-autocomplete-item .food-name {
+    font-weight: 500;
+    color: var(--light-color, #f2f7ff);
+}
+
+.custom-autocomplete-item .food-brand {
+    font-size: 0.85rem;
+    color: var(--gray-color, #9aa8bf);
+    margin-left: 8px;
+}
+
+.custom-autocomplete-item .food-macros {
+    font-size: 0.75rem;
+    color: var(--gray-color, #9aa8bf);
+    margin-top: 4px;
+}
+
+.custom-autocomplete-no-results {
+    padding: 12px;
+    text-align: center;
+    color: var(--gray-color, #9aa8bf);
+    font-style: italic;
+}

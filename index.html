@@ -1253,8 +1253,10 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="nutrition-entry-food-search">Alimento</label>
-                                            <input type="text" id="nutrition-entry-food-search" list="nutrition-food-datalist" placeholder="Digite para buscar..." autocomplete="off">
-                                            <datalist id="nutrition-food-datalist"></datalist>
+                                            <div class="custom-autocomplete-container" style="position: relative;">
+                                                <input type="text" id="nutrition-entry-food-search" placeholder="Digite para buscar..." autocomplete="off">
+                                                <div id="nutrition-food-suggestions" class="custom-autocomplete-dropdown"></div>
+                                            </div>
                                             <input type="hidden" id="nutrition-entry-food">
                                         </div>
                                         <div class="form-group">
