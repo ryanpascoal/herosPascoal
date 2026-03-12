@@ -946,6 +946,7 @@
                                                 <th>Total Repetições</th>
                                                 <th>Total Distância (km)</th>
                                                 <th>Tempo Total (min)</th>
+                                                <th>Velocidade Média (km/h)</th>
                                                 <th>Vezes Realizado</th>
                                             </tr>
                                         </thead>
@@ -1228,7 +1229,6 @@
                         <div class="inner-sub-nav">
                             <button class="inner-sub-btn active" data-inner-tab="registrar-refeicao">Registro de Refeições</button>
                             <button class="inner-sub-btn" data-inner-tab="cadastrar-alimento">Cadastro de Alimentos</button>
-                            <button class="inner-sub-btn" data-inner-tab="hidratacao">💧 Hidratação</button>
                         </div>
                         
                         <!-- Conteúdo das abas internas -->
@@ -1272,6 +1272,83 @@
                                         </div>
                                         <button type="submit" class="submit-btn">Registrar refeição</button>
                                     </form>
+                                </div>
+
+                                <div id="hidratacao" class="hydration-panel">
+                                    <div class="hydration-container">
+                                        <div class="hydration-header">
+                                            <h3><i class="fas fa-tint"></i> Controle de Hidratação</h3>
+                                            <p class="hydration-subtitle">Meta: 8 copos por dia</p>
+                                        </div>
+                                        
+                                        <div class="hydration-progress-container">
+                                            <div class="hydration-glass-display">
+                                                <div class="hydration-glass">
+                                                    <div class="hydration-water" id="hydration-water">
+                                                        <div class="hydration-wave"></div>
+                                                        <div class="hydration-wave hydration-wave-2"></div>
+                                                    </div>
+                                                    <div class="hydration-glass-overlay"></div>
+                                                </div>
+                                                <div class="hydration-count">
+                                                    <span id="hydration-current">0</span>
+                                                    <span class="hydration-divider">/</span>
+                                                    <span id="hydration-goal">8</span>
+                                                    <span class="hydration-label">copos</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="hydration-bar-container">
+                                                <div class="hydration-bar">
+                                                    <div class="hydration-bar-fill" id="hydration-bar-fill"></div>
+                                                    <div class="hydration-bar-markers">
+                                                        <span>0</span>
+                                                        <span>1</span>
+                                                        <span>2</span>
+                                                        <span>3</span>
+                                                        <span>4</span>
+                                                        <span>5</span>
+                                                        <span>6</span>
+                                                        <span>7</span>
+                                                        <span>8</span>
+                                                    </div>
+                                                </div>
+                                                <div class="hydration-percentage" id="hydration-percentage">0%</div>
+                                            </div>
+                                            
+                                            <div class="hydration-icons-row" id="hydration-icons-row">
+                                                <!-- Copos serão adicionados via JavaScript -->
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="hydration-actions">
+                                            <button class="hydration-btn" id="hydration-add-btn">
+                                                <i class="fas fa-plus"></i> 1 Copo
+                                            </button>
+                                            <button class="hydration-btn hydration-btn-remove" id="hydration-remove-btn">
+                                                <i class="fas fa-minus"></i> Remover
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="hydration-info">
+                                            <div class="hydration-streak">
+                                                <i class="fas fa-fire"></i>
+                                                <span>Sequência atual: </span>
+                                                <strong id="hydration-streak-current">0</strong>
+                                                <span> dias</span>
+                                            </div>
+                                            <div class="hydration-best">
+                                                <i class="fas fa-trophy"></i>
+                                                <span>Melhor sequência: </span>
+                                                <strong id="hydration-streak-best">0</strong>
+                                                <span> dias</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="hydration-motivation" id="hydration-motivation">
+                                            <!-- Mensagens motivacionais serão adicionadas via JavaScript -->
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1335,83 +1412,7 @@
                                 </div>
                             </div>
 
-                            <!-- Painel: Hidratação -->
-                            <div id="hidratacao" class="inner-tab">
-                                <div class="hydration-container">
-                                    <div class="hydration-header">
-                                        <h3><i class="fas fa-tint"></i> Controle de Hidratação</h3>
-                                        <p class="hydration-subtitle">Meta: 8 copos por dia</p>
-                                    </div>
-                                    
-                                    <div class="hydration-progress-container">
-                                        <div class="hydration-glass-display">
-                                            <div class="hydration-glass">
-                                                <div class="hydration-water" id="hydration-water">
-                                                    <div class="hydration-wave"></div>
-                                                    <div class="hydration-wave hydration-wave-2"></div>
-                                                </div>
-                                                <div class="hydration-glass-overlay"></div>
-                                            </div>
-                                            <div class="hydration-count">
-                                                <span id="hydration-current">0</span>
-                                                <span class="hydration-divider">/</span>
-                                                <span id="hydration-goal">8</span>
-                                                <span class="hydration-label">copos</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="hydration-bar-container">
-                                            <div class="hydration-bar">
-                                                <div class="hydration-bar-fill" id="hydration-bar-fill"></div>
-                                                <div class="hydration-bar-markers">
-                                                    <span>0</span>
-                                                    <span>1</span>
-                                                    <span>2</span>
-                                                    <span>3</span>
-                                                    <span>4</span>
-                                                    <span>5</span>
-                                                    <span>6</span>
-                                                    <span>7</span>
-                                                    <span>8</span>
-                                                </div>
-                                            </div>
-                                            <div class="hydration-percentage" id="hydration-percentage">0%</div>
-                                        </div>
-                                        
-                                        <div class="hydration-icons-row" id="hydration-icons-row">
-                                            <!-- Copos serão adicionados via JavaScript -->
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="hydration-actions">
-                                        <button class="hydration-btn" id="hydration-add-btn">
-                                            <i class="fas fa-plus"></i> 1 Copo
-                                        </button>
-                                        <button class="hydration-btn hydration-btn-remove" id="hydration-remove-btn">
-                                            <i class="fas fa-minus"></i> Remover
-                                        </button>
-                                    </div>
-                                    
-                                    <div class="hydration-info">
-                                        <div class="hydration-streak">
-                                            <i class="fas fa-fire"></i>
-                                            <span>Sequência atual: </span>
-                                            <strong id="hydration-streak-current">0</strong>
-                                            <span> dias</span>
-                                        </div>
-                                        <div class="hydration-best">
-                                            <i class="fas fa-trophy"></i>
-                                            <span>Melhor sequência: </span>
-                                            <strong id="hydration-streak-best">0</strong>
-                                            <span> dias</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="hydration-motivation" id="hydration-motivation">
-                                        <!-- Mensagens motivacionais serão adicionadas via JavaScript -->
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- Painel de Hidratação movido para Registro de Refeições -->
                         </div>
                     </div>
 
@@ -1602,10 +1603,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
-
-
-
-
 
 
 

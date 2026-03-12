@@ -1531,6 +1531,10 @@ body.light-theme .calendar-day.death-day {
     filter: brightness(0.92);
 }
 
+.hydration-panel {
+    margin-top: 20px;
+}
+
 /* Lista de missões */
 .missions-list, .workouts-list, .studies-list {
     display: flex;
@@ -1650,6 +1654,48 @@ body.light-theme .calendar-day.death-day {
 .workout-attributes p {
     margin: 0;
     line-height: 1.2;
+}
+
+.mission-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: center;
+}
+
+.mission-details .due-badge {
+    margin-left: auto;
+}
+
+.due-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    background: var(--light-gray);
+    color: var(--text-color);
+}
+
+.due-badge.due-today {
+    background: rgba(255, 193, 7, 0.2);
+    color: #b26a00;
+}
+
+.due-badge.due-soon {
+    background: rgba(255, 152, 0, 0.18);
+    color: #b45309;
+}
+
+.due-badge.due-later {
+    background: rgba(72, 187, 120, 0.18);
+    color: #1f6f43;
+}
+
+.due-badge.due-overdue {
+    background: rgba(244, 67, 54, 0.18);
+    color: #b91c1c;
 }
 
 .attribute-tag {

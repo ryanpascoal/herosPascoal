@@ -2788,6 +2788,16 @@ function updateDailyWorks() {
         return false;
     });
 
+    const getWorkDueDate = (work) => {
+        if (work.type === 'epica' && work.deadline) return getLocalDateString(parseLocalDateString(work.deadline));
+        if (work.type === 'eventual' && work.date) return getLocalDateString(parseLocalDateString(work.date));
+        if (work.type === 'diaria') return work.availableDate || work.dateAdded || todayStr;
+        if (work.type === 'semanal') return todayStr;
+        return '9999-12-31';
+    };
+
+    dailyWorks.sort((a, b) => getWorkDueDate(a).localeCompare(getWorkDueDate(b)));
+
     if (dailyWorks.length === 0) {
         container.innerHTML = '<p class="empty-message">Nenhum trabalho para hoje. Adicione novos trabalhos na aba de gerenciamento.</p>';
         return;
@@ -2804,6 +2814,7 @@ function updateDailyWorks() {
         }).filter(Boolean).join(', ');
         const className = work.classId ? getClassNameById(work.classId) : '';
         const classLine = className ? `<p>Classe: ${className}</p>` : '';
+        const dueBadge = getDueBadgeHtml(getWorkDueDate(work), todayStr, work.type);
 
         card.innerHTML = `
             <div class="mission-header">
@@ -2814,6 +2825,7 @@ function updateDailyWorks() {
                 <span class="mission-type ${work.type}">${getMissionTypeName(work.type)}</span>
             </div>
             <div class="mission-details">
+                ${dueBadge ? `<p>${dueBadge}</p>` : ''}
                 ${work.type === 'epica' ? `<p>Prazo: ${formatDate(work.deadline)}</p>` : ''}
                 ${work.type === 'eventual' ? `<p>Prazo: ${formatDate(work.date)}</p>` : ''}
                 ${work.type === 'semanal' ? `<p>Dias: ${getDaysNames(work.days)}</p>` : ''}
@@ -3058,6 +3070,16 @@ function updateDailyMissions() {
         
         return false;
     });
+
+    const getMissionDueDate = (mission) => {
+        if (mission.type === 'epica' && mission.deadline) return getLocalDateString(parseLocalDateString(mission.deadline));
+        if (mission.type === 'eventual' && mission.date) return getLocalDateString(parseLocalDateString(mission.date));
+        if (mission.type === 'diaria') return mission.availableDate || mission.dateAdded || todayStr;
+        if (mission.type === 'semanal') return todayStr;
+        return '9999-12-31';
+    };
+
+    dailyMissions.sort((a, b) => getMissionDueDate(a).localeCompare(getMissionDueDate(b)));
     
     console.log(`Missões filtradas para hoje (${todayStr}): ${dailyMissions.length}`);
     
@@ -3075,6 +3097,7 @@ function updateDailyMissions() {
             const attr = appData.attributes.find(a => a.id === attrId);
             return attr ? `${attr.emoji} ${attr.name}` : '';
         }).filter(text => text).join(', ');
+        const dueBadge = getDueBadgeHtml(getMissionDueDate(mission), todayStr, mission.type);
         missionCard.innerHTML = `
             <div class="mission-header">
                 <div class="mission-name">
@@ -3084,6 +3107,7 @@ function updateDailyMissions() {
                 <span class="mission-type ${mission.type}">${getMissionTypeName(mission.type)}</span>
             </div>
             <div class="mission-details">
+                ${dueBadge ? `<p>${dueBadge}</p>` : ''}
                 ${mission.type === 'epica' ? `<p>Prazo: ${formatDate(mission.deadline)}</p>` : ''}
                 ${mission.type === 'eventual' ? `<p>Prazo: ${formatDate(mission.date)}</p>` : ''}
                 ${mission.type === 'semanal' ? `<p>Dias: ${getDaysNames(mission.days)}</p>` : ''}
@@ -3662,7 +3686,8 @@ function updateWorkoutDetailsTable() {
             <td>${workout.emoji} ${workout.name}</td>
             <td>${workout.type === 'repeticao' ? totalReps : '-'}</td>
             <td>${workout.type === 'distancia' ? totalDistance.toFixed(2) + ' km' : '-'}</td>
-            <td>${workout.type === 'maior-tempo' || workout.type === 'menor-tempo' ? totalTime.toFixed(1) + ' min' : '-'}</td>
+            <td>${workout.type === 'distancia' ? (totalTime > 0 ? totalTime.toFixed(1) + ' min' : '-') : (workout.type === 'maior-tempo' || workout.type === 'menor-tempo' ? totalTime.toFixed(1) + ' min' : '-')}</td>
+            <td>${workout.type === 'distancia' && totalTime > 0 ? ((totalDistance / totalTime) * 60).toFixed(1) + ' km/h' : '-'}</td>
             <td>${timesDone}</td>
         `;
         
@@ -4825,6 +4850,11 @@ function updateDailyWorkouts() {
                     <input type="number" min="0" step="0.1" class="distance-input-field" 
                            value="${workoutDay.distance || ''}">
                 </div>
+                <div class="time-input">
+                    <label>Tempo (minutos):</label>
+                    <input type="number" min="0" step="0.1" class="time-input-field"
+                           value="${workoutDay.time || ''}">
+                </div>
             `;
         } else if (workout.type === 'maior-tempo' || workout.type === 'menor-tempo') {
             inputFields = `
@@ -5627,6 +5657,14 @@ function updateWorkoutHistory() {
                 else if (distance < prevDistance) trend = ' <span class="trend-down">&darr;</span>';
             }
             details.push(`<p>Distância: ${entry.distance} km${trend}</p>`);
+            if (entry.time !== null && entry.time !== undefined) {
+                const time = Number(entry.time);
+                if (Number.isFinite(time) && time > 0) {
+                    const speed = (distance / time) * 60;
+                    details.push(`<p>Tempo: ${time} min</p>`);
+                    details.push(`<p>Velocidade média: ${speed.toFixed(1)} km/h</p>`);
+                }
+            }
         }
         if (!entry.failed && !entry.skipped && (entry.type === 'maior-tempo' || entry.type === 'menor-tempo') && entry.time !== null && entry.time !== undefined) {
             details.push(`<p>Tempo: ${entry.time} min</p>`);
@@ -5965,11 +6003,17 @@ function showWorkoutCompletionModal(workoutDayId) {
     } else if (workout.type === 'distancia') {
         const distanceInput = workoutCard ? workoutCard.querySelector('.distance-input-field') : null;
         const distanceValue = distanceInput ? distanceInput.value : (workoutDay.distance ?? '0');
+        const timeInput = workoutCard ? workoutCard.querySelector('.time-input-field') : null;
+        const timeValue = timeInput ? timeInput.value : (workoutDay.time ?? '0');
         
         inputFields = `
             <div class="form-group">
                 <label>Distância: ${distanceValue} km</label>
                 <input type="hidden" name="distance" value="${distanceValue}">
+            </div>
+            <div class="form-group">
+                <label>Tempo: ${timeValue} minutos</label>
+                <input type="hidden" name="time" value="${timeValue}">
             </div>
         `;
     } else if (workout.type === 'maior-tempo' || workout.type === 'menor-tempo') {
@@ -6295,11 +6339,19 @@ function handleWorkoutCompletion() {
         
     } else if (workout.type === 'distancia') {
         const distance = parseFloat(document.querySelector('input[name="distance"]')?.value || 0);
+        const time = parseFloat(document.querySelector('input[name="time"]')?.value || 0);
         workoutDay.distance = distance;
+        workoutDay.time = time;
         
         if (!workout.stats) workout.stats = {};
         workout.stats.totalDistance = (workout.stats.totalDistance || 0) + distance;
         workout.stats.bestDistance = Math.max(workout.stats.bestDistance || 0, distance);
+        workout.stats.totalTime = (workout.stats.totalTime || 0) + time;
+        if (time > 0) {
+            if (workout.stats.bestTime === undefined || time < workout.stats.bestTime) {
+                workout.stats.bestTime = time;
+            }
+        }
         workout.stats.completed = (workout.stats.completed || 0) + 1;
         
     } else if (workout.type === 'maior-tempo' || workout.type === 'menor-tempo') {
@@ -9504,6 +9556,36 @@ function getMonthName(monthIndex) {
 function getDaysNames(dayNumbers) {
     const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     return dayNumbers.map(num => days[num]).join(', ');
+}
+
+function getDueBadgeHtml(dueDateStr, todayStr, type) {
+    if (!dueDateStr) return '';
+    const dueDate = parseLocalDateString(dueDateStr);
+    const todayDate = parseLocalDateString(todayStr);
+    dueDate.setHours(0, 0, 0, 0);
+    todayDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((dueDate - todayDate) / 86400000);
+    let text = '';
+    let cls = 'due-later';
+    const isStrict = type === 'eventual' || type === 'epica';
+    if (diffDays < 0) {
+        text = `Atrasado ${Math.abs(diffDays)}d`;
+        cls = 'due-overdue';
+    } else if (diffDays === 0) {
+        if (!isStrict) return '';
+        text = 'Vence hoje';
+        cls = 'due-today';
+    } else if (diffDays === 1) {
+        text = 'Vence amanhã';
+        cls = 'due-soon';
+    } else if (diffDays <= 3) {
+        text = `Vence em ${diffDays} dias`;
+        cls = 'due-soon';
+    } else {
+        text = `Vence em ${diffDays} dias`;
+        cls = 'due-later';
+    }
+    return `<span class="due-badge ${cls}">${text}</span>`;
 }
 
 // Obter data local no formato YYYY-MM-DD
