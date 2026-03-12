@@ -121,7 +121,10 @@ const appData = {
         goal: 8,
         lastDate: null,
         currentStreak: 0,
-        bestStreak: 0
+        bestStreak: 0,
+        startDate: null,
+        logDates: [],
+        goalHitDates: []
     }
 };
 const APP_DEFAULTS = JSON.parse(JSON.stringify(appData));
@@ -133,13 +136,6 @@ let calendarState = {
     selectedDate: null,
     detailsFilter: 'all'
 };
-
-const HISTORY_PAGE_SIZE = 30;
-let diaryPage = 1;
-let workoutHistoryPage = 1;
-let studyHistoryPage = 1;
-let missionsCompletedPage = 1;
-let worksCompletedPage = 1;
 
 const REST_DAY_COST = 160;
 const SKIP_ACTIVITY_COST = 25;
@@ -322,7 +318,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // 3. Depois: verificar outras coisas
     checkOverdueMissions();
     checkOverdueWorks();
-    checkDailyReset();
     checkWeeklyReset();
     
     // 4. Gerar atividades do dia
@@ -333,7 +328,10 @@ document.addEventListener('DOMContentLoaded', function() {
     initUI();
     initEvents();
     initHydrationUI();
-    initDiaryStorage().then(() => updateDiaryEntries());
+    initDiaryStorage().then(() => {
+        checkDailyReset();
+        updateDiaryEntries();
+    });
     updateUI();
     updateMidnightCountdown();
     setInterval(updateMidnightCountdown, 1000);
@@ -428,6 +426,12 @@ function ensureStartingLevels() {
 
 function ensureCriticalDataShape() {
     if (!appData.hero || typeof appData.hero !== 'object') appData.hero = {};
+    if (!Number.isFinite(appData.hero.maxXp) || appData.hero.maxXp <= 0) {
+        appData.hero.maxXp = 100;
+    }
+    if (!Number.isFinite(appData.hero.xp) || appData.hero.xp < 0) {
+        appData.hero.xp = 0;
+    }
 
     if (!appData.hero.protection || typeof appData.hero.protection !== 'object') {
         appData.hero.protection = { shield: false };
@@ -623,6 +627,21 @@ function ensureCriticalDataShape() {
     appData.nutritionStats.rewardedMealKeys = appData.nutritionStats.rewardedMealKeys
         .map(v => String(v || '').trim())
         .filter(v => /^\d{4}-\d{2}-\d{2}\|(cafe|almoco|jantar|lanche)$/.test(v));
+
+    if (!appData.hydration || typeof appData.hydration !== 'object') {
+        appData.hydration = { glasses: 0, goal: 8, lastDate: null, currentStreak: 0, bestStreak: 0, startDate: null, logDates: [], goalHitDates: [] };
+    }
+    if (!Number.isFinite(appData.hydration.glasses) || appData.hydration.glasses < 0) appData.hydration.glasses = 0;
+    if (!Number.isFinite(appData.hydration.goal) || appData.hydration.goal <= 0) appData.hydration.goal = 8;
+    if (!Array.isArray(appData.hydration.logDates)) appData.hydration.logDates = [];
+    if (!Array.isArray(appData.hydration.goalHitDates)) appData.hydration.goalHitDates = [];
+    if (!appData.hydration.startDate) appData.hydration.startDate = getLocalDateString();
+    appData.hydration.logDates = appData.hydration.logDates
+        .map(v => String(v || '').trim())
+        .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v));
+    appData.hydration.goalHitDates = appData.hydration.goalHitDates
+        .map(v => String(v || '').trim())
+        .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v));
 }
 
 function ensureWeeklyBossResets() {
@@ -687,6 +706,8 @@ function normalizeActivityDays() {
 
     normalizeListDays(appData.workouts);
     normalizeListDays(appData.studies);
+    normalizeListDays(appData.missions);
+    normalizeListDays(appData.works);
 }
 
 function normalizeClassIds() {
@@ -742,18 +763,23 @@ function saveToLocalStorage() {
 function checkDailyReset() {
     const today = getLocalDateString();
     const lastReset = localStorage.getItem('lastDailyReset');
+    if (!Number.isFinite(appData.hero.lives)) appData.hero.lives = appData.hero.maxLives;
     
     if (!lastReset) {
-        // Primeiro carregamento / após reset total: não aplicar penalidades retroativas.
         localStorage.setItem('lastDailyReset', today);
         return;
     }
 
     if (lastReset !== today) {
-        // Aplicar penalidades do dia anterior antes do reset
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        applyPenalties(getLocalDateString(yesterday));
+        const lastDate = parseLocalDateString(lastReset);
+        const todayDate = parseLocalDateString(today);
+        const cursor = new Date(lastDate);
+        cursor.setDate(cursor.getDate() + 1);
+
+        while (cursor <= todayDate) {
+            applyPenalties(getLocalDateString(cursor));
+            cursor.setDate(cursor.getDate() + 1);
+        }
 
         // Limpar atividades do dia anterior
         appData.dailyWorkouts = [];
@@ -761,15 +787,9 @@ function checkDailyReset() {
         
         // Gerar novas atividades do dia
         generateDailyActivities();
-        recreateDailyMissionsForToday();
-        recreateDailyWorksForToday();
-        cleanupOldDailyMissions();
-        cleanupOldDailyWorks();
         
         localStorage.setItem('lastDailyReset', today);
         console.log('Reset diário aplicado');
-        saveToLocalStorage();
-        updateUI({ mode: 'activity', forceCalendar: true, forceNutrition: true });
     }
 }
 
@@ -790,8 +810,6 @@ function checkWeeklyReset() {
         
         localStorage.setItem('lastWeeklyReset', thisWeekKey);
         console.log('Reset semanal aplicado');
-        saveToLocalStorage();
-        updateUI({ mode: 'activity' });
     }
 }
 
@@ -1082,6 +1100,81 @@ function celebrateAction(options = {}) {
     if (message) showToast(message, type);
 }
 
+function applyActivityPenalties(config) {
+    const {
+        targetDateStr,
+        dailyList,
+        itemList,
+        completedList,
+        idKey,
+        nameFallback,
+        emojiFallback,
+        typeFallback,
+        statsKey,
+        streakKeys,
+        alertFail,
+        alertShield,
+        logShieldTitle,
+        logShieldContent,
+        logFailTitle,
+        logFailContent
+    } = config;
+    
+    const incompleteItems = dailyList.filter(item => 
+        item.date === targetDateStr && !item.completed && !item.skipped);
+    
+    if (incompleteItems.length === 0) {
+        return;
+    }
+    
+    incompleteItems.forEach(dayItem => {
+        dayItem.failed = true;
+        const item = itemList.find(i => i.id === dayItem[idKey]);
+        const alreadyLogged = completedList.some(entry => 
+            entry[idKey] === dayItem[idKey] && entry.date === dayItem.date && entry.failed
+        );
+        if (!alreadyLogged) {
+            completedList.push({
+                id: createUniqueId(completedList),
+                [idKey]: dayItem[idKey],
+                name: item ? item.name : nameFallback,
+                emoji: item ? item.emoji : emojiFallback,
+                type: item ? item.type : typeFallback,
+                date: dayItem.date,
+                failedDate: targetDateStr,
+                failed: true,
+                reason: 'Não concluído'
+            });
+        }
+    });
+
+    let livesLost = 0;
+    let shieldUsed = false;
+    incompleteItems.forEach(() => {
+        if (appData.hero.protection?.shield) {
+            appData.hero.protection.shield = false;
+            shieldUsed = true;
+            return;
+        }
+        appData.hero.lives = Math.max(0, appData.hero.lives - 1);
+        livesLost++;
+    });
+
+    if (livesLost > 0) {
+        streakKeys.forEach(key => {
+            appData.hero.streak[key] = 0;
+        });
+        addAttributeXP(6, -1);
+        appData.statistics[statsKey] = (appData.statistics[statsKey] || 0) + incompleteItems.length;
+        showFeedback(alertFail, 'error');
+        addHeroLog('penalty', logFailTitle, logFailContent);
+        handleGameOverIfNeeded();
+    } else if (shieldUsed) {
+        showFeedback(alertShield, 'warn');
+        addHeroLog('penalty', logShieldTitle, logShieldContent);
+    }
+}
+
 // Gerar atividades do dia
 function generateDailyActivities() {
     if (!Array.isArray(appData.dailyWorkouts)) appData.dailyWorkouts = [];
@@ -1183,16 +1276,10 @@ function initUI() {
     if (typeof Chart !== 'undefined') {
         initCharts();
     }
-
-    initFocusMode();
 }
 
 // Inicializar eventos
 function initEvents() {
-    document.getElementById('focus-toggle')?.addEventListener('click', function () {
-        toggleFocusMode();
-    });
-
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', function() {
             const tab = this.getAttribute('data-tab');
@@ -1272,25 +1359,21 @@ function initEvents() {
     document.getElementById('study-form')?.addEventListener('submit', handleStudySubmit);
     document.getElementById('class-form')?.addEventListener('submit', handleClassSubmit);
     document.getElementById('save-diary')?.addEventListener('click', saveDiaryEntry);
-    document.getElementById('diary-search')?.addEventListener('input', resetDiaryPaginationAndUpdate);
-    document.getElementById('diary-filter-month')?.addEventListener('change', resetDiaryPaginationAndUpdate);
-    document.getElementById('diary-filter-date')?.addEventListener('change', resetDiaryPaginationAndUpdate);
-    document.getElementById('diary-filter-attribute')?.addEventListener('change', resetDiaryPaginationAndUpdate);
-    document.getElementById('diary-filter-xp')?.addEventListener('change', resetDiaryPaginationAndUpdate);
-    document.getElementById('diary-load-more')?.addEventListener('click', function () {
-        diaryPage += 1;
-        updateDiaryEntries();
-    });
+    document.getElementById('diary-search')?.addEventListener('input', updateDiaryEntries);
+    document.getElementById('diary-filter-month')?.addEventListener('change', updateDiaryEntries);
+    document.getElementById('diary-filter-date')?.addEventListener('change', updateDiaryEntries);
+    document.getElementById('diary-filter-attribute')?.addEventListener('change', updateDiaryEntries);
+    document.getElementById('diary-filter-xp')?.addEventListener('change', updateDiaryEntries);
     document.getElementById('save-stats-goals-btn')?.addEventListener('click', saveStatisticsGoals);
     document.getElementById('stats-chart-period')?.addEventListener('change', updateCharts);
     document.getElementById('finance-form')?.addEventListener('submit', handleFinanceSubmit);
     document.getElementById('finance-budget-form')?.addEventListener('submit', handleFinanceBudgetSubmit);
     document.getElementById('finance-recurring-form')?.addEventListener('submit', handleFinanceRecurringSubmit);
     document.getElementById('nutrition-food-form')?.addEventListener('submit', handleNutritionFoodSubmit);
-    document.getElementById('reset-foods-btn')?.addEventListener('click', resetNutritionFoods);
     document.getElementById('import-foods-btn')?.addEventListener('click', () => {
         document.getElementById('import-foods-file')?.click();
     });
+    document.getElementById('reset-foods-btn')?.addEventListener('click', resetNutritionFoods);
     document.getElementById('import-foods-file')?.addEventListener('change', handleImportFoods);
     document.getElementById('nutrition-entry-form')?.addEventListener('submit', handleNutritionEntrySubmit);
     document.getElementById('nutrition-goals-form')?.addEventListener('submit', handleNutritionGoalsSubmit);
@@ -1358,22 +1441,6 @@ function initEvents() {
     document.getElementById('nutrition-entry-qty')?.addEventListener('input', updateNutritionEntryPreview);
     document.getElementById('nutrition-entry-date')?.addEventListener('change', updateNutritionView);
     document.getElementById('nutrition-report-period')?.addEventListener('change', renderNutritionReports);
-    document.getElementById('workout-history-more')?.addEventListener('click', function () {
-        workoutHistoryPage += 1;
-        updateWorkoutHistory();
-    });
-    document.getElementById('study-history-more')?.addEventListener('click', function () {
-        studyHistoryPage += 1;
-        updateStudyHistory();
-    });
-    document.getElementById('missions-completed-more')?.addEventListener('click', function () {
-        missionsCompletedPage += 1;
-        updateCompletedMissions();
-    });
-    document.getElementById('works-completed-more')?.addEventListener('click', function () {
-        worksCompletedPage += 1;
-        updateCompletedWorks();
-    });
     document.getElementById('finance-month')?.addEventListener('change', function() {
         const budgetMonthInput = document.getElementById('finance-budget-month');
         if (budgetMonthInput) {
@@ -1505,15 +1572,25 @@ function updateUI(options = {}) {
     const shouldUpdateNutrition = (isFull || isActivity || options.forceNutrition) && isTabActive('alimentacao');
     const shouldUpdateCalendar = (isFull || isActivity || options.forceCalendar) && isTabActive('calendarios');
 
-    document.getElementById('level').textContent = appData.hero.level;
-    document.getElementById('current-xp').textContent = appData.hero.xp;
-    document.getElementById('max-xp').textContent = appData.hero.maxXp;
-    document.getElementById('xp-fill').style.width = `${(appData.hero.xp / appData.hero.maxXp) * 100}%`;
+    const levelEl = document.getElementById('level');
+    if (levelEl) levelEl.textContent = appData.hero.level;
+    const currentXpEl = document.getElementById('current-xp');
+    if (currentXpEl) currentXpEl.textContent = appData.hero.xp;
+    const maxXpEl = document.getElementById('max-xp');
+    if (maxXpEl) maxXpEl.textContent = appData.hero.maxXp;
+    const xpFillEl = document.getElementById('xp-fill');
+    if (xpFillEl) {
+        const xpProgress = appData.hero.maxXp > 0 ? (appData.hero.xp / appData.hero.maxXp) * 100 : 0;
+        xpFillEl.style.width = `${xpProgress}%`;
+    }
     
     // Atualizar contadores
-    document.getElementById('coin-count').textContent = appData.hero.coins;
-    document.getElementById('streak-count').textContent = appData.hero.streak.general;
-    document.getElementById('life-count').textContent = `${appData.hero.lives}/${appData.hero.maxLives}`;
+    const coinEl = document.getElementById('coin-count');
+    if (coinEl) coinEl.textContent = appData.hero.coins;
+    const streakEl = document.getElementById('streak-count');
+    if (streakEl) streakEl.textContent = appData.hero.streak.general;
+    const lifeEl = document.getElementById('life-count');
+    if (lifeEl) lifeEl.textContent = `${appData.hero.lives}/${appData.hero.maxLives}`;
     
     // Atualizar status do escudo
     const shieldStatus = document.getElementById('shield-status');
@@ -2258,8 +2335,6 @@ function updateStreaks() {
                 appData.hero.streak[streakKey] = 0;
             } else if (hasActivityFn(yesterdayStr)) {
                 appData.hero.streak[streakKey]++;
-            } else {
-                appData.hero.streak[streakKey] = 0;
             }
         }
 
@@ -2661,14 +2736,12 @@ async function skipDailyStudy(studyDayId) {
 }
 
 function updateMissions() {
-    missionsCompletedPage = 1;
     updateDailyMissions();
     updateCompletedMissions();
     updateMissionsList();
 }
 
 function updateWorks() {
-    worksCompletedPage = 1;
     updateDailyWorks();
     updateCompletedWorks();
     updateWorksList();
@@ -2784,16 +2857,13 @@ function updateCompletedWorks() {
     if (!container) return;
 
     container.innerHTML = '';
-    const loadMoreBtn = document.getElementById('works-completed-more');
 
     if (appData.completedWorks.length === 0) {
         container.innerHTML = '<p class="empty-message">Nenhum trabalho concluído ainda.</p>';
-        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
 
-    const totalToShow = Math.max(1, worksCompletedPage) * HISTORY_PAGE_SIZE;
-    const recentWorks = appData.completedWorks.slice(-totalToShow).reverse();
+    const recentWorks = appData.completedWorks.slice(-30).reverse();
     recentWorks.forEach(work => {
         const card = document.createElement('div');
         card.className = `mission-card ${work.failed ? 'failed' : work.skipped ? 'skipped' : 'completed'}`;
@@ -2805,7 +2875,7 @@ function updateCompletedWorks() {
             : work.skipped
             ? 'Custo: 1 item de pulo'
             : work.type === 'epica'
-            ? 'Recompensa: 20 XP + 10 moedas'
+            ? 'Recompensa: 1 XP + 1 moeda'
             : 'Recompensa: 1 XP + 1 moeda';
         const eventDateLabel = work.failed ? 'Falhou em' : work.skipped ? 'Pulado em' : 'Concluido em';
         const eventDateValue = work.completedDate || work.failedDate || work.skippedDate;
@@ -2832,10 +2902,6 @@ function updateCompletedWorks() {
 
         container.appendChild(card);
     });
-
-    if (loadMoreBtn) {
-        loadMoreBtn.style.display = recentWorks.length < appData.completedWorks.length ? 'inline-flex' : 'none';
-    }
 }
 
 function checkOverdueWorks() {
@@ -3060,16 +3126,14 @@ function updateCompletedMissions() {
     if (!container) return;
     
     container.innerHTML = '';
-    const loadMoreBtn = document.getElementById('missions-completed-more');
     
     if (appData.completedMissions.length === 0) {
         container.innerHTML = '<p class="empty-message">Nenhuma missão concluída ainda.</p>';
-        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
     
-    const totalToShow = Math.max(1, missionsCompletedPage) * HISTORY_PAGE_SIZE;
-    const recentMissions = appData.completedMissions.slice(-totalToShow).reverse();
+    // Mostrar apenas as últimas 30 missões (concluídas ou falhadas)
+    const recentMissions = appData.completedMissions.slice(-30).reverse();
     
     recentMissions.forEach(mission => {
         const missionCard = document.createElement('div');
@@ -3102,10 +3166,6 @@ function updateCompletedMissions() {
         
         container.appendChild(missionCard);
     });
-
-    if (loadMoreBtn) {
-        loadMoreBtn.style.display = recentMissions.length < appData.completedMissions.length ? 'inline-flex' : 'none';
-    }
 }
 
 
@@ -3269,9 +3329,12 @@ function updateBosses() {
 // Atualizar streaks display
 function updateStreaksDisplay() {
     updateMaxStreaks();
-    document.getElementById('streak-general').textContent = `${appData.hero.streak.general} dias`;
-    document.getElementById('streak-physical').textContent = `${appData.hero.streak.physical} dias`;
-    document.getElementById('streak-mental').textContent = `${appData.hero.streak.mental} dias`;
+    const generalEl = document.getElementById('streak-general');
+    if (generalEl) generalEl.textContent = `${appData.hero.streak.general} dias`;
+    const physicalEl = document.getElementById('streak-physical');
+    if (physicalEl) physicalEl.textContent = `${appData.hero.streak.physical} dias`;
+    const mentalEl = document.getElementById('streak-mental');
+    if (mentalEl) mentalEl.textContent = `${appData.hero.streak.mental} dias`;
 
     const generalRecord = document.getElementById('streak-general-record');
     const physicalRecord = document.getElementById('streak-physical-record');
@@ -3291,18 +3354,30 @@ function updateMaxStreaks() {
 
 // Atualizar estatísticas
 function updateStatistics() {
-    document.getElementById('stat-workouts-done').textContent = appData.statistics.workoutsDone || 0;
-    document.getElementById('stat-workouts-ignored').textContent = appData.statistics.workoutsIgnored || 0;
-    document.getElementById('stat-studies-done').textContent = appData.statistics.studiesDone || 0;
-    document.getElementById('stat-studies-ignored').textContent = appData.statistics.studiesIgnored || 0;
-    document.getElementById('stat-works-done').textContent = appData.statistics.worksDone || 0;
-    document.getElementById('stat-works-failed').textContent = appData.statistics.worksFailed || 0;
-    document.getElementById('stat-works-ignored').textContent = appData.statistics.worksIgnored || 0;
-    document.getElementById('stat-books-read').textContent = appData.statistics.booksRead || 0;
-    document.getElementById('stat-missions-done').textContent = appData.statistics.missionsDone || 0;
-    document.getElementById('stat-missions-failed').textContent = appData.statistics.missionsFailed || 0;
-    document.getElementById('stat-deaths').textContent = appData.statistics.deaths || 0;
-    document.getElementById('stat-justice-done').textContent = appData.statistics.justiceDone || 0;
+    const statWorkoutsDone = document.getElementById('stat-workouts-done');
+    if (statWorkoutsDone) statWorkoutsDone.textContent = appData.statistics.workoutsDone || 0;
+    const statWorkoutsIgnored = document.getElementById('stat-workouts-ignored');
+    if (statWorkoutsIgnored) statWorkoutsIgnored.textContent = appData.statistics.workoutsIgnored || 0;
+    const statStudiesDone = document.getElementById('stat-studies-done');
+    if (statStudiesDone) statStudiesDone.textContent = appData.statistics.studiesDone || 0;
+    const statStudiesIgnored = document.getElementById('stat-studies-ignored');
+    if (statStudiesIgnored) statStudiesIgnored.textContent = appData.statistics.studiesIgnored || 0;
+    const statWorksDone = document.getElementById('stat-works-done');
+    if (statWorksDone) statWorksDone.textContent = appData.statistics.worksDone || 0;
+    const statWorksFailed = document.getElementById('stat-works-failed');
+    if (statWorksFailed) statWorksFailed.textContent = appData.statistics.worksFailed || 0;
+    const statWorksIgnored = document.getElementById('stat-works-ignored');
+    if (statWorksIgnored) statWorksIgnored.textContent = appData.statistics.worksIgnored || 0;
+    const statBooksRead = document.getElementById('stat-books-read');
+    if (statBooksRead) statBooksRead.textContent = appData.statistics.booksRead || 0;
+    const statMissionsDone = document.getElementById('stat-missions-done');
+    if (statMissionsDone) statMissionsDone.textContent = appData.statistics.missionsDone || 0;
+    const statMissionsFailed = document.getElementById('stat-missions-failed');
+    if (statMissionsFailed) statMissionsFailed.textContent = appData.statistics.missionsFailed || 0;
+    const statDeaths = document.getElementById('stat-deaths');
+    if (statDeaths) statDeaths.textContent = appData.statistics.deaths || 0;
+    const statJusticeDone = document.getElementById('stat-justice-done');
+    if (statJusticeDone) statJusticeDone.textContent = appData.statistics.justiceDone || 0;
     
     // Atualizar tabela de detalhes de treinos
     updateWorkoutDetailsTable();
@@ -3866,11 +3941,6 @@ function updateDiary() {
     updateDiaryEntries();
 }
 
-function resetDiaryPaginationAndUpdate() {
-    diaryPage = 1;
-    updateDiaryEntries();
-}
-
 // Atualizar entradas do diário
 function updateDiaryEntries() {
     const container = document.getElementById('diary-entries-list');
@@ -3928,15 +3998,10 @@ function updateDiaryEntries() {
 
     if (filteredEntries.length === 0) {
         container.innerHTML = '<p class="empty-message">Nenhuma entrada encontrada para os filtros selecionados.</p>';
-        const loadMoreBtn = document.getElementById('diary-load-more');
-        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
-
-    const totalToShow = Math.max(1, diaryPage) * HISTORY_PAGE_SIZE;
-    const visibleEntries = filteredEntries.slice(0, totalToShow);
-
-    visibleEntries.forEach(entry => {
+    
+    filteredEntries.forEach(entry => {
         const entryElement = document.createElement('div');
         entryElement.className = 'diary-entry';
         
@@ -3977,11 +4042,6 @@ function updateDiaryEntries() {
         
         container.appendChild(entryElement);
     });
-
-    const loadMoreBtn = document.getElementById('diary-load-more');
-    if (loadMoreBtn) {
-        loadMoreBtn.style.display = visibleEntries.length < filteredEntries.length ? 'inline-flex' : 'none';
-    }
 
     container.querySelectorAll('.diary-action-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -5502,16 +5562,13 @@ function updateWorkoutHistory() {
     
     completedContainer.innerHTML = '';
     const allEntries = appData.completedWorkouts;
-    const loadMoreBtn = document.getElementById('workout-history-more');
     
     if (allEntries.length === 0) {
         completedContainer.innerHTML = '<p class="empty-message">Nenhum histórico de treino ainda.</p>';
-        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
     
-    const totalToShow = Math.max(1, workoutHistoryPage) * HISTORY_PAGE_SIZE;
-    const recent = allEntries.slice(-totalToShow).reverse();
+    const recent = allEntries.slice(-30).reverse();
     const prevTotalsByEntryId = new Map();
     const lastTotalsByWorkoutId = new Map();
     const prevDistancesByEntryId = new Map();
@@ -5598,10 +5655,6 @@ function updateWorkoutHistory() {
         
         completedContainer.appendChild(card);
     });
-
-    if (loadMoreBtn) {
-        loadMoreBtn.style.display = recent.length < allEntries.length ? 'inline-flex' : 'none';
-    }
 }
 
 // Atualizar histórico de estudos (concluídos e falhas)
@@ -5611,16 +5664,13 @@ function updateStudyHistory() {
     
     completedContainer.innerHTML = '';
     const allEntries = appData.completedStudies;
-    const loadMoreBtn = document.getElementById('study-history-more');
     
     if (allEntries.length === 0) {
         completedContainer.innerHTML = '<p class="empty-message">Nenhum histórico de estudo ainda.</p>';
-        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
     
-    const totalToShow = Math.max(1, studyHistoryPage) * HISTORY_PAGE_SIZE;
-    const recent = allEntries.slice(-totalToShow).reverse();
+    const recent = allEntries.slice(-30).reverse();
     recent.forEach(entry => {
         const card = document.createElement('div');
         card.className = `history-card ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : ''}`.trim();
@@ -5661,10 +5711,6 @@ function updateStudyHistory() {
         
         completedContainer.appendChild(card);
     });
-
-    if (loadMoreBtn) {
-        loadMoreBtn.style.display = recent.length < allEntries.length ? 'inline-flex' : 'none';
-    }
 }
 
 // Inicializar seletores de atributos
@@ -5708,79 +5754,8 @@ function isTabActive(tabId) {
     return document.getElementById(tabId)?.classList.contains('active') === true;
 }
 
-const UI_PREFS_KEY = 'heroJourneyUiPrefs';
-
-function loadUiPrefs() {
-    try {
-        return JSON.parse(localStorage.getItem(UI_PREFS_KEY) || '{}');
-    } catch (e) {
-        return {};
-    }
-}
-
-function saveUiPrefs(prefs) {
-    try {
-        localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs));
-    } catch (e) {
-        // Ignorar erro de persistência de preferências
-    }
-}
-
-function isFocusNoiseTab(tabName) {
-    return document.body.classList.contains('focus-mode') &&
-        document.querySelector(`.nav-item[data-tab="${tabName}"][data-noise="true"]`);
-}
-
-function applyFocusMode(isEnabled) {
-    document.body.classList.toggle('focus-mode', isEnabled);
-    const toggle = document.getElementById('focus-toggle');
-    if (toggle) {
-        toggle.setAttribute('aria-pressed', isEnabled ? 'true' : 'false');
-        toggle.textContent = isEnabled ? 'Mostrar módulos' : 'Modo foco';
-    }
-    const activeTab = document.querySelector('.tab-content.active')?.id || 'perfil';
-    if (isEnabled && isFocusNoiseTab(activeTab)) {
-        switchTab('perfil');
-    }
-    if (isEnabled) {
-        ensureVisibleSubTabs();
-    }
-}
-
-function initFocusMode() {
-    const prefs = loadUiPrefs();
-    const focusOn = prefs.focusMode !== false;
-    applyFocusMode(focusOn);
-}
-
-function toggleFocusMode() {
-    const prefs = loadUiPrefs();
-    const nextValue = !(prefs.focusMode !== false);
-    prefs.focusMode = nextValue;
-    saveUiPrefs(prefs);
-    applyFocusMode(nextValue);
-}
-
-function ensureVisibleSubTabs() {
-    const activeTab = document.querySelector('.tab-content.active');
-    if (!activeTab) return;
-    const subNavs = activeTab.querySelectorAll('.sub-nav');
-    subNavs.forEach(nav => {
-        const activeBtn = nav.querySelector('.sub-nav-btn.active');
-        if (activeBtn && activeBtn.dataset.noise === 'true') {
-            const firstVisible = Array.from(nav.querySelectorAll('.sub-nav-btn'))
-                .find(btn => btn.dataset.noise !== 'true');
-            if (firstVisible) {
-                const parent = nav.parentElement;
-                switchSubTab(firstVisible.getAttribute('data-subtab'), parent);
-            }
-        }
-    });
-}
-
 // Trocar entre abas principais
 function switchTab(tabName) {
-    if (isFocusNoiseTab(tabName)) return;
     // Remover a classe active de todas as abas
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
@@ -7087,7 +7062,21 @@ function cleanupOldDailyMissions() {
             !mission.failed &&
             mission.dateAdded && 
             mission.dateAdded < todayStr) {
-            
+            const failedDate = mission.dateAdded;
+            const alreadyLogged = appData.completedMissions.some(entry =>
+                entry.failed &&
+                (entry.failedDate === failedDate || entry.completedDate === failedDate) &&
+                (entry.originalId || entry.id) === (mission.originalId || mission.id)
+            );
+            if (!alreadyLogged) {
+                appData.completedMissions.push({
+                    ...mission,
+                    completedDate: failedDate,
+                    failedDate: failedDate,
+                    failed: true,
+                    reason: 'Não concluída no dia'
+                });
+            }
             console.log(`Removendo missão diária antiga: ${mission.name} (adicionada em ${mission.dateAdded})`);
             missionsToRemove.push(index);
         }
@@ -7175,6 +7164,21 @@ function cleanupOldDailyWorks() {
             work.dateAdded &&
             work.dateAdded < todayStr
         ) {
+            const failedDate = work.dateAdded;
+            const alreadyLogged = appData.completedWorks.some(entry =>
+                entry.failed &&
+                (entry.failedDate === failedDate || entry.completedDate === failedDate) &&
+                (entry.originalId || entry.id) === (work.originalId || work.id)
+            );
+            if (!alreadyLogged) {
+                appData.completedWorks.push({
+                    ...work,
+                    completedDate: failedDate,
+                    failedDate: failedDate,
+                    failed: true,
+                    reason: 'Não concluído no dia'
+                });
+            }
             worksToRemove.push(index);
         }
     });
@@ -7371,11 +7375,12 @@ function addAttributeXP(attributeId, amount) {
     // Aplicar bônus de chefões derrotados
     const bonusMultiplier = 1 + (appData.bosses.filter(b => b.bonusActive).length * 0.01);
     const finalAmount = Math.floor(amount * bonusMultiplier);
-    
-    attribute.xp = Math.max(0, (Number.isFinite(attribute.xp) ? attribute.xp : 0) + finalAmount);
+
+    const oldXp = Number.isFinite(attribute.xp) ? attribute.xp : 0;
+    attribute.xp = Math.max(0, oldXp + finalAmount);
     
     // Verificar se subiu de nível
-    const oldLevel = Math.floor((attribute.xp - finalAmount) / 100);
+    const oldLevel = Math.floor(oldXp / 100);
     const newLevel = Math.floor(attribute.xp / 100);
     
     if (newLevel > oldLevel) {
@@ -7384,7 +7389,8 @@ function addAttributeXP(attributeId, amount) {
     }
     
     // Ajustar maxXp se necessário
-    attribute.maxXp = Math.max(100, (newLevel + 1) * 100);
+    attribute.maxXp = (newLevel + 1) * 100;
+    attribute.level = newLevel;
 }
 
 // Causar dano aos chefões baseado em atributos
@@ -7455,20 +7461,12 @@ function damageBossesByAttributes(attributeIds) {
     });
 }
 
-function showBossDamageFeedback(bossName, damage) {
-    if (!damage || damage <= 0) return;
-    if (typeof showToast === 'function') {
-        showToast(`Chefe ${bossName} recebeu ${damage} de dano.`, 'info');
-    }
-}
-
 // Causar dano a um chefe específico
 function damageBoss(bossName, damage) {
     const boss = appData.bosses.find(b => b.name === bossName);
     if (!boss) return;
     
     boss.hp = Math.max(0, boss.hp - damage);
-    showBossDamageFeedback(boss.name, damage);
     
     // Verificar se foi derrotado
     if (boss.hp <= 0 && !boss.defeated) {
@@ -7524,19 +7522,16 @@ function damageBoss(bossName, damage) {
       recentLogs.forEach(log => {
           const logElement = document.createElement('div');
           logElement.className = `log-item ${log.type}`;
-       const logDate = log?.date ? new Date(log.date) : new Date();
-       const logDateText = isNaN(logDate.getTime())
-           ? ''
-           : logDate.toLocaleString('pt-BR');
-       const icon = logIcons[log.type] || '📝';
-       logElement.innerHTML = `
-           <div class="log-icon">${icon}</div>
-           <div class="log-content">
-               <div class="log-title">${log.title}</div>
-               <div class="log-text">${log.content}</div>
-               <div class="log-text">${logDateText}</div>
-           </div>
-     `;
+          const logDate = parseLocalDateString(log.date).toLocaleString('pt-BR');
+          const icon = logIcons[log.type] || '📝';
+          logElement.innerHTML = `
+              <div class="log-icon">${icon}</div>
+              <div class="log-content">
+                  <div class="log-title">${log.title}</div>
+                  <div class="log-text">${log.content}</div>
+                  <div class="log-text">${logDate}</div>
+              </div>
+        `;
         container.appendChild(logElement);
     });
 }
@@ -7744,11 +7739,10 @@ function updateWeeklyChart() {
     });
 
     const goals = appData.statisticsGoals || {};
-    const safePeriodDays = Number.isFinite(periodDays) && periodDays > 0 ? periodDays : 7;
-    const missionGoalPerDay = Math.max(0, Number(goals.missions || 0) / safePeriodDays);
-    const worksGoalPerDay = Math.max(0, Number(goals.works || 0) / safePeriodDays);
-    const workoutsGoalPerDay = Math.max(0, Number(goals.workouts || 0) / safePeriodDays);
-    const studiesGoalPerDay = Math.max(0, Number(goals.studies || 0) / safePeriodDays);
+    const missionGoalPerDay = Math.max(0, Number(goals.missions || 0) / 7);
+    const worksGoalPerDay = Math.max(0, Number(goals.works || 0) / 7);
+    const workoutsGoalPerDay = Math.max(0, Number(goals.workouts || 0) / 7);
+    const studiesGoalPerDay = Math.max(0, Number(goals.studies || 0) / 7);
     const missionGoalData = periodDates.map(() => missionGoalPerDay);
     const worksGoalData = periodDates.map(() => worksGoalPerDay);
     const workoutsGoalData = periodDates.map(() => workoutsGoalPerDay);
@@ -8369,20 +8363,6 @@ function renderNutritionFoodList() {
     });
 }
 
-async function resetNutritionFoods() {
-    const confirmed = await askConfirmation(
-        'Tem certeza que deseja apagar todos os alimentos cadastrados? Isso não remove refeições já registradas.',
-        { title: 'Resetar alimentos', confirmText: 'Resetar' }
-    );
-    if (!confirmed) return;
-    appData.foodItems = [];
-    updateNutritionFoodSelect();
-    renderNutritionFoodList();
-    updateNutritionView();
-    saveToLocalStorage();
-    showFeedback('Alimentos cadastrados foram resetados.', 'success');
-}
-
 function updateNutritionEntryPreview() {
     const preview = document.getElementById('nutrition-entry-preview');
     if (!preview) return;
@@ -8425,6 +8405,21 @@ async function deleteNutritionFood(foodId) {
     appData.foodItems = (appData.foodItems || []).filter(item => Number(item.id) !== Number(foodId));
     updateNutritionView();
     showFeedback('Alimento excluído com sucesso!', 'success');
+}
+
+async function resetNutritionFoods() {
+    const confirmed = await askConfirmation('Tem certeza que deseja apagar todos os alimentos cadastrados?', {
+        title: 'Resetar alimentos',
+        confirmText: 'Resetar'
+    });
+    if (!confirmed) return;
+    appData.foodItems = [];
+    const hidden = document.getElementById('nutrition-entry-food');
+    if (hidden) hidden.value = '';
+    const searchInput = document.getElementById('nutrition-entry-food-search');
+    if (searchInput) searchInput.value = '';
+    updateNutritionView();
+    showFeedback('Alimentos resetados com sucesso!', 'success');
 }
 
 async function deleteNutritionEntry(entryId) {
@@ -8871,6 +8866,18 @@ function updateNutritionCurrentDateLabel() {
 }
 
 // Funções de Hidratação
+function recordHydrationDay(dateStr, glasses, goal) {
+    if (!dateStr) return;
+    if (!Array.isArray(appData.hydration.logDates)) appData.hydration.logDates = [];
+    if (!Array.isArray(appData.hydration.goalHitDates)) appData.hydration.goalHitDates = [];
+    if (!appData.hydration.logDates.includes(dateStr)) {
+        appData.hydration.logDates.push(dateStr);
+    }
+    if (glasses >= goal && !appData.hydration.goalHitDates.includes(dateStr)) {
+        appData.hydration.goalHitDates.push(dateStr);
+    }
+}
+
 function addHydrationGlass() {
     const today = getLocalDateString();
     
@@ -8878,6 +8885,7 @@ function addHydrationGlass() {
     if (appData.hydration.lastDate !== today) {
         // Verificar se atingiu a meta no dia anterior para manter streak
         if (appData.hydration.lastDate) {
+            recordHydrationDay(appData.hydration.lastDate, appData.hydration.glasses, appData.hydration.goal);
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
             const yesterdayStr = getLocalDateString(yesterday);
@@ -8919,6 +8927,9 @@ function removeHydrationGlass() {
     
     // Verificar se é um novo dia
     if (appData.hydration.lastDate !== today) {
+        if (appData.hydration.lastDate) {
+            recordHydrationDay(appData.hydration.lastDate, appData.hydration.glasses, appData.hydration.goal);
+        }
         appData.hydration.glasses = 0;
         appData.hydration.lastDate = today;
     }
@@ -9012,6 +9023,7 @@ function initHydrationUI() {
     if (appData.hydration.lastDate !== today) {
         // Verificar streak do dia anterior
         if (appData.hydration.lastDate) {
+            recordHydrationDay(appData.hydration.lastDate, appData.hydration.glasses, appData.hydration.goal);
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
             const yesterdayStr = getLocalDateString(yesterday);
@@ -9369,8 +9381,6 @@ async function resetProgress() {
 
     // Limpar localStorage
     localStorage.removeItem('heroJourneyData');
-    localStorage.removeItem('lastDailyReset');
-    localStorage.removeItem('lastWeeklyReset');
     if (diaryDbAvailable) {
         replaceDiaryEntriesInDB([]).then(() => {
             diaryCache = [];
@@ -9679,29 +9689,69 @@ function applyPenalties(dateStr = getLocalDateString()) {
     if (isRestDay(targetDateStr)) {
         return;
     }
+
+    const logMissedWeeklyItems = (list, completedList, typeLabel) => {
+        const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
+        const missed = list.filter(item =>
+            item &&
+            item.type === 'semanal' &&
+            !item.completed &&
+            !item.failed &&
+            Array.isArray(item.days) &&
+            item.days.includes(dayOfWeek)
+        );
+        if (missed.length === 0) return 0;
+        let added = 0;
+        missed.forEach(item => {
+            const key = item.originalId || item.id;
+            const alreadyLogged = completedList.some(entry =>
+                (entry.originalId || entry.id) === key &&
+                (entry.failedDate === targetDateStr || entry.completedDate === targetDateStr || entry.skippedDate === targetDateStr)
+            );
+            if (alreadyLogged) return;
+            completedList.push({
+                ...item,
+                completedDate: targetDateStr,
+                failedDate: targetDateStr,
+                failed: true,
+                reason: `Não concluída no dia (${typeLabel} semanal)`
+            });
+            added++;
+        });
+        return added;
+    };
     
     // Check for failed activities by type - only 1 life lost per type
     let livesLost = 0;
     let shieldUsed = false;
     const failedTypes = [];
     
-    const isMissionAvailableOnDate = (mission, dateStr) => {
-        const baseDate = mission.availableDate || mission.dateAdded || mission.date;
-        if (!baseDate) return false;
-        return getLocalDateString(parseLocalDateString(baseDate)) <= dateStr;
-    };
-
-    const isWorkAvailableOnDate = (work, dateStr) => {
-        const baseDate = work.availableDate || work.dateAdded || work.date;
-        if (!baseDate) return false;
-        return getLocalDateString(parseLocalDateString(baseDate)) <= dateStr;
-    };
-
     // Check workouts - was there any failed workout on this day?
     const failedWorkouts = appData.dailyWorkouts.filter(item => 
         item.date === targetDateStr && !item.completed && !item.skipped);
     if (failedWorkouts.length > 0) {
         failedTypes.push('workout');
+    } else {
+        const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
+        const scheduledWorkouts = appData.workouts.filter(w =>
+            Array.isArray(w.days) && w.days.some(d => normalizeWeekdayValue(d) === dayOfWeek)
+        );
+        if (scheduledWorkouts.length > 0) {
+            const hasWorkoutEntry = workoutId =>
+                appData.completedWorkouts.some(w =>
+                    w.workoutId === workoutId &&
+                    (w.completedDate === targetDateStr || w.failedDate === targetDateStr || w.skippedDate === targetDateStr || w.date === targetDateStr)
+                ) ||
+                appData.dailyWorkouts.some(dw =>
+                    dw.workoutId === workoutId &&
+                    dw.date === targetDateStr &&
+                    (dw.completed || dw.skipped || dw.failed)
+                );
+            const anyMissedWorkout = scheduledWorkouts.some(w => !hasWorkoutEntry(w.id));
+            if (anyMissedWorkout) {
+                failedTypes.push('workout');
+            }
+        }
     }
     
     // Check studies - was there any failed study on this day?
@@ -9709,58 +9759,83 @@ function applyPenalties(dateStr = getLocalDateString()) {
         item.date === targetDateStr && !item.completed && !item.skipped);
     if (failedStudies.length > 0) {
         failedTypes.push('study');
+    } else {
+        const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
+        const scheduledStudies = appData.studies.filter(s =>
+            Array.isArray(s.days) && s.days.some(d => normalizeWeekdayValue(d) === dayOfWeek)
+        );
+        if (scheduledStudies.length > 0) {
+            const hasStudyEntry = studyId =>
+                appData.completedStudies.some(s =>
+                    s.studyId === studyId &&
+                    (s.completedDate === targetDateStr || s.failedDate === targetDateStr || s.skippedDate === targetDateStr || s.date === targetDateStr)
+                ) ||
+                appData.dailyStudies.some(ds =>
+                    ds.studyId === studyId &&
+                    ds.date === targetDateStr &&
+                    (ds.completed || ds.skipped || ds.failed)
+                );
+            const anyMissedStudy = scheduledStudies.some(s => !hasStudyEntry(s.id));
+            if (anyMissedStudy) {
+                failedTypes.push('study');
+            }
+        }
     }
     
-    // Check daily missions/works that were available on the day and not completed
-    const pendingDailyMissions = appData.missions.filter(m =>
-        m.type === 'diaria' &&
-        !m.completed &&
-        !m.failed &&
-        !m.skipped &&
-        isMissionAvailableOnDate(m, targetDateStr)
-    );
-    if (pendingDailyMissions.length > 0) {
+    // Check missions - was there any failed mission on this day?
+    const failedMissions = appData.completedMissions.filter(m => 
+        m.failedDate === targetDateStr && m.failed);
+    if (failedMissions.length > 0) {
         failedTypes.push('mission');
     }
 
-    const pendingDailyWorks = appData.works.filter(w =>
-        w.type === 'diaria' &&
-        !w.completed &&
-        !w.failed &&
-        !w.skipped &&
-        isWorkAvailableOnDate(w, targetDateStr)
-    );
-    if (pendingDailyWorks.length > 0) {
+    const missedWeeklyMissions = logMissedWeeklyItems(appData.missions || [], appData.completedMissions || [], 'missão');
+    if (missedWeeklyMissions > 0 && !failedTypes.includes('mission')) {
+        failedTypes.push('mission');
+    }
+    
+    // Check works - was there any failed work on this day?
+    const failedWorks = appData.completedWorks.filter(w => 
+        w.failedDate === targetDateStr && w.failed);
+    if (failedWorks.length > 0) {
+        failedTypes.push('work');
+    }
+
+    const missedWeeklyWorks = logMissedWeeklyItems(appData.works || [], appData.completedWorks || [], 'trabalho');
+    if (missedWeeklyWorks > 0 && !failedTypes.includes('work')) {
         failedTypes.push('work');
     }
     
     // Check nutrition - was there any food logged on this day?
     // Only penalize if not a rest day and nutrition tracking is active
+    const nutritionActive = (appData.nutritionEntries && appData.nutritionEntries.length > 0) ||
+        (appData.foodItems && appData.foodItems.length > 0) ||
+        (appData.nutritionStats?.logDates && appData.nutritionStats.logDates.length > 0);
     const hasNutritionLog = appData.nutritionStats?.logDates?.includes(targetDateStr);
-    if (!hasNutritionLog && !isRestDay(targetDateStr)) {
+    if (nutritionActive && !hasNutritionLog && !isRestDay(targetDateStr)) {
         // Check if there's any nutrition goal/activity that was expected
         // For now, we assume nutrition should be logged daily
         // You can modify this condition if nutrition should not be required every day
         failedTypes.push('nutrition');
     }
-
-    // Check hydration - meta diária de água
-    const hydration = appData.hydration || {};
-    const hydrationGoal = Number.isFinite(hydration.goal) ? hydration.goal : 8;
-    const hydrationMet = hydration.lastDate === targetDateStr && (hydration.glasses || 0) >= hydrationGoal;
-    if (!hydrationMet && !isRestDay(targetDateStr)) {
-        failedTypes.push('hydration');
-    }
     
     // Check diary - was there any diary entry on this day?
     // Only penalize if not a rest day
-    const hasDiaryEntry = (diaryDbAvailable && !diaryLoaded)
-        ? true
-        : (diaryDbAvailable 
-        ? diaryCache.some(e => e.date === targetDateStr)
-        : (appData.diaryEntries || []).some(e => e.date === targetDateStr));
-    if (!hasDiaryEntry && !isRestDay(targetDateStr)) {
+    const diaryEntries = diaryDbAvailable ? (diaryCache || []) : (appData.diaryEntries || []);
+    const diaryActive = diaryLoaded && diaryEntries.length > 0;
+    const hasDiaryEntry = diaryEntries.some(e => e.date === targetDateStr);
+    if (diaryActive && !hasDiaryEntry && !isRestDay(targetDateStr)) {
         failedTypes.push('diary');
+    }
+
+    // Check hydration - penalize every day the goal is not met
+    if (appData.hydration && appData.hydration.startDate) {
+        if (targetDateStr >= appData.hydration.startDate) {
+            const hydrationGoalHit = appData.hydration.goalHitDates?.includes(targetDateStr);
+            if (!hydrationGoalHit) {
+                failedTypes.push('hydration');
+            }
+        }
     }
     
     // Now apply penalties - 1 life per failed type
@@ -9794,10 +9869,10 @@ function applyPenalties(dateStr = getLocalDateString()) {
         
         // Update statistics
         if (failedTypes.includes('mission')) {
-            appData.statistics.missionsFailed = (appData.statistics.missionsFailed || 0) + pendingDailyMissions.length;
+            appData.statistics.missionsFailed = (appData.statistics.missionsFailed || 0) + 1;
         }
         if (failedTypes.includes('work')) {
-            appData.statistics.worksFailed = (appData.statistics.worksFailed || 0) + pendingDailyWorks.length;
+            appData.statistics.worksFailed = (appData.statistics.worksFailed || 0) + 1;
         }
         if (failedTypes.includes('workout')) {
             appData.statistics.workoutsIgnored = (appData.statistics.workoutsIgnored || 0) + failedWorkouts.length;
@@ -9809,32 +9884,6 @@ function applyPenalties(dateStr = getLocalDateString()) {
         // Mark daily items as failed
         failedWorkouts.forEach(item => { item.failed = true; });
         failedStudies.forEach(item => { item.failed = true; });
-
-        // Move pending daily missions/works to completed as failed
-        if (pendingDailyMissions.length > 0) {
-            pendingDailyMissions.forEach(mission => {
-                appData.completedMissions.push({
-                    ...mission,
-                    completedDate: targetDateStr,
-                    failedDate: targetDateStr,
-                    failed: true,
-                    reason: 'Não concluído'
-                });
-            });
-            appData.missions = appData.missions.filter(m => !pendingDailyMissions.includes(m));
-        }
-        if (pendingDailyWorks.length > 0) {
-            pendingDailyWorks.forEach(work => {
-                appData.completedWorks.push({
-                    ...work,
-                    completedDate: targetDateStr,
-                    failedDate: targetDateStr,
-                    failed: true,
-                    reason: 'Não concluído'
-                });
-            });
-            appData.works = appData.works.filter(w => !pendingDailyWorks.includes(w));
-        }
         
         // Build failure message
         let failMessage = 'Você perdeu vidas por não completar atividades: ';
@@ -9845,25 +9894,14 @@ function applyPenalties(dateStr = getLocalDateString()) {
             if (t === 'work') return 'trabalho';
             if (t === 'nutrition') return 'alimentação';
             if (t === 'diary') return 'diário';
-            if (t === 'hydration') return 'hidratação';
             return t;
         }).join(', ') + '.';
         
         showFeedback(failMessage, 'error');
         
         // Log to hero log
-        const failedLabels = failedTypes.map(t => {
-            if (t === 'workout') return 'treino';
-            if (t === 'study') return 'estudo';
-            if (t === 'mission') return 'missão';
-            if (t === 'work') return 'trabalho';
-            if (t === 'nutrition') return 'alimentação';
-            if (t === 'diary') return 'diário';
-            if (t === 'hydration') return 'hidratação';
-            return t;
-        });
         addHeroLog('penalty', 'Atividades não concluídas', 
-            `Você perdeu ${livesLost} vida(s). Tipos com falha: ${failedLabels.join(', ')}. Streaks resetados.`);
+            `Você perdeu ${livesLost} vida(s). Tipos com falha: ${failedTypes.join(', ')}. Streaks resetados.`);
         
         handleGameOverIfNeeded();
     } else if (shieldUsed) {
