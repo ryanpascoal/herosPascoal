@@ -32,6 +32,9 @@
                         <span class="stats-icon"><i class="fas fa-shield-alt"></i></span>
                         <span class="shield-text">Sem escudo</span>
                     </div>
+                    <button class="focus-toggle" id="focus-toggle" type="button" aria-pressed="true">
+                        Mostrar módulos
+                    </button>
                 </div>
             </div>
         </header>
@@ -59,15 +62,15 @@
                     <i class="fas fa-calendar-alt"></i>
                     <span>Calendários</span>
                 </li>
-                <li class="nav-item" data-tab="gestao" data-mobile="extra">
+                <li class="nav-item" data-tab="gestao" data-mobile="extra" data-noise="true">
                     <i class="fas fa-wallet"></i>
                     <span>Gestão</span>
                 </li>
-                <li class="nav-item" data-tab="alimentacao" data-mobile="extra">
+                <li class="nav-item" data-tab="alimentacao" data-mobile="extra" data-noise="true">
                     <i class="fas fa-utensils"></i>
                     <span>Alimentação</span>
                 </li>
-                <li class="nav-item" data-tab="chefoes" data-mobile="extra">
+                <li class="nav-item" data-tab="chefoes" data-mobile="extra" data-noise="true">
                     <i class="fas fa-dragon"></i>
                     <span>Chefões</span>
                 </li>
@@ -75,7 +78,7 @@
                     <i class="fas fa-chart-bar"></i>
                     <span>Estatísticas</span>
                 </li>
-                <li class="nav-item" data-tab="diario" data-mobile="extra">
+                <li class="nav-item" data-tab="diario" data-mobile="extra" data-noise="true">
                     <i class="fas fa-book"></i>
                     <span>Diário</span>
                 </li>
@@ -87,19 +90,19 @@
         </nav>
         
         <div class="mobile-more-menu" id="mobile-more-menu">
-            <button class="mobile-more-item" data-tab="gestao">
+            <button class="mobile-more-item" data-tab="gestao" data-noise="true">
                 <i class="fas fa-wallet"></i> Gestão
             </button>
-            <button class="mobile-more-item" data-tab="alimentacao">
+            <button class="mobile-more-item" data-tab="alimentacao" data-noise="true">
                 <i class="fas fa-utensils"></i> Alimentação
             </button>
-            <button class="mobile-more-item" data-tab="chefoes">
+            <button class="mobile-more-item" data-tab="chefoes" data-noise="true">
                 <i class="fas fa-dragon"></i> Chefões
             </button>
             <button class="mobile-more-item" data-tab="estatisticas">
                 <i class="fas fa-chart-bar"></i> Estatísticas
             </button>
-            <button class="mobile-more-item" data-tab="diario">
+            <button class="mobile-more-item" data-tab="diario" data-noise="true">
                 <i class="fas fa-book"></i> Diário
             </button>
         </div>
@@ -226,7 +229,7 @@
                     <div class="sub-nav">
                         <button class="sub-nav-btn active" data-subtab="loja">Loja</button>
                         <button class="sub-nav-btn" data-subtab="inventario">Inventário</button>
-                        <button class="sub-nav-btn" data-subtab="gerenciar-loja">Gerenciar Loja</button>
+                        <button class="sub-nav-btn" data-subtab="gerenciar-loja" data-noise="true">Gerenciar Loja</button>
                     </div>
                     
                     <div class="sub-content">
@@ -245,7 +248,7 @@
                         </div>
                         
                         <!-- Gerenciar Loja -->
-                        <div id="gerenciar-loja" class="sub-tab">
+                        <div id="gerenciar-loja" class="sub-tab" data-noise="true">
                             <div class="form-container">
                                 <h3>Cadastrar Novo Item</h3>
                                 <form id="shop-item-form">
@@ -345,6 +348,9 @@
                         <div class="missions-list" id="completed-missions">
                             <!-- Missões cumpridas serão adicionadas via JavaScript -->
                         </div>
+                        <div class="load-more-wrapper">
+                            <button class="load-more-btn" id="missions-completed-more" type="button">Carregar mais</button>
+                        </div>
                     </div>
                     
                     <!-- Gerenciar Missões -->
@@ -439,6 +445,9 @@
                     <div id="trabalhos-cumpridos" class="sub-tab">
                         <div class="missions-list" id="completed-works">
                             <!-- Trabalhos cumpridos serão adicionados via JavaScript -->
+                        </div>
+                        <div class="load-more-wrapper">
+                            <button class="load-more-btn" id="works-completed-more" type="button">Carregar mais</button>
                         </div>
                     </div>
                     
@@ -618,6 +627,9 @@
                                 <div class="items-list history-list" id="completed-workouts">
                                     <!-- Histórico de treinos concluídos -->
                                 </div>
+                                <div class="load-more-wrapper">
+                                    <button class="load-more-btn" id="workout-history-more" type="button">Carregar mais</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -694,6 +706,9 @@
                                 <div class="items-list history-list" id="completed-studies">
                                     <!-- Histórico de estudos concluídos -->
                                 </div>
+                                <div class="load-more-wrapper">
+                                    <button class="load-more-btn" id="study-history-more" type="button">Carregar mais</button>
+                                </div>
                             </div>
 
                             <div id="livros" class="sub-tab">
@@ -769,7 +784,7 @@
 
             <!-- Aba Chefões -->
             
-            <section id="chefoes" class="tab-content">
+            <section id="chefoes" class="tab-content" data-noise="true">
                 <div class="page-header">
                     <h2><i class="fas fa-dragon"></i> Chefões</h2>
                     <div class="time-display">Tempo até meia-noite: <span id="midnight-countdown">--:--:--</span></div>
@@ -848,8 +863,8 @@
                 <div class="stats-tabs">
                     <div class="sub-nav">
                         <button class="sub-nav-btn active" data-subtab="estatisticas-absolutas">Estatísticas Absolutas</button>
-                        <button class="sub-nav-btn" data-subtab="records">Records</button>
-                        <button class="sub-nav-btn" data-subtab="graficos">Gráficos</button>
+                        <button class="sub-nav-btn" data-subtab="records" data-noise="true">Records</button>
+                        <button class="sub-nav-btn" data-subtab="graficos" data-noise="true">Gráficos</button>
                     </div>
                     
                     <div class="sub-content">
@@ -958,7 +973,7 @@
                         </div>
                         
                         <!-- Records -->
-                        <div id="records" class="sub-tab">
+                        <div id="records" class="sub-tab" data-noise="true">
                             <div class="records-container">
                                 <h3>Records Pessoais</h3>
                                 <div class="records-list" id="personal-records">
@@ -986,7 +1001,7 @@
                         </div>
                         
                         <!-- Gráficos -->
-                        <div id="graficos" class="sub-tab">
+                        <div id="graficos" class="sub-tab" data-noise="true">
                             <div class="finance-filters">
                                 <div class="form-group">
                                     <label for="stats-chart-period">Período</label>
@@ -1034,7 +1049,7 @@
             </section>
 
             <!-- Aba Gestão -->
-            <section id="gestao" class="tab-content">
+            <section id="gestao" class="tab-content" data-noise="true">
                 <div class="page-header">
                     <h2><i class="fas fa-wallet"></i> Gestão</h2>
                 </div>
@@ -1209,7 +1224,7 @@
                 </div>
             </section>
 
-            <section id="alimentacao" class="tab-content">
+            <section id="alimentacao" class="tab-content" data-noise="true">
                 <div class="page-header">
                     <h2><i class="fas fa-utensils"></i> Alimentação</h2>
                     <div class="time-display">Data: <span id="nutrition-current-date"></span></div>
@@ -1326,6 +1341,11 @@
 
                                 <div class="existing-items">
                                     <h3>Alimentos cadastrados</h3>
+                                    <div class="nutrition-actions">
+                                        <button type="button" class="submit-btn danger-btn" id="reset-foods-btn">
+                                            <i class="fas fa-trash"></i> Resetar alimentos cadastrados
+                                        </button>
+                                    </div>
                                     <div class="items-list nutrition-food-list" id="nutrition-food-list">
                                         <p class="empty-message">Nenhum alimento cadastrado.</p>
                                     </div>
@@ -1512,7 +1532,7 @@
             </section>
 
             <!-- Aba Diário -->
-            <section id="diario" class="tab-content">
+            <section id="diario" class="tab-content" data-noise="true">
                 <div class="page-header">
                     <h2><i class="fas fa-book"></i> Diário Pessoal</h2>
                     <div class="time-display">Data: <span id="diary-date"></span></div>
@@ -1569,6 +1589,9 @@
                             <div class="diary-entries" id="diary-entries-list">
                                 <!-- Entradas do diário serão adicionadas via JavaScript -->
                             </div>
+                            <div class="load-more-wrapper">
+                                <button class="load-more-btn" id="diary-load-more" type="button">Carregar mais</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1599,15 +1622,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
 
 
 

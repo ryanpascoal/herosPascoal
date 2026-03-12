@@ -23,10 +23,14 @@
     let saveQueued = false;
     let cloudReady = false;
 
+    const MANUAL_SYNC_ONLY = true;
+
     const serverMeta = {
         lastDailyReset: null,
-        lastWeeklyReset: null
+        lastWeeklyReset: null,
+        lock: null
     };
+    const LOCK_TTL_MS = 5 * 60 * 1000;
 
     function hasValidFirebaseConfig() {
         return FIREBASE_CONFIG.apiKey !== 'COLOQUE_AQUI' &&
@@ -75,12 +79,14 @@
         const meta = appData.serverMeta || {};
         serverMeta.lastDailyReset = meta.lastDailyReset || serverMeta.lastDailyReset;
         serverMeta.lastWeeklyReset = meta.lastWeeklyReset || serverMeta.lastWeeklyReset;
+        serverMeta.lock = meta.lock || serverMeta.lock;
     }
 
     function persistServerMetaToApp() {
         if (!appData.serverMeta || typeof appData.serverMeta !== 'object') appData.serverMeta = {};
         appData.serverMeta.lastDailyReset = serverMeta.lastDailyReset || null;
         appData.serverMeta.lastWeeklyReset = serverMeta.lastWeeklyReset || null;
+        appData.serverMeta.lock = serverMeta.lock || null;
     }
 
     function setSyncStatus(message, kind) {
@@ -122,6 +128,30 @@
         return db.collection('users').doc(uid).collection('progress').doc('main');
     }
 
+    function isLockActive(lock, now, ownerId) {
+        if (!lock || !lock.owner || !lock.ts) return false;
+        if (lock.owner === ownerId) return false;
+        return (now - Number(lock.ts)) < LOCK_TTL_MS;
+    }
+
+    async function canAcquireLock() {
+        if (!cloudReady || !currentUser) return true;
+        try {
+            const snap = await getProgressRef(currentUser.uid).get();
+            if (!snap.exists) return true;
+            const remote = snap.data() || {};
+            const lock = remote.serverMeta?.lock;
+            if (isLockActive(lock, Date.now(), currentUser.uid)) {
+                setSyncStatus('Backup bloqueado por outra sessÃ£o ativa', 'warn');
+                return false;
+            }
+            return true;
+        } catch (err) {
+            console.warn('Falha ao validar lock de backup:', err);
+            return true;
+        }
+    }
+
     async function pushCloud(force) {
         if (!cloudReady || !currentUser) return;
         if (saveInFlight) {
@@ -129,7 +159,10 @@
             return;
         }
 
+        if (!await canAcquireLock()) return;
+
         saveInFlight = true;
+        serverMeta.lock = { owner: currentUser.uid, ts: Date.now() };
         persistServerMetaToApp();
 
         try {
@@ -154,6 +187,10 @@
     }
 
     function queueCloudSave() {
+        if (MANUAL_SYNC_ONLY) {
+            setSyncStatus('Aguardando sincronizaÃ§Ã£o manual', 'warn');
+            return;
+        }
         if (!cloudReady || !currentUser) return;
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(function () {
@@ -170,10 +207,11 @@
         }
 
         const remote = snap.data() || {};
-        if (remote.serverMeta && typeof remote.serverMeta === 'object') {
-            serverMeta.lastDailyReset = remote.serverMeta.lastDailyReset || null;
-            serverMeta.lastWeeklyReset = remote.serverMeta.lastWeeklyReset || null;
-        }
+            if (remote.serverMeta && typeof remote.serverMeta === 'object') {
+                serverMeta.lastDailyReset = remote.serverMeta.lastDailyReset || null;
+                serverMeta.lastWeeklyReset = remote.serverMeta.lastWeeklyReset || null;
+                serverMeta.lock = remote.serverMeta.lock || null;
+            }
 
         const remoteAppData = remote.appData;
         if (!remoteAppData || typeof remoteAppData !== 'object') return;
@@ -221,11 +259,16 @@
             appData.diaryEntries.push(entry);
             diaryCache = appData.diaryEntries;
             diaryLoaded = true;
-            queueCloudSave();
         };
 
         window.checkDailyReset = function () {
             const today = getLocalDateString();
+            if (!serverMeta.lastDailyReset) {
+                serverMeta.lastDailyReset = today;
+                persistServerMetaToApp();
+                saveToLocalStorage();
+                return;
+            }
             if (serverMeta.lastDailyReset !== today) {
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
@@ -234,10 +277,15 @@
                 appData.dailyWorkouts = [];
                 appData.dailyStudies = [];
                 generateDailyActivities();
+                if (typeof recreateDailyMissionsForToday === 'function') recreateDailyMissionsForToday();
+                if (typeof recreateDailyWorksForToday === 'function') recreateDailyWorksForToday();
+                if (typeof cleanupOldDailyMissions === 'function') cleanupOldDailyMissions();
+                if (typeof cleanupOldDailyWorks === 'function') cleanupOldDailyWorks();
 
                 serverMeta.lastDailyReset = today;
                 persistServerMetaToApp();
                 saveToLocalStorage();
+                if (typeof updateUI === 'function') updateUI({ mode: 'activity', forceCalendar: true, forceNutrition: true });
             }
         };
 
@@ -270,6 +318,10 @@
 
             localStorage.removeItem(CLOUD_CACHE_KEY);
             localStorage.removeItem(AUTH_CACHE_KEY);
+            serverMeta.lastDailyReset = null;
+            serverMeta.lastWeeklyReset = null;
+            serverMeta.lock = null;
+            persistServerMetaToApp();
 
             if (cloudReady && currentUser) {
                 try {
@@ -397,5 +449,8 @@
 
     init();
 })();
+
+
+
 
 

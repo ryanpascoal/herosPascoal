@@ -134,6 +134,13 @@ let calendarState = {
     detailsFilter: 'all'
 };
 
+const HISTORY_PAGE_SIZE = 30;
+let diaryPage = 1;
+let workoutHistoryPage = 1;
+let studyHistoryPage = 1;
+let missionsCompletedPage = 1;
+let worksCompletedPage = 1;
+
 const REST_DAY_COST = 160;
 const SKIP_ACTIVITY_COST = 25;
 const NUTRITION_MEALS = {
@@ -736,6 +743,12 @@ function checkDailyReset() {
     const today = getLocalDateString();
     const lastReset = localStorage.getItem('lastDailyReset');
     
+    if (!lastReset) {
+        // Primeiro carregamento / após reset total: não aplicar penalidades retroativas.
+        localStorage.setItem('lastDailyReset', today);
+        return;
+    }
+
     if (lastReset !== today) {
         // Aplicar penalidades do dia anterior antes do reset
         const yesterday = new Date();
@@ -748,9 +761,15 @@ function checkDailyReset() {
         
         // Gerar novas atividades do dia
         generateDailyActivities();
+        recreateDailyMissionsForToday();
+        recreateDailyWorksForToday();
+        cleanupOldDailyMissions();
+        cleanupOldDailyWorks();
         
         localStorage.setItem('lastDailyReset', today);
         console.log('Reset diário aplicado');
+        saveToLocalStorage();
+        updateUI({ mode: 'activity', forceCalendar: true, forceNutrition: true });
     }
 }
 
@@ -771,6 +790,8 @@ function checkWeeklyReset() {
         
         localStorage.setItem('lastWeeklyReset', thisWeekKey);
         console.log('Reset semanal aplicado');
+        saveToLocalStorage();
+        updateUI({ mode: 'activity' });
     }
 }
 
@@ -1061,81 +1082,6 @@ function celebrateAction(options = {}) {
     if (message) showToast(message, type);
 }
 
-function applyActivityPenalties(config) {
-    const {
-        targetDateStr,
-        dailyList,
-        itemList,
-        completedList,
-        idKey,
-        nameFallback,
-        emojiFallback,
-        typeFallback,
-        statsKey,
-        streakKeys,
-        alertFail,
-        alertShield,
-        logShieldTitle,
-        logShieldContent,
-        logFailTitle,
-        logFailContent
-    } = config;
-    
-    const incompleteItems = dailyList.filter(item => 
-        item.date === targetDateStr && !item.completed && !item.skipped);
-    
-    if (incompleteItems.length === 0) {
-        return;
-    }
-    
-    incompleteItems.forEach(dayItem => {
-        dayItem.failed = true;
-        const item = itemList.find(i => i.id === dayItem[idKey]);
-        const alreadyLogged = completedList.some(entry => 
-            entry[idKey] === dayItem[idKey] && entry.date === dayItem.date && entry.failed
-        );
-        if (!alreadyLogged) {
-            completedList.push({
-                id: createUniqueId(completedList),
-                [idKey]: dayItem[idKey],
-                name: item ? item.name : nameFallback,
-                emoji: item ? item.emoji : emojiFallback,
-                type: item ? item.type : typeFallback,
-                date: dayItem.date,
-                failedDate: targetDateStr,
-                failed: true,
-                reason: 'Não concluído'
-            });
-        }
-    });
-
-    let livesLost = 0;
-    let shieldUsed = false;
-    incompleteItems.forEach(() => {
-        if (appData.hero.protection?.shield) {
-            appData.hero.protection.shield = false;
-            shieldUsed = true;
-            return;
-        }
-        appData.hero.lives = Math.max(0, appData.hero.lives - 1);
-        livesLost++;
-    });
-
-    if (livesLost > 0) {
-        streakKeys.forEach(key => {
-            appData.hero.streak[key] = 0;
-        });
-        addAttributeXP(6, -1);
-        appData.statistics[statsKey] = (appData.statistics[statsKey] || 0) + incompleteItems.length;
-        showFeedback(alertFail, 'error');
-        addHeroLog('penalty', logFailTitle, logFailContent);
-        handleGameOverIfNeeded();
-    } else if (shieldUsed) {
-        showFeedback(alertShield, 'warn');
-        addHeroLog('penalty', logShieldTitle, logShieldContent);
-    }
-}
-
 // Gerar atividades do dia
 function generateDailyActivities() {
     if (!Array.isArray(appData.dailyWorkouts)) appData.dailyWorkouts = [];
@@ -1237,10 +1183,16 @@ function initUI() {
     if (typeof Chart !== 'undefined') {
         initCharts();
     }
+
+    initFocusMode();
 }
 
 // Inicializar eventos
 function initEvents() {
+    document.getElementById('focus-toggle')?.addEventListener('click', function () {
+        toggleFocusMode();
+    });
+
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', function() {
             const tab = this.getAttribute('data-tab');
@@ -1320,17 +1272,22 @@ function initEvents() {
     document.getElementById('study-form')?.addEventListener('submit', handleStudySubmit);
     document.getElementById('class-form')?.addEventListener('submit', handleClassSubmit);
     document.getElementById('save-diary')?.addEventListener('click', saveDiaryEntry);
-    document.getElementById('diary-search')?.addEventListener('input', updateDiaryEntries);
-    document.getElementById('diary-filter-month')?.addEventListener('change', updateDiaryEntries);
-    document.getElementById('diary-filter-date')?.addEventListener('change', updateDiaryEntries);
-    document.getElementById('diary-filter-attribute')?.addEventListener('change', updateDiaryEntries);
-    document.getElementById('diary-filter-xp')?.addEventListener('change', updateDiaryEntries);
+    document.getElementById('diary-search')?.addEventListener('input', resetDiaryPaginationAndUpdate);
+    document.getElementById('diary-filter-month')?.addEventListener('change', resetDiaryPaginationAndUpdate);
+    document.getElementById('diary-filter-date')?.addEventListener('change', resetDiaryPaginationAndUpdate);
+    document.getElementById('diary-filter-attribute')?.addEventListener('change', resetDiaryPaginationAndUpdate);
+    document.getElementById('diary-filter-xp')?.addEventListener('change', resetDiaryPaginationAndUpdate);
+    document.getElementById('diary-load-more')?.addEventListener('click', function () {
+        diaryPage += 1;
+        updateDiaryEntries();
+    });
     document.getElementById('save-stats-goals-btn')?.addEventListener('click', saveStatisticsGoals);
     document.getElementById('stats-chart-period')?.addEventListener('change', updateCharts);
     document.getElementById('finance-form')?.addEventListener('submit', handleFinanceSubmit);
     document.getElementById('finance-budget-form')?.addEventListener('submit', handleFinanceBudgetSubmit);
     document.getElementById('finance-recurring-form')?.addEventListener('submit', handleFinanceRecurringSubmit);
     document.getElementById('nutrition-food-form')?.addEventListener('submit', handleNutritionFoodSubmit);
+    document.getElementById('reset-foods-btn')?.addEventListener('click', resetNutritionFoods);
     document.getElementById('import-foods-btn')?.addEventListener('click', () => {
         document.getElementById('import-foods-file')?.click();
     });
@@ -1401,6 +1358,22 @@ function initEvents() {
     document.getElementById('nutrition-entry-qty')?.addEventListener('input', updateNutritionEntryPreview);
     document.getElementById('nutrition-entry-date')?.addEventListener('change', updateNutritionView);
     document.getElementById('nutrition-report-period')?.addEventListener('change', renderNutritionReports);
+    document.getElementById('workout-history-more')?.addEventListener('click', function () {
+        workoutHistoryPage += 1;
+        updateWorkoutHistory();
+    });
+    document.getElementById('study-history-more')?.addEventListener('click', function () {
+        studyHistoryPage += 1;
+        updateStudyHistory();
+    });
+    document.getElementById('missions-completed-more')?.addEventListener('click', function () {
+        missionsCompletedPage += 1;
+        updateCompletedMissions();
+    });
+    document.getElementById('works-completed-more')?.addEventListener('click', function () {
+        worksCompletedPage += 1;
+        updateCompletedWorks();
+    });
     document.getElementById('finance-month')?.addEventListener('change', function() {
         const budgetMonthInput = document.getElementById('finance-budget-month');
         if (budgetMonthInput) {
@@ -2285,6 +2258,8 @@ function updateStreaks() {
                 appData.hero.streak[streakKey] = 0;
             } else if (hasActivityFn(yesterdayStr)) {
                 appData.hero.streak[streakKey]++;
+            } else {
+                appData.hero.streak[streakKey] = 0;
             }
         }
 
@@ -2686,12 +2661,14 @@ async function skipDailyStudy(studyDayId) {
 }
 
 function updateMissions() {
+    missionsCompletedPage = 1;
     updateDailyMissions();
     updateCompletedMissions();
     updateMissionsList();
 }
 
 function updateWorks() {
+    worksCompletedPage = 1;
     updateDailyWorks();
     updateCompletedWorks();
     updateWorksList();
@@ -2807,13 +2784,16 @@ function updateCompletedWorks() {
     if (!container) return;
 
     container.innerHTML = '';
+    const loadMoreBtn = document.getElementById('works-completed-more');
 
     if (appData.completedWorks.length === 0) {
         container.innerHTML = '<p class="empty-message">Nenhum trabalho concluído ainda.</p>';
+        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
 
-    const recentWorks = appData.completedWorks.slice(-30).reverse();
+    const totalToShow = Math.max(1, worksCompletedPage) * HISTORY_PAGE_SIZE;
+    const recentWorks = appData.completedWorks.slice(-totalToShow).reverse();
     recentWorks.forEach(work => {
         const card = document.createElement('div');
         card.className = `mission-card ${work.failed ? 'failed' : work.skipped ? 'skipped' : 'completed'}`;
@@ -2825,7 +2805,7 @@ function updateCompletedWorks() {
             : work.skipped
             ? 'Custo: 1 item de pulo'
             : work.type === 'epica'
-            ? 'Recompensa: 1 XP + 1 moeda'
+            ? 'Recompensa: 20 XP + 10 moedas'
             : 'Recompensa: 1 XP + 1 moeda';
         const eventDateLabel = work.failed ? 'Falhou em' : work.skipped ? 'Pulado em' : 'Concluido em';
         const eventDateValue = work.completedDate || work.failedDate || work.skippedDate;
@@ -2852,6 +2832,10 @@ function updateCompletedWorks() {
 
         container.appendChild(card);
     });
+
+    if (loadMoreBtn) {
+        loadMoreBtn.style.display = recentWorks.length < appData.completedWorks.length ? 'inline-flex' : 'none';
+    }
 }
 
 function checkOverdueWorks() {
@@ -3076,14 +3060,16 @@ function updateCompletedMissions() {
     if (!container) return;
     
     container.innerHTML = '';
+    const loadMoreBtn = document.getElementById('missions-completed-more');
     
     if (appData.completedMissions.length === 0) {
         container.innerHTML = '<p class="empty-message">Nenhuma missão concluída ainda.</p>';
+        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
     
-    // Mostrar apenas as últimas 30 missões (concluídas ou falhadas)
-    const recentMissions = appData.completedMissions.slice(-30).reverse();
+    const totalToShow = Math.max(1, missionsCompletedPage) * HISTORY_PAGE_SIZE;
+    const recentMissions = appData.completedMissions.slice(-totalToShow).reverse();
     
     recentMissions.forEach(mission => {
         const missionCard = document.createElement('div');
@@ -3116,6 +3102,10 @@ function updateCompletedMissions() {
         
         container.appendChild(missionCard);
     });
+
+    if (loadMoreBtn) {
+        loadMoreBtn.style.display = recentMissions.length < appData.completedMissions.length ? 'inline-flex' : 'none';
+    }
 }
 
 
@@ -3876,6 +3866,11 @@ function updateDiary() {
     updateDiaryEntries();
 }
 
+function resetDiaryPaginationAndUpdate() {
+    diaryPage = 1;
+    updateDiaryEntries();
+}
+
 // Atualizar entradas do diário
 function updateDiaryEntries() {
     const container = document.getElementById('diary-entries-list');
@@ -3933,10 +3928,15 @@ function updateDiaryEntries() {
 
     if (filteredEntries.length === 0) {
         container.innerHTML = '<p class="empty-message">Nenhuma entrada encontrada para os filtros selecionados.</p>';
+        const loadMoreBtn = document.getElementById('diary-load-more');
+        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
-    
-    filteredEntries.forEach(entry => {
+
+    const totalToShow = Math.max(1, diaryPage) * HISTORY_PAGE_SIZE;
+    const visibleEntries = filteredEntries.slice(0, totalToShow);
+
+    visibleEntries.forEach(entry => {
         const entryElement = document.createElement('div');
         entryElement.className = 'diary-entry';
         
@@ -3977,6 +3977,11 @@ function updateDiaryEntries() {
         
         container.appendChild(entryElement);
     });
+
+    const loadMoreBtn = document.getElementById('diary-load-more');
+    if (loadMoreBtn) {
+        loadMoreBtn.style.display = visibleEntries.length < filteredEntries.length ? 'inline-flex' : 'none';
+    }
 
     container.querySelectorAll('.diary-action-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -5497,13 +5502,16 @@ function updateWorkoutHistory() {
     
     completedContainer.innerHTML = '';
     const allEntries = appData.completedWorkouts;
+    const loadMoreBtn = document.getElementById('workout-history-more');
     
     if (allEntries.length === 0) {
         completedContainer.innerHTML = '<p class="empty-message">Nenhum histórico de treino ainda.</p>';
+        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
     
-    const recent = allEntries.slice(-30).reverse();
+    const totalToShow = Math.max(1, workoutHistoryPage) * HISTORY_PAGE_SIZE;
+    const recent = allEntries.slice(-totalToShow).reverse();
     const prevTotalsByEntryId = new Map();
     const lastTotalsByWorkoutId = new Map();
     const prevDistancesByEntryId = new Map();
@@ -5590,6 +5598,10 @@ function updateWorkoutHistory() {
         
         completedContainer.appendChild(card);
     });
+
+    if (loadMoreBtn) {
+        loadMoreBtn.style.display = recent.length < allEntries.length ? 'inline-flex' : 'none';
+    }
 }
 
 // Atualizar histórico de estudos (concluídos e falhas)
@@ -5599,13 +5611,16 @@ function updateStudyHistory() {
     
     completedContainer.innerHTML = '';
     const allEntries = appData.completedStudies;
+    const loadMoreBtn = document.getElementById('study-history-more');
     
     if (allEntries.length === 0) {
         completedContainer.innerHTML = '<p class="empty-message">Nenhum histórico de estudo ainda.</p>';
+        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
     
-    const recent = allEntries.slice(-30).reverse();
+    const totalToShow = Math.max(1, studyHistoryPage) * HISTORY_PAGE_SIZE;
+    const recent = allEntries.slice(-totalToShow).reverse();
     recent.forEach(entry => {
         const card = document.createElement('div');
         card.className = `history-card ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : ''}`.trim();
@@ -5646,6 +5661,10 @@ function updateStudyHistory() {
         
         completedContainer.appendChild(card);
     });
+
+    if (loadMoreBtn) {
+        loadMoreBtn.style.display = recent.length < allEntries.length ? 'inline-flex' : 'none';
+    }
 }
 
 // Inicializar seletores de atributos
@@ -5689,8 +5708,79 @@ function isTabActive(tabId) {
     return document.getElementById(tabId)?.classList.contains('active') === true;
 }
 
+const UI_PREFS_KEY = 'heroJourneyUiPrefs';
+
+function loadUiPrefs() {
+    try {
+        return JSON.parse(localStorage.getItem(UI_PREFS_KEY) || '{}');
+    } catch (e) {
+        return {};
+    }
+}
+
+function saveUiPrefs(prefs) {
+    try {
+        localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs));
+    } catch (e) {
+        // Ignorar erro de persistência de preferências
+    }
+}
+
+function isFocusNoiseTab(tabName) {
+    return document.body.classList.contains('focus-mode') &&
+        document.querySelector(`.nav-item[data-tab="${tabName}"][data-noise="true"]`);
+}
+
+function applyFocusMode(isEnabled) {
+    document.body.classList.toggle('focus-mode', isEnabled);
+    const toggle = document.getElementById('focus-toggle');
+    if (toggle) {
+        toggle.setAttribute('aria-pressed', isEnabled ? 'true' : 'false');
+        toggle.textContent = isEnabled ? 'Mostrar módulos' : 'Modo foco';
+    }
+    const activeTab = document.querySelector('.tab-content.active')?.id || 'perfil';
+    if (isEnabled && isFocusNoiseTab(activeTab)) {
+        switchTab('perfil');
+    }
+    if (isEnabled) {
+        ensureVisibleSubTabs();
+    }
+}
+
+function initFocusMode() {
+    const prefs = loadUiPrefs();
+    const focusOn = prefs.focusMode !== false;
+    applyFocusMode(focusOn);
+}
+
+function toggleFocusMode() {
+    const prefs = loadUiPrefs();
+    const nextValue = !(prefs.focusMode !== false);
+    prefs.focusMode = nextValue;
+    saveUiPrefs(prefs);
+    applyFocusMode(nextValue);
+}
+
+function ensureVisibleSubTabs() {
+    const activeTab = document.querySelector('.tab-content.active');
+    if (!activeTab) return;
+    const subNavs = activeTab.querySelectorAll('.sub-nav');
+    subNavs.forEach(nav => {
+        const activeBtn = nav.querySelector('.sub-nav-btn.active');
+        if (activeBtn && activeBtn.dataset.noise === 'true') {
+            const firstVisible = Array.from(nav.querySelectorAll('.sub-nav-btn'))
+                .find(btn => btn.dataset.noise !== 'true');
+            if (firstVisible) {
+                const parent = nav.parentElement;
+                switchSubTab(firstVisible.getAttribute('data-subtab'), parent);
+            }
+        }
+    });
+}
+
 // Trocar entre abas principais
 function switchTab(tabName) {
+    if (isFocusNoiseTab(tabName)) return;
     // Remover a classe active de todas as abas
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
@@ -7282,7 +7372,7 @@ function addAttributeXP(attributeId, amount) {
     const bonusMultiplier = 1 + (appData.bosses.filter(b => b.bonusActive).length * 0.01);
     const finalAmount = Math.floor(amount * bonusMultiplier);
     
-    attribute.xp += finalAmount;
+    attribute.xp = Math.max(0, (Number.isFinite(attribute.xp) ? attribute.xp : 0) + finalAmount);
     
     // Verificar se subiu de nível
     const oldLevel = Math.floor((attribute.xp - finalAmount) / 100);
@@ -7294,7 +7384,7 @@ function addAttributeXP(attributeId, amount) {
     }
     
     // Ajustar maxXp se necessário
-    attribute.maxXp = (newLevel + 1) * 100;
+    attribute.maxXp = Math.max(100, (newLevel + 1) * 100);
 }
 
 // Causar dano aos chefões baseado em atributos
@@ -7365,12 +7455,20 @@ function damageBossesByAttributes(attributeIds) {
     });
 }
 
+function showBossDamageFeedback(bossName, damage) {
+    if (!damage || damage <= 0) return;
+    if (typeof showToast === 'function') {
+        showToast(`Chefe ${bossName} recebeu ${damage} de dano.`, 'info');
+    }
+}
+
 // Causar dano a um chefe específico
 function damageBoss(bossName, damage) {
     const boss = appData.bosses.find(b => b.name === bossName);
     if (!boss) return;
     
     boss.hp = Math.max(0, boss.hp - damage);
+    showBossDamageFeedback(boss.name, damage);
     
     // Verificar se foi derrotado
     if (boss.hp <= 0 && !boss.defeated) {
@@ -7426,16 +7524,19 @@ function damageBoss(bossName, damage) {
       recentLogs.forEach(log => {
           const logElement = document.createElement('div');
           logElement.className = `log-item ${log.type}`;
-          const logDate = parseLocalDateString(log.date).toLocaleString('pt-BR');
-          const icon = logIcons[log.type] || '📝';
-          logElement.innerHTML = `
-              <div class="log-icon">${icon}</div>
-              <div class="log-content">
-                  <div class="log-title">${log.title}</div>
-                  <div class="log-text">${log.content}</div>
-                  <div class="log-text">${logDate}</div>
-              </div>
-        `;
+       const logDate = log?.date ? new Date(log.date) : new Date();
+       const logDateText = isNaN(logDate.getTime())
+           ? ''
+           : logDate.toLocaleString('pt-BR');
+       const icon = logIcons[log.type] || '📝';
+       logElement.innerHTML = `
+           <div class="log-icon">${icon}</div>
+           <div class="log-content">
+               <div class="log-title">${log.title}</div>
+               <div class="log-text">${log.content}</div>
+               <div class="log-text">${logDateText}</div>
+           </div>
+     `;
         container.appendChild(logElement);
     });
 }
@@ -7643,10 +7744,11 @@ function updateWeeklyChart() {
     });
 
     const goals = appData.statisticsGoals || {};
-    const missionGoalPerDay = Math.max(0, Number(goals.missions || 0) / 7);
-    const worksGoalPerDay = Math.max(0, Number(goals.works || 0) / 7);
-    const workoutsGoalPerDay = Math.max(0, Number(goals.workouts || 0) / 7);
-    const studiesGoalPerDay = Math.max(0, Number(goals.studies || 0) / 7);
+    const safePeriodDays = Number.isFinite(periodDays) && periodDays > 0 ? periodDays : 7;
+    const missionGoalPerDay = Math.max(0, Number(goals.missions || 0) / safePeriodDays);
+    const worksGoalPerDay = Math.max(0, Number(goals.works || 0) / safePeriodDays);
+    const workoutsGoalPerDay = Math.max(0, Number(goals.workouts || 0) / safePeriodDays);
+    const studiesGoalPerDay = Math.max(0, Number(goals.studies || 0) / safePeriodDays);
     const missionGoalData = periodDates.map(() => missionGoalPerDay);
     const worksGoalData = periodDates.map(() => worksGoalPerDay);
     const workoutsGoalData = periodDates.map(() => workoutsGoalPerDay);
@@ -8265,6 +8367,20 @@ function renderNutritionFoodList() {
             await deleteNutritionFood(foodId);
         });
     });
+}
+
+async function resetNutritionFoods() {
+    const confirmed = await askConfirmation(
+        'Tem certeza que deseja apagar todos os alimentos cadastrados? Isso não remove refeições já registradas.',
+        { title: 'Resetar alimentos', confirmText: 'Resetar' }
+    );
+    if (!confirmed) return;
+    appData.foodItems = [];
+    updateNutritionFoodSelect();
+    renderNutritionFoodList();
+    updateNutritionView();
+    saveToLocalStorage();
+    showFeedback('Alimentos cadastrados foram resetados.', 'success');
 }
 
 function updateNutritionEntryPreview() {
@@ -9253,6 +9369,8 @@ async function resetProgress() {
 
     // Limpar localStorage
     localStorage.removeItem('heroJourneyData');
+    localStorage.removeItem('lastDailyReset');
+    localStorage.removeItem('lastWeeklyReset');
     if (diaryDbAvailable) {
         replaceDiaryEntriesInDB([]).then(() => {
             diaryCache = [];
@@ -9567,6 +9685,18 @@ function applyPenalties(dateStr = getLocalDateString()) {
     let shieldUsed = false;
     const failedTypes = [];
     
+    const isMissionAvailableOnDate = (mission, dateStr) => {
+        const baseDate = mission.availableDate || mission.dateAdded || mission.date;
+        if (!baseDate) return false;
+        return getLocalDateString(parseLocalDateString(baseDate)) <= dateStr;
+    };
+
+    const isWorkAvailableOnDate = (work, dateStr) => {
+        const baseDate = work.availableDate || work.dateAdded || work.date;
+        if (!baseDate) return false;
+        return getLocalDateString(parseLocalDateString(baseDate)) <= dateStr;
+    };
+
     // Check workouts - was there any failed workout on this day?
     const failedWorkouts = appData.dailyWorkouts.filter(item => 
         item.date === targetDateStr && !item.completed && !item.skipped);
@@ -9581,17 +9711,26 @@ function applyPenalties(dateStr = getLocalDateString()) {
         failedTypes.push('study');
     }
     
-    // Check missions - was there any failed mission on this day?
-    const failedMissions = appData.completedMissions.filter(m => 
-        m.failedDate === targetDateStr && m.failed);
-    if (failedMissions.length > 0) {
+    // Check daily missions/works that were available on the day and not completed
+    const pendingDailyMissions = appData.missions.filter(m =>
+        m.type === 'diaria' &&
+        !m.completed &&
+        !m.failed &&
+        !m.skipped &&
+        isMissionAvailableOnDate(m, targetDateStr)
+    );
+    if (pendingDailyMissions.length > 0) {
         failedTypes.push('mission');
     }
-    
-    // Check works - was there any failed work on this day?
-    const failedWorks = appData.completedWorks.filter(w => 
-        w.failedDate === targetDateStr && w.failed);
-    if (failedWorks.length > 0) {
+
+    const pendingDailyWorks = appData.works.filter(w =>
+        w.type === 'diaria' &&
+        !w.completed &&
+        !w.failed &&
+        !w.skipped &&
+        isWorkAvailableOnDate(w, targetDateStr)
+    );
+    if (pendingDailyWorks.length > 0) {
         failedTypes.push('work');
     }
     
@@ -9604,12 +9743,22 @@ function applyPenalties(dateStr = getLocalDateString()) {
         // You can modify this condition if nutrition should not be required every day
         failedTypes.push('nutrition');
     }
+
+    // Check hydration - meta diária de água
+    const hydration = appData.hydration || {};
+    const hydrationGoal = Number.isFinite(hydration.goal) ? hydration.goal : 8;
+    const hydrationMet = hydration.lastDate === targetDateStr && (hydration.glasses || 0) >= hydrationGoal;
+    if (!hydrationMet && !isRestDay(targetDateStr)) {
+        failedTypes.push('hydration');
+    }
     
     // Check diary - was there any diary entry on this day?
     // Only penalize if not a rest day
-    const hasDiaryEntry = diaryDbAvailable 
+    const hasDiaryEntry = (diaryDbAvailable && !diaryLoaded)
+        ? true
+        : (diaryDbAvailable 
         ? diaryCache.some(e => e.date === targetDateStr)
-        : (appData.diaryEntries || []).some(e => e.date === targetDateStr);
+        : (appData.diaryEntries || []).some(e => e.date === targetDateStr));
     if (!hasDiaryEntry && !isRestDay(targetDateStr)) {
         failedTypes.push('diary');
     }
@@ -9645,10 +9794,10 @@ function applyPenalties(dateStr = getLocalDateString()) {
         
         // Update statistics
         if (failedTypes.includes('mission')) {
-            appData.statistics.missionsFailed = (appData.statistics.missionsFailed || 0) + 1;
+            appData.statistics.missionsFailed = (appData.statistics.missionsFailed || 0) + pendingDailyMissions.length;
         }
         if (failedTypes.includes('work')) {
-            appData.statistics.worksFailed = (appData.statistics.worksFailed || 0) + 1;
+            appData.statistics.worksFailed = (appData.statistics.worksFailed || 0) + pendingDailyWorks.length;
         }
         if (failedTypes.includes('workout')) {
             appData.statistics.workoutsIgnored = (appData.statistics.workoutsIgnored || 0) + failedWorkouts.length;
@@ -9660,6 +9809,32 @@ function applyPenalties(dateStr = getLocalDateString()) {
         // Mark daily items as failed
         failedWorkouts.forEach(item => { item.failed = true; });
         failedStudies.forEach(item => { item.failed = true; });
+
+        // Move pending daily missions/works to completed as failed
+        if (pendingDailyMissions.length > 0) {
+            pendingDailyMissions.forEach(mission => {
+                appData.completedMissions.push({
+                    ...mission,
+                    completedDate: targetDateStr,
+                    failedDate: targetDateStr,
+                    failed: true,
+                    reason: 'Não concluído'
+                });
+            });
+            appData.missions = appData.missions.filter(m => !pendingDailyMissions.includes(m));
+        }
+        if (pendingDailyWorks.length > 0) {
+            pendingDailyWorks.forEach(work => {
+                appData.completedWorks.push({
+                    ...work,
+                    completedDate: targetDateStr,
+                    failedDate: targetDateStr,
+                    failed: true,
+                    reason: 'Não concluído'
+                });
+            });
+            appData.works = appData.works.filter(w => !pendingDailyWorks.includes(w));
+        }
         
         // Build failure message
         let failMessage = 'Você perdeu vidas por não completar atividades: ';
@@ -9670,14 +9845,25 @@ function applyPenalties(dateStr = getLocalDateString()) {
             if (t === 'work') return 'trabalho';
             if (t === 'nutrition') return 'alimentação';
             if (t === 'diary') return 'diário';
+            if (t === 'hydration') return 'hidratação';
             return t;
         }).join(', ') + '.';
         
         showFeedback(failMessage, 'error');
         
         // Log to hero log
+        const failedLabels = failedTypes.map(t => {
+            if (t === 'workout') return 'treino';
+            if (t === 'study') return 'estudo';
+            if (t === 'mission') return 'missão';
+            if (t === 'work') return 'trabalho';
+            if (t === 'nutrition') return 'alimentação';
+            if (t === 'diary') return 'diário';
+            if (t === 'hydration') return 'hidratação';
+            return t;
+        });
         addHeroLog('penalty', 'Atividades não concluídas', 
-            `Você perdeu ${livesLost} vida(s). Tipos com falha: ${failedTypes.join(', ')}. Streaks resetados.`);
+            `Você perdeu ${livesLost} vida(s). Tipos com falha: ${failedLabels.join(', ')}. Streaks resetados.`);
         
         handleGameOverIfNeeded();
     } else if (shieldUsed) {
