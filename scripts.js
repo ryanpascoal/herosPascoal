@@ -774,9 +774,8 @@ function checkDailyReset() {
         const lastDate = parseLocalDateString(lastReset);
         const todayDate = parseLocalDateString(today);
         const cursor = new Date(lastDate);
-        cursor.setDate(cursor.getDate() + 1);
 
-        while (cursor <= todayDate) {
+        while (cursor < todayDate) {
             applyPenalties(getLocalDateString(cursor));
             cursor.setDate(cursor.getDate() + 1);
         }
@@ -784,11 +783,19 @@ function checkDailyReset() {
         // Limpar atividades do dia anterior
         appData.dailyWorkouts = [];
         appData.dailyStudies = [];
+
+        // Atualizar missões/trabalhos diários e limpar antigos
+        cleanupOldDailyMissions();
+        cleanupOldDailyWorks();
+        checkOverdueMissions();
+        checkOverdueWorks();
         
         // Gerar novas atividades do dia
         generateDailyActivities();
         
         localStorage.setItem('lastDailyReset', today);
+        saveToLocalStorage();
+        updateUI({ mode: 'activity' });
         console.log('Reset diário aplicado');
     }
 }
@@ -809,6 +816,8 @@ function checkWeeklyReset() {
         resetBossGroup(["Físico", "Mental", "Social", "Espiritual", "Trabalho"]);
         
         localStorage.setItem('lastWeeklyReset', thisWeekKey);
+        saveToLocalStorage();
+        updateUI({ mode: 'activity' });
         console.log('Reset semanal aplicado');
     }
 }
@@ -2470,10 +2479,14 @@ function failMission(missionId, reason = '') {
     if (missionIndex === -1) return;
     
     const mission = appData.missions[missionIndex];
+    const isWeekly = mission.type === 'semanal';
+    const todayStr = getLocalDateString();
     
-    // Marcar como falhada
-    mission.failed = true;
-    mission.failedDate = getLocalDateString();
+    // Marcar como falhada (sem remover itens semanais da lista)
+    if (!isWeekly) {
+        mission.failed = true;
+        mission.failedDate = todayStr;
+    }
     
     // Aplicar penalidades (escudo protege perda de vida e streak)
     const hadShield = appData.hero.protection?.shield === true;
@@ -2490,13 +2503,16 @@ function failMission(missionId, reason = '') {
     // Mover para missões concluídas (com status de falha)
     appData.completedMissions.push({
         ...mission,
-        completedDate: mission.failedDate,
+        completedDate: todayStr,
+        failedDate: todayStr,
         failed: true,
         reason: reason
     });
     
     // Remover da lista de missões ativas
-    appData.missions.splice(missionIndex, 1);
+    if (!isWeekly) {
+        appData.missions.splice(missionIndex, 1);
+    }
     
     // Atualizar UI
     updateUI();
@@ -2559,6 +2575,7 @@ async function skipMission(missionId) {
     if (missionIndex === -1) return;
 
     const mission = appData.missions[missionIndex];
+    const isWeekly = mission.type === 'semanal';
     if (!await tryConsumeSkipItem(`a missao "${mission.name}"`)) return;
 
     const todayStr = getLocalDateString();
@@ -2570,7 +2587,9 @@ async function skipMission(missionId) {
         skippedDate: todayStr,
         reason: 'Atividade pulada (1 item de pulo consumido)'
     });
-    appData.missions.splice(missionIndex, 1);
+    if (!isWeekly) {
+        appData.missions.splice(missionIndex, 1);
+    }
 
     if (mission.type === 'diaria') {
         recreateDailyMissionForTomorrow(mission);
@@ -2591,8 +2610,12 @@ function failWork(workId, reason = '') {
     if (workIndex === -1) return;
 
     const work = appData.works[workIndex];
-    work.failed = true;
-    work.failedDate = getLocalDateString();
+    const isWeekly = work.type === 'semanal';
+    const todayStr = getLocalDateString();
+    if (!isWeekly) {
+        work.failed = true;
+        work.failedDate = todayStr;
+    }
 
     const hadShield = appData.hero.protection?.shield === true;
     if (hadShield) {
@@ -2604,13 +2627,16 @@ function failWork(workId, reason = '') {
 
     appData.completedWorks.push({
         ...work,
-        completedDate: work.failedDate,
+        completedDate: todayStr,
+        failedDate: todayStr,
         failed: true,
         reason
     });
     appData.statistics.worksFailed = (appData.statistics.worksFailed || 0) + 1;
 
-    appData.works.splice(workIndex, 1);
+    if (!isWeekly) {
+        appData.works.splice(workIndex, 1);
+    }
     updateUI({ mode: 'activity' });
     if (!hadShield) {
         handleGameOverIfNeeded();
@@ -2628,6 +2654,7 @@ async function skipWork(workId) {
     if (workIndex === -1) return;
 
     const work = appData.works[workIndex];
+    const isWeekly = work.type === 'semanal';
     if (!await tryConsumeSkipItem(`o trabalho "${work.name}"`)) return;
 
     const todayStr = getLocalDateString();
@@ -2640,7 +2667,9 @@ async function skipWork(workId) {
         reason: 'Atividade pulada (1 item de pulo consumido)'
     });
     appData.statistics.worksIgnored = (appData.statistics.worksIgnored || 0) + 1;
-    appData.works.splice(workIndex, 1);
+    if (!isWeekly) {
+        appData.works.splice(workIndex, 1);
+    }
 
     if (work.type === 'diaria') {
         recreateDailyWorkForTomorrow(work);
@@ -2747,6 +2776,16 @@ function updateWorks() {
     updateWorksList();
 }
 
+function wasItemLoggedForDate(item, completedList, dateStr) {
+    const key = item?.originalId || item?.id;
+    if (!key) return false;
+    return (completedList || []).some(entry => {
+        const entryKey = entry?.originalId || entry?.id;
+        if (String(entryKey) !== String(key)) return false;
+        return entry.completedDate === dateStr || entry.failedDate === dateStr || entry.skippedDate === dateStr;
+    });
+}
+
 function updateDailyWorks() {
     const container = document.getElementById('daily-works');
     if (!container) return;
@@ -2771,7 +2810,10 @@ function updateDailyWorks() {
             return true;
         }
 
-        if (work.type === 'semanal') return work.days && work.days.includes(dayOfWeek);
+        if (work.type === 'semanal') {
+            const alreadyLogged = wasItemLoggedForDate(work, appData.completedWorks, todayStr);
+            return !alreadyLogged && work.days && work.days.includes(dayOfWeek);
+        }
 
         if (work.type === 'eventual') {
             if (!work.date) return false;
@@ -3052,7 +3094,8 @@ function updateDailyMissions() {
         }
         
         if (mission.type === 'semanal') {
-            return mission.days && mission.days.includes(dayOfWeek);
+            const alreadyLogged = wasItemLoggedForDate(mission, appData.completedMissions, todayStr);
+            return !alreadyLogged && mission.days && mission.days.includes(dayOfWeek);
         }
         
         if (mission.type === 'eventual') {
@@ -6883,10 +6926,13 @@ function completeMission(missionId, feedbackText = '') {
     
     const mission = appData.missions[missionIndex];
     const todayStr = getLocalDateString();
+    const isWeekly = mission.type === 'semanal';
 
-    // Marcar como concluída
-    mission.completed = true;
-    mission.completedDate = todayStr;
+    // Marcar como concluída (sem remover itens semanais da lista)
+    if (!isWeekly) {
+        mission.completed = true;
+        mission.completedDate = todayStr;
+    }
 
     // Registrar feedback (opcional)
     if (feedbackText) {
@@ -6900,10 +6946,16 @@ function completeMission(missionId, feedbackText = '') {
     }
     
     // 1. PRIMEIRO: Mover para missões concluídas
-    appData.completedMissions.push({...mission});
+    appData.completedMissions.push({
+        ...mission,
+        completed: true,
+        completedDate: todayStr
+    });
     
     // 2. SEGUNDO: Remover da lista de missões ativas (IMEDIATAMENTE)
-    appData.missions.splice(missionIndex, 1);
+    if (!isWeekly) {
+        appData.missions.splice(missionIndex, 1);
+    }
     
     // 3. Se for missão diária, recriar para amanhã
     if (mission.type === 'diaria') {
@@ -6963,9 +7015,12 @@ function completeWork(workId, feedbackText = '') {
 
     const work = appData.works[workIndex];
     const todayStr = getLocalDateString();
+    const isWeekly = work.type === 'semanal';
 
-    work.completed = true;
-    work.completedDate = todayStr;
+    if (!isWeekly) {
+        work.completed = true;
+        work.completedDate = todayStr;
+    }
 
     if (feedbackText) {
         work.feedback = feedbackText;
@@ -6977,8 +7032,14 @@ function completeWork(workId, feedbackText = '') {
         });
     }
 
-    appData.completedWorks.push({ ...work });
-    appData.works.splice(workIndex, 1);
+    appData.completedWorks.push({
+        ...work,
+        completed: true,
+        completedDate: todayStr
+    });
+    if (!isWeekly) {
+        appData.works.splice(workIndex, 1);
+    }
 
     if (work.type === 'diaria') {
         recreateDailyWorkForTomorrow(work);

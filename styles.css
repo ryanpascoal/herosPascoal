@@ -6,6 +6,36 @@
     box-shadow: none !important;
 }
 
+/* Hero logs visual override (avoid gray-heavy look) */
+.hero-logs-section {
+    background: linear-gradient(160deg, rgba(10, 16, 28, 0.98), rgba(19, 78, 112, 0.22));
+    border: 1px solid rgba(64, 164, 255, 0.2);
+    box-shadow: 0 18px 35px rgba(10, 18, 32, 0.4);
+}
+
+.hero-logs-section .log-item {
+    background: linear-gradient(120deg, rgba(17, 25, 40, 0.92), rgba(24, 36, 54, 0.9));
+    border: 1px solid rgba(96, 196, 255, 0.12);
+    box-shadow: 0 10px 20px rgba(9, 15, 26, 0.35);
+}
+
+.hero-logs-section .log-item:nth-child(even) {
+    background: linear-gradient(120deg, rgba(19, 30, 48, 0.95), rgba(28, 52, 72, 0.9));
+}
+
+.hero-logs-section .log-icon {
+    background: rgba(96, 196, 255, 0.14);
+    border: 1px solid rgba(96, 196, 255, 0.28);
+    color: #D6ECFF;
+}
+
+.hero-logs-section .log-title {
+    color: #F2F6FF;
+}
+
+.hero-logs-section .log-text {
+    color: rgba(220, 232, 246, 0.78);
+}
 :root {
     --primary-color: #8A5CFF;
     --secondary-color: #10F2FF;
@@ -3118,12 +3148,12 @@ tr:hover {
 
 .hero-logs-section {
     margin-top: 30px;
-    background: linear-gradient(160deg, rgba(16, 21, 35, 0.95), rgba(124, 92, 255, 0.12));
+    background: linear-gradient(160deg, rgba(10, 16, 28, 0.98), rgba(19, 78, 112, 0.22));
     border-radius: 18px;
     padding: 20px;
     color: var(--light-color);
-    border: 1px solid var(--card-border);
-    box-shadow: var(--box-shadow);
+    border: 1px solid rgba(64, 164, 255, 0.2);
+    box-shadow: 0 18px 35px rgba(10, 18, 32, 0.4);
 }
 
 .logs-container {
@@ -3139,9 +3169,10 @@ tr:hover {
     align-items: center;
     gap: 15px;
     padding: 12px;
-    background: rgba(16, 21, 35, 0.8);
+    background: linear-gradient(120deg, rgba(17, 25, 40, 0.92), rgba(24, 36, 54, 0.9));
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(96, 196, 255, 0.12);
+    box-shadow: 0 10px 20px rgba(9, 15, 26, 0.35);
 }
 
 .log-icon {
@@ -3158,33 +3189,34 @@ tr:hover {
     font-weight: 600;
     font-size: 14px;
     margin-bottom: 4px;
-    color: var(--light-color);
+    color: #F2F6FF;
 }
 
 .log-text {
     font-size: 13px;
-    color: var(--gray-color);
+    color: rgba(220, 232, 246, 0.78);
 }
 
 /* Deixar logs mais distinguíveis */
 .logs-container .log-item {
     border-left: 4px solid rgba(255, 255, 255, 0.12);
-    background: rgba(16, 21, 35, 0.75);
+    background: linear-gradient(120deg, rgba(17, 25, 40, 0.88), rgba(23, 38, 58, 0.86));
 }
 
 .logs-container .log-item:nth-child(even) {
-    background: rgba(16, 21, 35, 0.92);
+    background: linear-gradient(120deg, rgba(19, 30, 48, 0.95), rgba(28, 52, 72, 0.9));
 }
 
 .log-icon {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(96, 196, 255, 0.14);
+    border: 1px solid rgba(96, 196, 255, 0.28);
     border-radius: 10px;
     width: 40px;
     height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
+    color: #D6ECFF;
 }
 
 .log-item.mission { border-left-color: #8A5CFF; }
@@ -3323,6 +3355,17 @@ tr:hover {
         background: #0D1220;
         box-shadow: none;
         border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .hero-logs-section {
+        background: linear-gradient(160deg, rgba(10, 16, 28, 0.98), rgba(19, 78, 112, 0.22));
+        border: 1px solid rgba(64, 164, 255, 0.2);
+    }
+
+    .hero-logs-section .log-item {
+        background: linear-gradient(120deg, rgba(17, 25, 40, 0.92), rgba(24, 36, 54, 0.9));
+        border: 1px solid rgba(96, 196, 255, 0.12);
+        box-shadow: 0 10px 20px rgba(9, 15, 26, 0.35);
     }
 
     .nav-item.active {
