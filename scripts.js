@@ -9707,6 +9707,33 @@ async function deleteNamedEmojiItem(config) {
     showFeedback(successText, 'success');
 }
 
+function validateIsoDateInput(value) {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return 'Use o formato AAAA-MM-DD.';
+    const parsed = parseLocalDateString(trimmed);
+    if (getLocalDateString(parsed) !== trimmed) return 'Data inválida.';
+    return null;
+}
+
+async function maybeEditItemDeadline(item, options = {}) {
+    if (!item || (item.type !== 'eventual' && item.type !== 'epica')) return;
+
+    const field = item.type === 'epica' ? 'deadline' : 'date';
+    const label = item.type === 'epica' ? 'Prazo (épica)' : 'Prazo (eventual)';
+    const currentValue = item[field] || '';
+    const newValue = await askInput(`${label} (AAAA-MM-DD). Deixe em branco para manter:`, {
+        title: options.title || 'Editar prazo',
+        defaultValue: currentValue,
+        confirmText: 'Salvar',
+        validate: validateIsoDateInput
+    });
+    if (newValue === null) return;
+    const trimmed = newValue.trim();
+    if (!trimmed) return;
+    item[field] = trimmed;
+}
+
 // Editar e excluir funções (implementações básicas)
 function editWorkout(id) {
     editNamedEmojiItem({
@@ -9749,13 +9776,28 @@ function deleteStudy(id) {
 }
 
 function editMission(id) {
-    editNamedEmojiItem({
-        list: appData.missions,
-        id,
-        namePrompt: 'Novo nome da missão:',
-        emojiPrompt: 'Novo emoji (opcional):',
-        updateMode: 'activity'
-    });
+    const mission = appData.missions.find(m => m.id === id);
+    if (!mission) return;
+
+    (async () => {
+        const newName = await askInput('Novo nome da missão:', {
+            title: 'Editar missão',
+            defaultValue: mission.name
+        });
+        if (newName === null) return;
+        if (newName.trim()) mission.name = newName.trim();
+
+        const newEmoji = await askInput('Novo emoji (opcional):', {
+            title: 'Editar missão',
+            defaultValue: mission.emoji || ''
+        });
+        if (newEmoji !== null && newEmoji.trim()) mission.emoji = newEmoji.trim();
+
+        await maybeEditItemDeadline(mission, { title: 'Editar missão' });
+
+        updateUI({ mode: 'activity' });
+        showFeedback('Missão atualizada com sucesso!', 'success');
+    })();
 }
 
 function deleteMission(id) {
@@ -9769,13 +9811,28 @@ function deleteMission(id) {
 }
 
 function editWork(id) {
-    editNamedEmojiItem({
-        list: appData.works,
-        id,
-        namePrompt: 'Novo nome do trabalho:',
-        emojiPrompt: 'Novo emoji (opcional):',
-        updateMode: 'activity'
-    });
+    const work = appData.works.find(w => w.id === id);
+    if (!work) return;
+
+    (async () => {
+        const newName = await askInput('Novo nome do trabalho:', {
+            title: 'Editar trabalho',
+            defaultValue: work.name
+        });
+        if (newName === null) return;
+        if (newName.trim()) work.name = newName.trim();
+
+        const newEmoji = await askInput('Novo emoji (opcional):', {
+            title: 'Editar trabalho',
+            defaultValue: work.emoji || ''
+        });
+        if (newEmoji !== null && newEmoji.trim()) work.emoji = newEmoji.trim();
+
+        await maybeEditItemDeadline(work, { title: 'Editar trabalho' });
+
+        updateUI({ mode: 'activity' });
+        showFeedback('Trabalho atualizado com sucesso!', 'success');
+    })();
 }
 
 function deleteWork(id) {
