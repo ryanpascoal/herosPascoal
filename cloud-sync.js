@@ -150,9 +150,14 @@
                 saveQueued = false;
                 pushCloud(false);
             }
+            // 🔧 Step 2: Trigger local save após cloud sync
+            if (typeof queueSave === 'function') {
+                queueSave();
+            }
         }
     }
 
+    // Mantém compatibilidade mas usa saveManager
     function queueCloudSave() {
         if (!cloudReady || !currentUser) return;
         if (saveTimer) clearTimeout(saveTimer);
@@ -194,6 +199,7 @@
         setSyncStatus('Dados carregados da nuvem', 'ok');
     }
 
+
     function overrideStorageFunctions() {
         window.loadFromLocalStorage = function () {
             const saved = parseJson(localStorage.getItem(CLOUD_CACHE_KEY), null);
@@ -204,6 +210,12 @@
         };
 
         window.saveToLocalStorage = function () {
+            // 🔧 Step 2: Usa saveManager centralizado
+            if (typeof queueSave === 'function') {
+                queueSave();
+                return;
+            }
+            // Fallback
             try {
                 localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify(buildSerializableData()));
             } catch (err) {
@@ -212,17 +224,26 @@
             queueCloudSave();
         };
 
+
         window.initDiaryStorage = async function () {
             ensureDiaryMemoryMode();
         };
 
         window.saveDiaryEntryToStorage = async function (entry) {
-            if (!Array.isArray(appData.diaryEntries)) appData.diaryEntries = [];
-            appData.diaryEntries.push(entry);
-            diaryCache = appData.diaryEntries;
-            diaryLoaded = true;
-            queueCloudSave();
+            // 🔧 Step 3: Usa funções IndexedDB corretas + saveManager
+            if (typeof saveDiaryEntryToStorage === 'function' && diaryDbAvailable) {
+                await saveDiaryEntryToStorage(entry);
+            } else {
+                if (!Array.isArray(appData.diaryEntries)) appData.diaryEntries = [];
+                appData.diaryEntries.push(entry);
+                diaryCache = appData.diaryEntries;
+                diaryLoaded = true;
+            }
+            if (typeof queueSave === 'function') {
+                queueSave();
+            }
         };
+
 
         window.checkDailyReset = function () {
             const today = getLocalDateString();

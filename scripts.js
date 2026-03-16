@@ -749,20 +749,12 @@ function mergeData(target, source) {
     }
 }
 
-// Salvar dados no localStorage
-function saveToLocalStorage() {
-    try {
-        localStorage.setItem('heroJourneyData', JSON.stringify(appData));
-        console.log('Dados salvos no localStorage');
-    } catch (e) {
-        console.error('Erro ao salvar dados:', e);
-    }
-}
+/* saveToLocalStorage() substituída por saveManager.js */
 
 // Verificar reset diário
 function checkDailyReset() {
     const today = getLocalDateString();
-    const lastReset = localStorage.getItem('lastDailyReset');
+    let lastReset = appData.serverMeta?.lastDailyReset || localStorage.getItem('lastDailyReset');
     if (!Number.isFinite(appData.hero.lives)) appData.hero.lives = appData.hero.maxLives;
     
     if (!lastReset) {
@@ -793,8 +785,8 @@ function checkDailyReset() {
         // Gerar novas atividades do dia
         generateDailyActivities();
         
-        localStorage.setItem('lastDailyReset', today);
-        saveToLocalStorage();
+        appData.serverMeta.lastDailyReset = today;
+        queueSave();
         updateUI({ mode: 'activity' });
         console.log('Reset diário aplicado');
     }
@@ -804,7 +796,7 @@ function checkDailyReset() {
 function checkWeeklyReset() {
     const today = new Date();
     const thisWeekKey = getWeekKey(today);
-    const lastWeeklyReset = localStorage.getItem('lastWeeklyReset');
+    let lastWeeklyReset = appData.serverMeta?.lastWeeklyReset || localStorage.getItem('lastWeeklyReset');
 
     if (!lastWeeklyReset) {
         localStorage.setItem('lastWeeklyReset', thisWeekKey);
@@ -815,8 +807,8 @@ function checkWeeklyReset() {
         // Resetar todos os chefões semanalmente
         resetBossGroup(["Físico", "Mental", "Social", "Espiritual", "Trabalho"]);
         
-        localStorage.setItem('lastWeeklyReset', thisWeekKey);
-        saveToLocalStorage();
+        appData.serverMeta.lastWeeklyReset = thisWeekKey;
+        queueSave();
         updateUI({ mode: 'activity' });
         console.log('Reset semanal aplicado');
     }
