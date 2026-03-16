@@ -2951,26 +2951,55 @@ function updateCompletedWorks() {
 }
 
 function checkOverdueWorks() {
+    const today = new Date();
     const todayStr = getLocalDateString();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
     const overdueToFail = [];
-
+    
     appData.works.forEach(work => {
+        if (work.completed || work.failed) return;
+        
+        // Eventuais
         if (work.type === 'eventual' && work.date) {
             const workDateStr = getLocalDateString(parseLocalDateString(work.date));
-            if (workDateStr < todayStr && !work.completed && !work.failed) {
-                overdueToFail.push({ id: work.id, reason: 'Data do trabalho já passou' });
+            if (workDateStr < todayStr) {
+                overdueToFail.push({ id: work.id, reason: 'Data do trabalho já passou (eventual)' });
             }
         }
-
+        
+        // Épicas
         if (work.type === 'epica' && work.deadline) {
             const deadlineStr = getLocalDateString(parseLocalDateString(work.deadline));
-            if (deadlineStr < todayStr && !work.completed && !work.failed) {
-                overdueToFail.push({ id: work.id, reason: 'Prazo expirado' });
+            if (deadlineStr < todayStr) {
+                overdueToFail.push({ id: work.id, reason: 'Prazo expirado (épica)' });
+            }
+        }
+        
+        // Diárias NOVO: falha se availableDate ou dateAdded < ontem
+        if (work.type === 'diaria') {
+            const availableDate = work.availableDate || work.dateAdded;
+            if (availableDate && availableDate < yesterdayStr) {
+                overdueToFail.push({ id: work.id, reason: 'Prazo diário expirado' });
+            }
+        }
+        
+        // Semanais NOVO: falha se não concluída na semana da availableDate
+        if (work.type === 'semanal') {
+            const weekKey = getWeekKey(new Date());
+            const lastShownWeek = work.lastShownWeek || getWeekKey(parseLocalDateString(work.availableDate || work.dateAdded || todayStr));
+            if (lastShownWeek !== weekKey) {
+                overdueToFail.push({ id: work.id, reason: 'Semanal não concluída na semana' });
             }
         }
     });
-
-    overdueToFail.forEach(item => failWork(item.id, item.reason));
+    
+    if (overdueToFail.length > 0) {
+        console.log(`Auto-falhando ${overdueToFail.length} trabalhos por atraso:`, overdueToFail.map(i => i.reason));
+        overdueToFail.forEach(item => failWork(item.id, `[AUTO] ${item.reason}`));
+    }
+    
     recreateDailyWorksForToday();
 }
 
@@ -3232,36 +3261,53 @@ function updateCompletedMissions() {
 function checkOverdueMissions() {
     const today = new Date();
     const todayStr = getLocalDateString();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
     const overdueToFail = [];
     
-    // Verificar missões que já deveriam ter sido feitas
     appData.missions.forEach(mission => {
-        // Verificar missões eventuais com data passada
+        if (mission.completed || mission.failed) return;
+        
+        // Eventuais
         if (mission.type === 'eventual' && mission.date) {
-            const missionDate = parseLocalDateString(mission.date);
-            const missionDateStr = getLocalDateString(missionDate);
-            
-            // Se a data da missão é anterior a hoje e não foi concluída
-            if (missionDateStr < todayStr && !mission.completed && !mission.failed) {
-                // Missão eventual atrasada - falhar automaticamente
-                overdueToFail.push({ id: mission.id, reason: 'Data da missão já passou' });
+            const missionDateStr = getLocalDateString(parseLocalDateString(mission.date));
+            if (missionDateStr < todayStr) {
+                overdueToFail.push({ id: mission.id, reason: 'Data da missão já passou (eventual)' });
             }
         }
         
-        // Verificar missões épicas com prazo expirado
+        // Épicas
         if (mission.type === 'epica' && mission.deadline) {
-            const deadline = parseLocalDateString(mission.deadline);
-            const deadlineStr = getLocalDateString(deadline);
-            
-            if (deadlineStr < todayStr && !mission.failed && !mission.completed) {
-                // Missão épica atrasada - falhar automaticamente
-                overdueToFail.push({ id: mission.id, reason: 'Prazo expirado' });
+            const deadlineStr = getLocalDateString(parseLocalDateString(mission.deadline));
+            if (deadlineStr < todayStr) {
+                overdueToFail.push({ id: mission.id, reason: 'Prazo expirado (épica)' });
+            }
+        }
+        
+        // Diárias NOVO: falha se availableDate ou dateAdded < ontem
+        if (mission.type === 'diaria') {
+            const availableDate = mission.availableDate || mission.dateAdded;
+            if (availableDate && availableDate < yesterdayStr) {
+                overdueToFail.push({ id: mission.id, reason: 'Prazo diário expirado' });
+            }
+        }
+        
+        // Semanais NOVO: falha se não concluída na semana da availableDate
+        if (mission.type === 'semanal') {
+            const weekKey = getWeekKey(new Date());
+            const lastShownWeek = mission.lastShownWeek || getWeekKey(parseLocalDateString(mission.availableDate || mission.dateAdded || todayStr));
+            if (lastShownWeek !== weekKey) {
+                overdueToFail.push({ id: mission.id, reason: 'Semanal não concluída na semana' });
             }
         }
     });
     
-    overdueToFail.forEach(item => failMission(item.id, item.reason));
-    // Para missões diárias: remover as concluídas do dia anterior e recriar para hoje
+    if (overdueToFail.length > 0) {
+        console.log(`Auto-falhando ${overdueToFail.length} missões por atraso:`, overdueToFail.map(i => i.reason));
+        overdueToFail.forEach(item => failMission(item.id, `[AUTO] ${item.reason}`));
+    }
+    
     recreateDailyMissionsForToday();
 }
 
