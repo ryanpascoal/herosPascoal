@@ -316,8 +316,8 @@ document.addEventListener('DOMContentLoaded', function() {
     cleanupOldDailyWorks();
 
     // 3. Depois: verificar outras coisas
-    checkOverdueMissions();
-    checkOverdueWorks();
+    checkOverdueMissions({ isInitialCheck: true });
+    checkOverdueWorks({ isInitialCheck: true });
     checkWeeklyReset();
     
     // 4. Gerar atividades do dia
@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(checkDailyReset, 60000);
     setInterval(checkWeeklyReset, 60000);
     setInterval(updateStreaks, 60000);
-    handleGameOverIfNeeded();
+    handleGameOverIfNeeded({ isInitialCheck: true });
 });
 
 // Carregar dados do localStorage
@@ -734,7 +734,7 @@ function mergeData(target, source) {
             const targetValue = target[key];
             
             if (Array.isArray(sourceValue)) {
-                // Arrays devem ser substituídos por inteiro
+                // Arrays devem ser copiados (não mesclados recursivamente)
                 target[key] = sourceValue.slice();
                 continue;
             }
@@ -755,7 +755,8 @@ function mergeData(target, source) {
 function checkDailyReset() {
     const today = getLocalDateString();
     let lastReset = appData.serverMeta?.lastDailyReset || localStorage.getItem('lastDailyReset');
-    if (!Number.isFinite(appData.hero.lives)) appData.hero.lives = appData.hero.maxLives;
+    if (!Number.isFinite(appData.hero.maxLives) || appData.hero.maxLives <= 0) appData.hero.maxLives = 10;
+    if (!Number.isFinite(appData.hero.lives) || appData.hero.lives < 0) appData.hero.lives = appData.hero.maxLives;
     
     if (!lastReset) {
         localStorage.setItem('lastDailyReset', today);
@@ -768,19 +769,22 @@ function checkDailyReset() {
         const cursor = new Date(lastDate);
 
         while (cursor < todayDate) {
-            applyPenalties(getLocalDateString(cursor));
+            const cursorDateStr = getLocalDateString(cursor);
+            applyPenalties(cursorDateStr);
             cursor.setDate(cursor.getDate() + 1);
         }
 
         // Limpar atividades do dia anterior
         appData.dailyWorkouts = [];
         appData.dailyStudies = [];
-
+        
         // Atualizar missões/trabalhos diários e limpar antigos
         cleanupOldDailyMissions();
         cleanupOldDailyWorks();
-        checkOverdueMissions();
-        checkOverdueWorks();
+        
+        // OBS: checkOverdueMissions/Works NÃO são chamados aqui porque
+        // applyPenalties já lida com falhas de atividades semanais.
+        // Chamá-los causaria penalidades duplicadas.
         
         // Gerar novas atividades do dia
         generateDailyActivities();
@@ -839,10 +843,10 @@ function resetBossGroup(names) {
         const boss = appData.bosses.find(b => b.name === name);
         if (!boss) return;
         if (!boss.defeated) {
-            boss.maxHp = boss.maxHp + 1;
+            boss.maxHp = Math.min(200, boss.maxHp + 1); // Limite máximo de HP
         } else {
-            if (boss.maxHp >= 95) {
-                boss.maxHp = boss.maxHp - 1;
+            if (boss.maxHp > 10) {
+                boss.maxHp = Math.max(10, boss.maxHp - 1); // Limite mínimo de HP
             }
             boss.defeated = false;
         }
@@ -853,12 +857,15 @@ function resetBossGroup(names) {
 
 function addHeroLog(type, title, content) {
     if (!appData.heroLogs) appData.heroLogs = [];
+    // Usar data local com horário correto
+    const now = new Date();
+    const localDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds());
     appData.heroLogs.push({
         id: createUniqueId(appData.heroLogs),
         type,
         title,
         content,
-        date: new Date().toISOString()
+        date: localDate.toISOString()
     });
     // Manter logs sob controle
     if (appData.heroLogs.length > 200) {
@@ -1289,6 +1296,21 @@ function initEvents() {
             document.getElementById('mobile-more-menu')?.classList.remove('active');
         });
     });
+    
+    // Botão editar foto do perfil
+    document.querySelector('.edit-profile-btn')?.addEventListener('click', async function() {
+        const newName = await askInput('Digite seu nome:', {
+            title: 'Editar Perfil',
+            defaultValue: appData.hero?.name || 'Herói'
+        });
+        if (newName && newName.trim()) {
+            appData.hero.name = newName.trim();
+            const nameEl = document.querySelector('.hero-name');
+            if (nameEl) nameEl.textContent = appData.hero.name;
+            saveToLocalStorage();
+            showFeedback('Nome atualizado!', 'success');
+        }
+    });
 
     document.getElementById('nav-more-toggle')?.addEventListener('click', function(e) {
         e.preventDefault();
@@ -1575,6 +1597,11 @@ function updateUI(options = {}) {
 
     const levelEl = document.getElementById('level');
     if (levelEl) levelEl.textContent = appData.hero.level;
+    
+    // Atualizar nome do herói
+    const heroNameEl = document.querySelector('.hero-name');
+    if (heroNameEl) heroNameEl.textContent = appData.hero?.name || 'Herói';
+    
     const currentXpEl = document.getElementById('current-xp');
     if (currentXpEl) currentXpEl.textContent = appData.hero.xp;
     const maxXpEl = document.getElementById('max-xp');
@@ -1696,9 +1723,11 @@ function updateIntegratedHearts() {
     
     if (!container) return;
     
+    // Validação segura para vidas
+    const maxHearts = Number.isFinite(appData.hero.maxLives) && appData.hero.maxLives > 0 ? appData.hero.maxLives : 10;
+    const currentHearts = Number.isFinite(appData.hero.lives) ? Math.max(0, Math.min(appData.hero.lives, maxHearts)) : maxHearts;
+    
     container.innerHTML = '';
-    const maxHearts = appData.hero.maxLives;
-    const currentHearts = appData.hero.lives;
     
     for (let i = 0; i < maxHearts; i++) {
         const heart = document.createElement('div');
@@ -1912,7 +1941,7 @@ function updateStudiesDisplay() {
         const percentage = (currentXp / 100) * 100;
         
         // Converter números dos dias para nomes
-        const dayNames = study.days.map(day => {
+        const dayNames = (study.days || []).map(day => {
             const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
             return days[day];
         }).join(', ');
@@ -2044,7 +2073,7 @@ function updateWorkoutsDisplay() {
         const percentage = (currentXp / 100) * 100;
         
         // Converter números dos dias para nomes
-        const dayNames = workout.days.map(day => {
+        const dayNames = (workout.days || []).map(day => {
             const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
             return days[day];
         }).join(', ');
@@ -2471,6 +2500,10 @@ function failMission(missionId, reason = '') {
     if (missionIndex === -1) return;
     
     const mission = appData.missions[missionIndex];
+    
+    // Verificar se já está falida para evitar penalidades duplicadas
+    if (mission.failed) return;
+    
     const isWeekly = mission.type === 'semanal';
     const todayStr = getLocalDateString();
     
@@ -2602,6 +2635,10 @@ function failWork(workId, reason = '') {
     if (workIndex === -1) return;
 
     const work = appData.works[workIndex];
+    
+    // Verificar se já está falido para evitar penalidades duplicadas
+    if (work.failed) return;
+    
     const isWeekly = work.type === 'semanal';
     const todayStr = getLocalDateString();
     if (!isWeekly) {
@@ -2950,7 +2987,21 @@ function updateCompletedWorks() {
     });
 }
 
-function checkOverdueWorks() {
+function checkOverdueWorks(options = {}) {
+    // Se for verificação inicial e lives <= 3, pode ser que o usuário acabou de restaurar
+    // Neste caso, pular falhas automáticas para evitar loop de game over
+    if (options.isInitialCheck && appData.hero.lives <= 3 && appData.hero.gameOverCounted === false) {
+        // Verificar se há flag de "recentemente restaurado"
+        const lastRestore = appData.hero.lastRestoreDate;
+        if (lastRestore) {
+            const today = getLocalDateString();
+            if (lastRestore === today) {
+                console.log('Verificação inicial: pulando falhas automáticas (usuário restaurou hoje)');
+                return;
+            }
+        }
+    }
+    
     const today = new Date();
     const todayStr = getLocalDateString();
     const yesterday = new Date(today);
@@ -2985,11 +3036,20 @@ function checkOverdueWorks() {
             }
         }
         
-        // Semanais NOVO: falha se não concluída na semana da availableDate
+        // Semanais: falha apenas se não foi concluída E não foi falha essa semana
         if (work.type === 'semanal') {
             const weekKey = getWeekKey(new Date());
             const lastShownWeek = work.lastShownWeek || getWeekKey(parseLocalDateString(work.availableDate || work.dateAdded || todayStr));
-            if (lastShownWeek !== weekKey) {
+            
+            // Verificar se já foi falha essa semana
+            const alreadyFailedThisWeek = appData.completedWorks.some(w => 
+                w.originalId === work.id && 
+                w.failed && 
+                w.failedDate && 
+                getWeekKey(parseLocalDateString(w.failedDate)) === weekKey
+            );
+            
+            if (lastShownWeek !== weekKey && !alreadyFailedThisWeek) {
                 overdueToFail.push({ id: work.id, reason: 'Semanal não concluída na semana' });
             }
         }
@@ -3047,7 +3107,6 @@ function updateWorksList() {
                 </div>
             </div>
             <div class="item-actions">
-                ${isOverdue ? `<button class="action-btn fail-btn" data-id="${work.id}">Falhar</button>` : ''}
                 <button class="action-btn edit-btn" data-id="${work.id}"><i class="fas fa-edit"></i></button>
                 <button class="action-btn delete-btn" data-id="${work.id}"><i class="fas fa-trash"></i></button>
             </div>
@@ -3067,19 +3126,6 @@ function updateWorksList() {
         btn.addEventListener('click', function() {
             const id = parseInt(this.getAttribute('data-id'), 10);
             deleteWork(id);
-        });
-    });
-
-    container.querySelectorAll('.fail-btn').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const id = parseInt(this.getAttribute('data-id'), 10);
-            const reason = await askInput('Digite o motivo da falha (opcional):', {
-                title: 'Falhar trabalho',
-                defaultValue: '',
-                confirmText: 'Falhar'
-            });
-            if (reason === null) return;
-            failWork(id, reason);
         });
     });
 }
@@ -3258,7 +3304,21 @@ function updateCompletedMissions() {
 
 
 // Verificar missões atrasadas diariamente (função ajustada)
-function checkOverdueMissions() {
+function checkOverdueMissions(options = {}) {
+    // Se for verificação inicial e lives <= 3, pode ser que o usuário acabou de restaurar
+    // Neste caso, pular falhas automáticas para evitar loop de game over
+    if (options.isInitialCheck && appData.hero.lives <= 3 && appData.hero.gameOverCounted === false) {
+        // Verificar se há flag de "recentemente restaurado"
+        const lastRestore = appData.hero.lastRestoreDate;
+        if (lastRestore) {
+            const today = getLocalDateString();
+            if (lastRestore === today) {
+                console.log('Verificação inicial: pulando falhas automáticas (usuário restaurou hoje)');
+                return;
+            }
+        }
+    }
+    
     const today = new Date();
     const todayStr = getLocalDateString();
     const yesterday = new Date(today);
@@ -3293,11 +3353,20 @@ function checkOverdueMissions() {
             }
         }
         
-        // Semanais NOVO: falha se não concluída na semana da availableDate
+        // Semanais: falha apenas se não foi concluída E não foi falha essa semana
         if (mission.type === 'semanal') {
             const weekKey = getWeekKey(new Date());
             const lastShownWeek = mission.lastShownWeek || getWeekKey(parseLocalDateString(mission.availableDate || mission.dateAdded || todayStr));
-            if (lastShownWeek !== weekKey) {
+            
+            // Verificar se já foi falha essa semana
+            const alreadyFailedThisWeek = appData.completedMissions.some(m => 
+                m.originalId === mission.id && 
+                m.failed && 
+                m.failedDate && 
+                getWeekKey(parseLocalDateString(m.failedDate)) === weekKey
+            );
+            
+            if (lastShownWeek !== weekKey && !alreadyFailedThisWeek) {
                 overdueToFail.push({ id: mission.id, reason: 'Semanal não concluída na semana' });
             }
         }
@@ -3358,7 +3427,6 @@ function updateMissionsList() {
                 </div>
             </div>
             <div class="item-actions">
-                ${isOverdue ? `<button class="action-btn fail-btn" data-id="${mission.id}">Falhar</button>` : ''}
                 <button class="action-btn edit-btn" data-id="${mission.id}"><i class="fas fa-edit"></i></button>
                 <button class="action-btn delete-btn" data-id="${mission.id}"><i class="fas fa-trash"></i></button>
             </div>
@@ -3379,20 +3447,6 @@ function updateMissionsList() {
         btn.addEventListener('click', function() {
             const id = parseInt(this.getAttribute('data-id'));
             deleteMission(id);
-        });
-    });
-    
-    // Adicionar eventos aos botões de falhar
-    container.querySelectorAll('.fail-btn').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const id = parseInt(this.getAttribute('data-id'));
-            const reason = await askInput('Digite o motivo da falha (opcional):', {
-                title: 'Falhar missão',
-                defaultValue: '',
-                confirmText: 'Falhar'
-            });
-            if (reason === null) return;
-            failMission(id, reason);
         });
     });
 }
@@ -6254,17 +6308,22 @@ function showGameOverModal() {
     modalTitle.textContent = 'Game Over';
     form.innerHTML = `
         <div class="form-group">
-            <p>Suas vidas chegaram a 0. Ao restaurar, 1 vida volta e todo o XP é zerado (níveis mantidos).</p>
+            <p>Suas vidas chegaram a 0. Ao restaurar, 3 vidas voltam e todo o XP é zerado (níveis mantidos).</p>
         </div>
-        <button type="button" id="gameover-restore-btn" class="submit-btn">Restaurar 1 vida</button>
+        <button type="button" id="gameover-restore-btn" class="submit-btn">Restaurar 3 vidas</button>
     `;
 
     form.querySelector('#gameover-restore-btn')?.addEventListener('click', function() {
-        const maxLives = Number.isFinite(appData.hero.maxLives) ? appData.hero.maxLives : 1;
-        appData.hero.lives = Math.min(maxLives, 1);
+        // Garantir que maxLives seja pelo menos 1
+        const maxLives = Math.max(1, Number.isFinite(appData.hero.maxLives) ? appData.hero.maxLives : 10);
+        appData.hero.maxLives = maxLives;
+        // Restaurar para 3 vidas (ou maxLives se for menor)
+        appData.hero.lives = Math.min(3, maxLives);
         appData.hero.gameOverCounted = false;
+        // Marcar que o usuário restaurou hoje (previne loop de game over)
+        appData.hero.lastRestoreDate = getLocalDateString();
         resetAllXpKeepLevels();
-        addHeroLog('system', 'Restaurar vida', 'Vida restaurada para 1 e todo o XP foi zerado (níveis mantidos).');
+        addHeroLog('system', 'Restaurar vida', 'Vidas restauradas para 3 e todo o XP foi zerado (níveis mantidos).');
         modal.dataset.locked = 'false';
         modal.dataset.gameOverShown = 'false';
         closeModal();
@@ -6275,12 +6334,24 @@ function showGameOverModal() {
     modal.classList.add('active');
 }
 
-function handleGameOverIfNeeded() {
+function handleGameOverIfNeeded(options = {}) {
     if (!appData.hero) return;
+    
+    // Garantir que maxLives seja válido
+    if (!Number.isFinite(appData.hero.maxLives) || appData.hero.maxLives < 1) {
+        appData.hero.maxLives = 10;
+    }
+    
+    // Se tem vida, garantir que gameOverCounted está como false
     if (appData.hero.lives > 0) {
-        appData.hero.gameOverCounted = false;
+        // Só resetar gameOverCounted se não for a verificação inicial
+        if (!options.isInitialCheck) {
+            appData.hero.gameOverCounted = false;
+        }
         return;
     }
+    
+    // Se lives <= 0, verificar se já tratamos isso
     if (appData.hero.lives <= 0) {
         const modal = document.getElementById('item-modal');
         if (modal?.dataset.gameOverShown === 'true') return;
@@ -7418,7 +7489,7 @@ async function useItem(itemId) {
     // Aplicar efeito
     switch(item.effect) {
         case 'heal':
-            if (appData.hero.lives < appData.hero.maxLives) {
+            if (Number.isFinite(appData.hero.lives) && Number.isFinite(appData.hero.maxLives) && appData.hero.lives < appData.hero.maxLives) {
                 appData.hero.lives++;
                 showToast('Poção usada! Vida restaurada.', 'success');
                 celebrateAction({ containerSelector: '#inventory-items', message: '+1 vida aplicada' });
@@ -7672,17 +7743,46 @@ function damageBoss(bossName, damage) {
       
       recentLogs.forEach(log => {
           const logElement = document.createElement('div');
-          logElement.className = `log-item ${log.type}`;
-          const logDate = parseLocalDateString(log.date).toLocaleString('pt-BR');
+          logElement.className = `log-item ${log.type || 'system'}`;
+          // Validação segura para data
+          let logDate = 'Data desconhecida';
+          if (log.date) {
+              try {
+                  const d = new Date(log.date);
+                  if (!isNaN(d.getTime())) {
+                      logDate = d.toLocaleString('pt-BR');
+                  }
+              } catch (e) {
+                  logDate = 'Data inválida';
+              }
+          }
           const icon = logIcons[log.type] || '📝';
-          logElement.innerHTML = `
-              <div class="log-icon">${icon}</div>
-              <div class="log-content">
-                  <div class="log-title">${log.title}</div>
-                  <div class="log-text">${log.content}</div>
-                  <div class="log-text">${logDate}</div>
-              </div>
-        `;
+          // Usar textContent para evitar XSS
+          const iconEl = document.createElement('div');
+          iconEl.className = 'log-icon';
+          iconEl.textContent = icon;
+          
+          const contentEl = document.createElement('div');
+          contentEl.className = 'log-content';
+          
+          const titleEl = document.createElement('div');
+          titleEl.className = 'log-title';
+          titleEl.textContent = log.title || '';
+          
+          const textEl = document.createElement('div');
+          textEl.className = 'log-text';
+          textEl.textContent = log.content || '';
+          
+          const dateEl = document.createElement('div');
+          dateEl.className = 'log-text';
+          dateEl.textContent = logDate;
+          
+          contentEl.appendChild(titleEl);
+          contentEl.appendChild(textEl);
+          contentEl.appendChild(dateEl);
+          
+          logElement.appendChild(iconEl);
+          logElement.appendChild(contentEl);
         container.appendChild(logElement);
     });
 }
@@ -8776,6 +8876,9 @@ function renderNutritionReports() {
         <div class="stat-card"><h4><i class="fas fa-utensils"></i> Refeição destaque</h4><div class="stat-value">${topMeal && topMeal.kcal > 0 ? formatMealName(topMeal.meal) : '-'}</div></div>
         <div class="stat-card"><h4><i class="fas fa-list-ol"></i> Registros no período</h4><div class="stat-value">${mealsLogged}</div></div>
     `;
+
+    // Verificar se Chart.js está disponível antes de renderizar gráficos
+    if (typeof Chart === 'undefined') return;
 
     updateNutritionWeeklyChart(dailySeries, days);
     updateNutritionMacroSplitChart(entries);
