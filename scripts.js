@@ -341,11 +341,7 @@ function loadFromLocalStorage() {
         try {
             const parsedData = JSON.parse(savedData);
             mergeData(appData, parsedData);
-            ensureCriticalDataShape();
-            ensureCoreAttributes();
-            ensureClasses();
-            ensureStartingLevels();
-            normalizeClassIds();
+            ensureDataIntegrity();
             console.log('Dados carregados do localStorage');
         } catch (e) {
             console.error('Erro ao carregar dados:', e);
@@ -707,6 +703,15 @@ function normalizeClassIds() {
 
     normalizeList(appData.works);
     normalizeList(appData.completedWorks);
+}
+
+// Função helper para consolidar validação de dados (elimina duplicação)
+function ensureDataIntegrity() {
+    ensureCriticalDataShape();
+    ensureCoreAttributes();
+    ensureClasses();
+    ensureStartingLevels();
+    normalizeClassIds();
 }
 
 // Função para mesclar dados
@@ -9530,11 +9535,7 @@ function importData() {
                 mergeData(mergedImport, importedData);
                 Object.keys(appData).forEach(key => delete appData[key]);
                 Object.assign(appData, mergedImport);
-                ensureCriticalDataShape();
-                ensureCoreAttributes();
-                ensureClasses();
-                ensureStartingLevels();
-                normalizeClassIds();
+                ensureDataIntegrity();
                 populateFinanceMonthOptions();
 
                 if (diaryDbAvailable) {
@@ -9986,6 +9987,41 @@ function applyPenalties(dateStr = getLocalDateString()) {
         failedTypes.push('mission');
     }
 
+    // Processar missões diárias que falharam (não foram completadas)
+    const todayStr = getLocalDateString();
+    const missedDailyMissions = (appData.missions || []).filter(m => 
+        m.type === 'diaria' && 
+        !m.completed && 
+        !m.failed && 
+        m.dateAdded && 
+        m.dateAdded < targetDateStr
+    );
+    missedDailyMissions.forEach(mission => {
+        // Verificar se já foi registrada como falha
+        const alreadyLogged = appData.completedMissions.some(entry =>
+            entry.failed &&
+            (entry.originalId || entry.id) === (mission.originalId || mission.id) &&
+            entry.failedDate === targetDateStr
+        );
+        if (!alreadyLogged) {
+            appData.completedMissions.push({
+                ...mission,
+                completedDate: targetDateStr,
+                failedDate: targetDateStr,
+                failed: true,
+                reason: 'Missão diária não completada'
+            });
+        }
+    });
+    // Remover missões diárias falhadas da lista ativa
+    if (missedDailyMissions.length > 0) {
+        const idsToRemove = new Set(missedDailyMissions.map(m => m.id));
+        appData.missions = (appData.missions || []).filter(m => !idsToRemove.has(m.id));
+        if (!failedTypes.includes('mission')) {
+            failedTypes.push('mission');
+        }
+    }
+
     const missedWeeklyMissions = logMissedWeeklyItems(appData.missions || [], appData.completedMissions || [], 'missão');
     if (missedWeeklyMissions > 0 && !failedTypes.includes('mission')) {
         failedTypes.push('mission');
@@ -9996,6 +10032,40 @@ function applyPenalties(dateStr = getLocalDateString()) {
         w.failedDate === targetDateStr && w.failed);
     if (failedWorks.length > 0) {
         failedTypes.push('work');
+    }
+
+    // Processar trabalhos diários que falharam (não foram completados)
+    const missedDailyWorks = (appData.works || []).filter(w => 
+        w.type === 'diaria' && 
+        !w.completed && 
+        !w.failed && 
+        w.dateAdded && 
+        w.dateAdded < targetDateStr
+    );
+    missedDailyWorks.forEach(work => {
+        // Verificar se já foi registrada como falha
+        const alreadyLogged = appData.completedWorks.some(entry =>
+            entry.failed &&
+            (entry.originalId || entry.id) === (work.originalId || work.id) &&
+            entry.failedDate === targetDateStr
+        );
+        if (!alreadyLogged) {
+            appData.completedWorks.push({
+                ...work,
+                completedDate: targetDateStr,
+                failedDate: targetDateStr,
+                failed: true,
+                reason: 'Trabalho diário não completado'
+            });
+        }
+    });
+    // Remover trabalhos diários falhados da lista ativa
+    if (missedDailyWorks.length > 0) {
+        const idsToRemove = new Set(missedDailyWorks.map(w => w.id));
+        appData.works = (appData.works || []).filter(w => !idsToRemove.has(w.id));
+        if (!failedTypes.includes('work')) {
+            failedTypes.push('work');
+        }
     }
 
     const missedWeeklyWorks = logMissedWeeklyItems(appData.works || [], appData.completedWorks || [], 'trabalho');
@@ -10084,9 +10154,15 @@ function applyPenalties(dateStr = getLocalDateString()) {
             item.failed = true;
             // Also add to completedWorkouts history
             if (!appData.completedWorkouts.some(w => w.workoutId === item.workoutId && w.date === item.date)) {
+                // Buscar informações do workout original
+                const originalWorkout = appData.workouts?.find(w => w.id === item.workoutId) || 
+                    appData.dailyWorkouts?.find(dw => dw.workoutId === item.workoutId) || {};
                 appData.completedWorkouts.push({
                     id: createUniqueId(appData.completedWorkouts),
                     workoutId: item.workoutId,
+                    name: originalWorkout.name || 'Treino',
+                    emoji: originalWorkout.emoji || '💪',
+                    type: originalWorkout.type || 'normal',
                     date: item.date,
                     completedDate: item.date,
                     failedDate: item.date,
@@ -10099,9 +10175,15 @@ function applyPenalties(dateStr = getLocalDateString()) {
             item.failed = true;
             // Also add to completedStudies history
             if (!appData.completedStudies.some(s => s.studyId === item.studyId && s.date === item.date)) {
+                // Buscar informações do estudo original
+                const originalStudy = appData.studies?.find(s => s.id === item.studyId) || 
+                    appData.dailyStudies?.find(ds => ds.studyId === item.studyId) || {};
                 appData.completedStudies.push({
                     id: createUniqueId(appData.completedStudies),
                     studyId: item.studyId,
+                    name: originalStudy.name || 'Estudo',
+                    emoji: originalStudy.emoji || '📚',
+                    type: originalStudy.type || 'logico',
                     date: item.date,
                     completedDate: item.date,
                     failedDate: item.date,

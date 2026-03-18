@@ -56,11 +56,16 @@
     }
 
     function applyDataGuards() {
-        if (typeof ensureCriticalDataShape === 'function') ensureCriticalDataShape();
-        ensureCoreAttributes();
-        ensureClasses();
-        ensureStartingLevels();
-        normalizeClassIds();
+        if (typeof ensureDataIntegrity === 'function') {
+            ensureDataIntegrity();
+        } else {
+            // Fallback if ensureDataIntegrity not yet defined
+            if (typeof ensureCriticalDataShape === 'function') ensureCriticalDataShape();
+            ensureCoreAttributes();
+            ensureClasses();
+            ensureStartingLevels();
+            normalizeClassIds();
+        }
         if (typeof populateFinanceMonthOptions === 'function') populateFinanceMonthOptions();
     }
 
@@ -84,11 +89,69 @@
 
     function setSyncStatus(message, kind) {
         const status = document.getElementById('cloud-sync-status');
-        if (!status) return;
-
-        status.textContent = message;
-        status.classList.remove('ok', 'warn', 'err');
-        status.classList.add(kind || 'warn');
+        if (status) {
+            status.textContent = message;
+            status.classList.remove('ok', 'warn', 'err', 'syncing');
+            status.classList.add(kind || 'warn');
+        }
+        
+        // Atualizar indicador no cabeçalho também
+        updateHeaderSyncIndicator(message, kind);
+    }
+    
+    function updateHeaderSyncIndicator(message, kind) {
+        let indicator = document.getElementById('header-sync-indicator');
+        if (!indicator) {
+            // Criar indicador no cabeçalho se não existir
+            const headerStats = document.querySelector('.header-stats');
+            if (headerStats) {
+                indicator = document.createElement('div');
+                indicator.id = 'header-sync-indicator';
+                indicator.className = 'stats-item sync-indicator';
+                indicator.style.cssText = 'cursor: pointer; padding: 4px 10px; border-radius: 8px; font-size: 0.85rem;';
+                indicator.title = 'Clique para sincronizar';
+                headerStats.appendChild(indicator);
+                
+                // Adicionar clique para sincronizar manualmente
+                indicator.addEventListener('click', function() {
+                    if (cloudReady && currentUser) {
+                        pushCloud(true);
+                    } else {
+                        // Se não está conectado, mostra o painel de login
+                        const panel = document.getElementById('cloud-auth-panel');
+                        if (panel) {
+                            panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+                        }
+                    }
+                });
+            }
+        }
+        
+        if (indicator) {
+            // Mapear mensagens para ícones e cores
+            let icon = '☁️';
+            let bgColor = 'rgba(255,255,255,0.05)';
+            let textColor = 'var(--gray-color)';
+            
+            if (kind === 'ok') {
+                icon = '✅';
+                bgColor = 'rgba(32, 217, 128, 0.2)';
+                textColor = '#20D980';
+            } else if (kind === 'err') {
+                icon = '❌';
+                bgColor = 'rgba(255, 77, 109, 0.2)';
+                textColor = '#FF4D6D';
+            } else if (message && message.toLowerCase().includes('sincronizando')) {
+                icon = '🔄';
+                bgColor = 'rgba(16, 242, 255, 0.2)';
+                textColor = '#10F2FF';
+            }
+            
+            indicator.innerHTML = `<span style="margin-right:4px;">${icon}</span><span>${message || 'Nuvem'}</span>`;
+            indicator.style.background = bgColor;
+            indicator.style.color = textColor;
+            indicator.style.border = `1px solid ${textColor}40`;
+        }
     }
 
     function setUserLabel(text) {
@@ -113,7 +176,6 @@
             '<button id="cloud-sync-now-btn" type="button">Sincronizar Agora</button>' +
             '<span id="cloud-user-label">Não autenticado</span>' +
             '<span id="cloud-sync-status" class="warn">Modo local</span>';
-        panel.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:9999;display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-radius:10px;background:rgba(9,12,20,.95);border:1px solid rgba(255,255,255,.12);max-width:560px;';
         document.body.appendChild(panel);
     }
 
@@ -132,13 +194,14 @@
         persistServerMetaToApp();
 
         try {
+            const payload = buildSerializableData();
             await getProgressRef(currentUser.uid).set({
-                appData: buildSerializableData(),
+                appData: payload,
                 serverMeta: { ...serverMeta },
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedBy: currentUser.email || currentUser.uid
             }, { merge: true });
-
+            
             setSyncStatus(force ? 'Sincronizado (agora)' : 'Sincronizado', 'ok');
         } catch (err) {
             console.error('Erro ao salvar na nuvem:', err);
@@ -149,20 +212,18 @@
                 saveQueued = false;
                 pushCloud(false);
             }
-            // 🔧 Step 2: Trigger local save após cloud sync
-            if (typeof queueSave === 'function') {
-                queueSave();
-            }
         }
     }
 
-    // Mantém compatibilidade mas usa saveManager
+    // Salva apenas na nuvem (sem localStorage)
     function queueCloudSave() {
-        if (!cloudReady || !currentUser) return;
-        if (saveTimer) clearTimeout(saveTimer);
-        saveTimer = setTimeout(function () {
-            pushCloud(false);
-        }, 1200);
+        if (!cloudReady || !currentUser) {
+            // Usuário não está logado - mostrar aviso
+            setSyncStatus('☁️ Faça login para salvar na nuvem', 'warn');
+            return;
+        }
+        // Push imediato para a nuvem (mais seguro)
+        pushCloud(false);
     }
 
     async function pullCloud(uid) {
@@ -182,7 +243,11 @@
         const remoteAppData = remote.appData;
         if (!remoteAppData || typeof remoteAppData !== 'object') return;
 
-        mergeData(appData, remoteAppData);
+        // Carregar dados da nuvem (substitui dados locais)
+        Object.keys(appData).forEach(key => delete appData[key]);
+        Object.assign(appData, deepClone(remoteAppData));
+        
+        setSyncStatus('Dados carregados da nuvem', 'ok');
         ensureDiaryMemoryMode();
 
         if (Array.isArray(remoteAppData.diaryEntries)) {
@@ -192,10 +257,8 @@
         }
 
         applyDataGuards();
-        localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify(buildSerializableData()));
 
         if (typeof updateUI === 'function') updateUI({ mode: 'full', forceCalendar: true });
-        setSyncStatus('Dados carregados da nuvem', 'ok');
     }
 
 
@@ -208,18 +271,15 @@
             updateServerMetaFromLocal();
         };
 
+        // Salva apenas na nuvem, sem localStorage
         window.saveToLocalStorage = function () {
-            // 🔧 Step 2: Usa saveManager centralizado
-            if (typeof queueSave === 'function') {
-                queueSave();
+            if (!cloudReady || !currentUser) {
+                // Usuário não está logado - mostrar aviso
+                setSyncStatus('☁️ Faça login para salvar', 'warn');
+                console.warn('Tentativa de save sem login na nuvem');
                 return;
             }
-            // Fallback
-            try {
-                localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify(buildSerializableData()));
-            } catch (err) {
-                console.error('Erro ao salvar cache local:', err);
-            }
+            // Salvar na nuvem
             queueCloudSave();
         };
 

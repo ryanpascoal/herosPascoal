@@ -64,49 +64,20 @@ function safeLocalStorageGet(key, fallback = null) {
     }
 }
 
-// Função centralizada de save com debounce
+// Função centralizada de save - apenas na nuvem
 window.queueSave = function() {
-    pendingSave = true;
-    
-    if (saveTimeout) {
-        return; // Já agendado
+    // Salvar apenas na nuvem
+    if (typeof queueCloudSave === 'function') {
+        queueCloudSave();
     }
-    
-    saveTimeout = setTimeout(() => {
-        performSave();
-    }, DEBOUNCE_MS);
 };
 
 function performSave() {
-    if (isSaving) {
-        pendingSave = true;
-        return;
+    // Salvar apenas na nuvem
+    if (typeof queueCloudSave === 'function') {
+        queueCloudSave();
     }
-    
-    isSaving = true;
-    saveTimeout = null;
-    
-    try {
-        // Salvar local primeiro
-        if (safeLocalStorageSet('heroJourneyData', serializeAppData())) {
-            console.log('✅ Dados salvos localmente (v' + appData.dataVersion + ')');
-            
-            // Queue cloud se disponível
-            if (typeof queueCloudSave === 'function') {
-                queueCloudSave();
-            }
-        }
-    } catch (e) {
-        console.error('Falha crítica no save:', e);
-        showFeedback('Erro no salvamento detectado. Dados em cache temporário.', 'warn');
-        // Fallback para IndexedDB se localStorage falhar (futuro)
-    } finally {
-        isSaving = false;
-        if (pendingSave) {
-            pendingSave = false;
-            performSave(); // Chain se ainda pendente
-        }
-    }
+    // Não salva mais localmente
 }
 
 // Substitui funções originais para compatibilidade
@@ -116,11 +87,7 @@ window.loadFromLocalStorage = function() {
     if (saved && typeof saved === 'object') {
         mergeData(appData, saved);
     }
-    ensureCriticalDataShape();
-    ensureCoreAttributes();
-    ensureClasses();
-    ensureStartingLevels();
-    normalizeClassIds();
+    ensureDataIntegrity();
     
     // Migrar resets antigos
     const oldDailyReset = localStorage.getItem('lastDailyReset');
@@ -147,21 +114,26 @@ setInterval(() => {
         // Usar encodeURIComponent para lidar com caracteres unicode (acentos)
         const dataHash = btoa(unescape(encodeURIComponent(jsonStr))).slice(0, 20);
         if (dataHash !== lastSaveHash) {
-            queueSave();
+            // Salvar apenas na nuvem
+            if (typeof queueCloudSave === 'function') {
+                queueCloudSave();
+            }
             lastSaveHash = dataHash;
         }
     } catch (e) {
-        // Se falhar, apenas faça save sem comparação de hash
-        queueSave();
+        // Se falhar, tente salvar na nuvem
+        if (typeof queueCloudSave === 'function') {
+            queueCloudSave();
+        }
     }
 }, 30000);
 
-// Cleanup na unload
+// Cleanup na unload - salva apenas na nuvem
 window.addEventListener('beforeunload', () => {
-    if (pendingSave || saveTimeout) {
-        performSave();
+    if (typeof queueCloudSave === 'function') {
+        queueCloudSave();
     }
 });
 
-console.log('🔧 SaveManager v1.0 carregado - Todos saves centralizados com debounce 1s');
+console.log('🔧 SaveManager v1.0 carregado - Saves apenas na nuvem');
 
