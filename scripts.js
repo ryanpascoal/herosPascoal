@@ -6324,6 +6324,17 @@ function handleGameOverIfNeeded(options = {}) {
     
     // Se lives <= 0, verificar se já tratamos isso
     if (appData.hero.lives <= 0) {
+        const todayStr = getLocalDateString();
+        
+        // Se o usuário restaurou hoje, não mostrar game over novamente
+        if (appData.hero.lastRestoreDate === todayStr) {
+            // Garantir que as vidas foram restauradas
+            const maxLives = Math.max(1, appData.hero.maxLives || 10);
+            appData.hero.lives = Math.min(3, maxLives);
+            appData.hero.gameOverCounted = false;
+            return;
+        }
+        
         const modal = document.getElementById('item-modal');
         if (modal?.dataset.gameOverShown === 'true') return;
         if (appData.hero.gameOverCounted === true) return;
