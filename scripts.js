@@ -334,17 +334,25 @@ document.addEventListener('DOMContentLoaded', function() {
     handleGameOverIfNeeded({ isInitialCheck: true });
 });
 
-// Carregar dados do localStorage
+// Carregar dados - agora delega para a nuvem quando disponível
 function loadFromLocalStorage() {
-    const savedData = localStorage.getItem('heroJourneyData');
-    if (savedData) {
-        try {
-            const parsedData = JSON.parse(savedData);
-            mergeData(appData, parsedData);
-            ensureDataIntegrity();
-            console.log('Dados carregados do localStorage');
-        } catch (e) {
-            console.error('Erro ao carregar dados:', e);
+    // Delegar para a função do cloud-sync se estiver disponível (ela é definida após autenticação)
+    // A função cloud-sync carrega os dados da nuvem quando o usuário está logado
+    if (typeof window.loadFromLocalStorage === 'function') {
+        // Chamar a função global (pode ser do cloud-sync ou fallback)
+        window.loadFromLocalStorage();
+    } else {
+        // Fallback: apenas para desenvolvimento offline sem Firebase
+        const savedData = localStorage.getItem('heroJourneyData');
+        if (savedData) {
+            try {
+                const parsedData = JSON.parse(savedData);
+                mergeData(appData, parsedData);
+                ensureDataIntegrity();
+                console.log('Dados carregados do localStorage (modo offline)');
+            } catch (e) {
+                console.error('Erro ao carregar dados:', e);
+            }
         }
     }
 }
@@ -739,15 +747,19 @@ function mergeData(target, source) {
 
 /* saveToLocalStorage() substituída por saveManager.js */
 
-// Verificar reset diário
+// Verificar reset diário - usa apenas serverMeta (salvo na nuvem)
 function checkDailyReset() {
     const today = getLocalDateString();
-    let lastReset = appData.serverMeta?.lastDailyReset || localStorage.getItem('lastDailyReset');
+    // Agora usa apenas serverMeta.lastDailyReset (que é salvo na nuvem)
+    let lastReset = appData.serverMeta?.lastDailyReset;
     if (!Number.isFinite(appData.hero.maxLives) || appData.hero.maxLives <= 0) appData.hero.maxLives = 10;
     if (!Number.isFinite(appData.hero.lives) || appData.hero.lives < 0) appData.hero.lives = appData.hero.maxLives;
     
     if (!lastReset) {
-        localStorage.setItem('lastDailyReset', today);
+        // Primeira vez: inicializar serverMeta e salvar na nuvem
+        if (!appData.serverMeta) appData.serverMeta = {};
+        appData.serverMeta.lastDailyReset = today;
+        queueSave();
         return;
     }
 
@@ -784,14 +796,18 @@ function checkDailyReset() {
     }
 }
 
-// Verificar reset semanal
+// Verificar reset semanal - usa apenas serverMeta (salvo na nuvem)
 function checkWeeklyReset() {
     const today = new Date();
     const thisWeekKey = getWeekKey(today);
-    let lastWeeklyReset = appData.serverMeta?.lastWeeklyReset || localStorage.getItem('lastWeeklyReset');
+    // Agora usa apenas serverMeta.lastWeeklyReset (que é salvo na nuvem)
+    let lastWeeklyReset = appData.serverMeta?.lastWeeklyReset;
 
     if (!lastWeeklyReset) {
-        localStorage.setItem('lastWeeklyReset', thisWeekKey);
+        // Primeira vez: inicializar serverMeta e salvar na nuvem
+        if (!appData.serverMeta) appData.serverMeta = {};
+        appData.serverMeta.lastWeeklyReset = thisWeekKey;
+        queueSave();
         return;
     }
 
@@ -9473,6 +9489,62 @@ async function saveDiaryEntry() {
 
 // Resetar progresso
 async function resetProgress() {
+    // Verificar se o Firebase está disponível e o usuário está logado
+    // Se sim, usar a função do cloud-sync para apagar os dados na nuvem também
+    if (typeof firebase !== 'undefined' && typeof auth !== 'undefined') {
+        // Usar a função de reset que apaga dados na nuvem
+        // delegar para a função do cloud-sync se disponível
+        if (typeof window.resetProgress === 'function') {
+            await window.resetProgress();
+            return;
+        }
+        
+        // Se a função global não existe, fazer o reset manualmente com nuvem
+        const confirmed = await askConfirmation('Tem certeza que deseja resetar todo o progresso? Isso não pode ser desfeito.', {
+            title: 'Resetar progresso',
+            confirmText: 'Continuar'
+        });
+        if (!confirmed) return;
+
+        const confirmationText = await askInput('Digite RESETAR para confirmar a exclusão total do progresso:', {
+            title: 'Confirmar reset',
+            confirmText: 'Resetar',
+            validate: value => value === 'RESETAR' ? '' : 'Digite exatamente RESETAR.'
+        });
+        if (confirmationText === null || confirmationText !== 'RESETAR') {
+            showFeedback('Reset cancelado.', 'info');
+            return;
+        }
+
+        // Limpar localStorage
+        localStorage.removeItem('heroJourneyData');
+        
+        // Tentar apagar dados na nuvem usando Firebase diretamente
+        try {
+            const user = firebase.auth().currentUser;
+            if (user) {
+                const db = firebase.firestore();
+                await db.collection('users').doc(user.uid).collection('progress').doc('main').delete();
+                console.log('Dados na nuvem apagados com sucesso');
+            }
+        } catch (err) {
+            console.error('Erro ao limpar dados na nuvem:', err);
+        }
+        
+        if (diaryDbAvailable) {
+            replaceDiaryEntriesInDB([]).then(() => {
+                diaryCache = [];
+                location.reload();
+            });
+            return;
+        }
+
+        // Recarregar a página
+        location.reload();
+        return;
+    }
+    
+    // Fallback para modo offline: apenas reset local
     const confirmed = await askConfirmation('Tem certeza que deseja resetar todo o progresso? Isso não pode ser desfeito.', {
         title: 'Resetar progresso',
         confirmText: 'Continuar'
@@ -9491,6 +9563,17 @@ async function resetProgress() {
 
     // Limpar localStorage
     localStorage.removeItem('heroJourneyData');
+    
+    // Também limpar dados na nuvem se estiver logado
+    if (typeof currentUser !== 'undefined' && currentUser && typeof getProgressRef === 'function') {
+        try {
+            await getProgressRef(currentUser.uid).delete();
+            console.log('Dados na nuvem apagados com sucesso');
+        } catch (err) {
+            console.error('Erro ao limpar dados na nuvem:', err);
+        }
+    }
+    
     if (diaryDbAvailable) {
         replaceDiaryEntriesInDB([]).then(() => {
             diaryCache = [];

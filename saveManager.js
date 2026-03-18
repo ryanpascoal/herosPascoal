@@ -83,6 +83,11 @@ function performSave() {
 // Substitui funções originais para compatibilidade
 window.saveToLocalStorage = window.queueSave;
 window.loadFromLocalStorage = function() {
+    // Se estiver logado na nuvem, a função do cloud-sync será usada automaticamente
+    // (cloud-sync.js sobrescreve esta função após a autenticação)
+    // Aqui é apenas um fallback para modo offline total
+    
+    // Verificar se existe dados locais (fallback)
     const saved = safeLocalStorageGet('heroJourneyData', null);
     if (saved && typeof saved === 'object') {
         mergeData(appData, saved);
