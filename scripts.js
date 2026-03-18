@@ -6,8 +6,8 @@ const appData = {
         level: 1,
         xp: 0,
         maxXp: 100,
-        lives: 10,
-        maxLives: 10,
+        lives: 7,
+        maxLives: 7,
         coins: 0,
         protection: {
             shield: false
@@ -2484,6 +2484,7 @@ function failMission(missionId, reason = '') {
     }
     
     // Atualizar estatísticas
+    if (!appData.statistics) appData.statistics = {};
     appData.statistics.missionsFailed = (appData.statistics.missionsFailed || 0) + 1;
     
     // Mover para missões concluídas (com status de falha)
@@ -2622,6 +2623,7 @@ function failWork(workId, reason = '') {
         failed: true,
         reason
     });
+    if (!appData.statistics) appData.statistics = {};
     appData.statistics.worksFailed = (appData.statistics.worksFailed || 0) + 1;
 
     if (!isWeekly) {
@@ -2656,6 +2658,7 @@ async function skipWork(workId) {
         skippedDate: todayStr,
         reason: 'Atividade pulada (1 item de pulo consumido)'
     });
+    if (!appData.statistics) appData.statistics = {};
     appData.statistics.worksIgnored = (appData.statistics.worksIgnored || 0) + 1;
     if (!isWeekly) {
         appData.works.splice(workIndex, 1);
@@ -6555,6 +6558,7 @@ function handleWorkoutCompletion() {
     // Atualizar streak
     
     // Atualizar estatísticas
+    if (!appData.statistics) appData.statistics = {};
     appData.statistics.workoutsDone = (appData.statistics.workoutsDone || 0) + 1;
     
     // Atualizar dia produtivo
@@ -6681,6 +6685,7 @@ function completeStudy(studyDayId, feedbackText = '') {
     // Atualizar streak
     
     // Atualizar estatísticas
+    if (!appData.statistics) appData.statistics = {};
     appData.statistics.studiesDone = (appData.statistics.studiesDone || 0) + 1;
     
     // Atualizar dia produtivo
@@ -6715,6 +6720,7 @@ function completeBook(bookId) {
     addAttributeXP(12, 20); // 20 XP de conhecimento
     
     // Atualizar estatísticas
+    if (!appData.statistics) appData.statistics = {};
     appData.statistics.booksRead = (appData.statistics.booksRead || 0) + 1;
     
     addHeroLog(
@@ -7049,6 +7055,7 @@ function completeMission(missionId, feedbackText = '') {
     appData.hero.coins += coinsGained;
     
     // Atualizar estatísticas
+    if (!appData.statistics) appData.statistics = {};
     appData.statistics.missionsDone = (appData.statistics.missionsDone || 0) + 1;
     updateProductiveDay(0, 1, 0, xpGained);
 
@@ -7129,6 +7136,7 @@ function completeWork(workId, feedbackText = '') {
 
     addXP(xpGained);
     appData.hero.coins += coinsGained;
+    if (!appData.statistics) appData.statistics = {};
     appData.statistics.worksDone = (appData.statistics.worksDone || 0) + 1;
     updateProductiveDay(0, 0, 0, xpGained, 1);
 
@@ -7367,6 +7375,7 @@ function cleanupOldDailyWorks() {
 function updateProductiveDay(workouts = 0, missions = 0, studies = 0, xp = 0, works = 0) {
     const today = getLocalDateString();
     
+    if (!appData.statistics) appData.statistics = {};
     if (!appData.statistics.productiveDays) {
         appData.statistics.productiveDays = {};
     }
@@ -10056,6 +10065,7 @@ function applyPenalties(dateStr = getLocalDateString()) {
         addAttributeXP(6, -1);
         
         // Update statistics
+        if (!appData.statistics) appData.statistics = {};
         if (failedTypes.includes('mission')) {
             appData.statistics.missionsFailed = (appData.statistics.missionsFailed || 0) + 1;
         }
