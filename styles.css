@@ -1287,6 +1287,27 @@ body.light-theme .calendar-day.death-day {
     border: 1px solid rgba(255,255,255,0.08);
 }
 
+/* Itens pendentes - com destaque */
+.calendar-details-item.pending {
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 87, 34, 0.08) 100%);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.calendar-details-item.pending .calendar-details-title {
+    color: #ffb74d;
+}
+
+/* Itens concluídos - com destaque verde */
+.calendar-details-item.completed {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(56, 142, 60, 0.05) 100%);
+    border: 1px solid rgba(76, 175, 80, 0.2);
+    opacity: 0.85;
+}
+
+.calendar-details-item.completed .calendar-details-title {
+    color: #81c784;
+}
+
 .calendar-details-title {
     display: flex;
     align-items: center;
@@ -1372,6 +1393,12 @@ body.light-theme .calendar-day.death-day {
     background: rgba(243, 156, 18, 0.16);
     border-color: rgba(243, 156, 18, 0.32);
     color: #FFC66D;
+}
+
+.calendar-tag.pending {
+    background: rgba(255, 152, 0, 0.18);
+    border-color: rgba(255, 152, 0, 0.35);
+    color: #FFB74D;
 }
 
 /* Preparação: Arena vs Biblioteca */
@@ -3302,6 +3329,63 @@ tr:hover {
 @keyframes blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+}
+
+/* Estilos para trabalhos urgentes */
+.item-card.urgent {
+    border: 2px solid #ff9800;
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 87, 34, 0.05) 100%);
+}
+
+.mission-card.urgent {
+    border-left: 4px solid #ff9800;
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.08) 0%, rgba(255, 87, 34, 0.03) 100%);
+}
+
+.mission-card.urgent .mission-name,
+.item-card.urgent .item-name {
+    color: #ff9800;
+    font-weight: bold;
+}
+
+.urgent-badge {
+    background: linear-gradient(135deg, #ff9800, #ff5722);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    margin-left: 8px;
+    animation: pulse-urgent 2s infinite;
+}
+
+@keyframes pulse-urgent {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.urgent-btn {
+    color: #9e9e9e !important;
+}
+
+.urgent-btn.active {
+    color: #ff9800 !important;
+}
+
+.checkbox-group {
+    margin: 15px 0;
+}
+
+.checkbox-group .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #ff9800;
 }
 
 .mission-deadline {

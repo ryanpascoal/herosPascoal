@@ -60,7 +60,6 @@
         ensureCoreAttributes();
         ensureClasses();
         ensureStartingLevels();
-        ensureWeeklyBossResets();
         normalizeClassIds();
         if (typeof populateFinanceMonthOptions === 'function') populateFinanceMonthOptions();
     }
@@ -272,12 +271,6 @@
                 persistServerMetaToApp();
                 saveToLocalStorage();
                 return;
-            }
-            if (serverMeta.lastWeeklyReset !== thisWeekKey) {
-                resetBossGroup(['Físico', 'Mental', 'Social', 'Espiritual', 'Trabalho']);
-                serverMeta.lastWeeklyReset = thisWeekKey;
-                persistServerMetaToApp();
-                saveToLocalStorage();
             }
         };
 

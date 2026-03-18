@@ -47,7 +47,6 @@ const appData = {
     shopItems: [
         { id: 1, name: "Poção", emoji: "🧪", cost: 50, level: 0, description: "Restaura 1 vida", effect: "heal" },
         { id: 2, name: "Escudo", emoji: "🛡️", cost: 100, level: 0, description: "Protege de 1 dano e de uma quebra de streak", effect: "shield" },
-        { id: 3, name: "Bomba", emoji: "💣", cost: 100, level: 0, description: "Causa 50 de dano em 1 chefe à sua escolha", effect: "bomb" },
         { id: 4, name: "Pulo", emoji: "⏭️", cost: 25, level: 0, description: "Permite pular 1 atividade sem penalidade", effect: "skip" }
     ],
     inventory: [],
@@ -57,13 +56,6 @@ const appData = {
     completedWorkouts: [],
     completedStudies: [],
     heroLogs: [],
-    bosses: [
-        { id: 1, name: "Físico", hp: 100, maxHp: 100, reset: "weekly", attributes: [1, 2, 3, 4], defeated: false, bonusActive: false },
-        { id: 2, name: "Mental", hp: 100, maxHp: 100, reset: "weekly", attributes: [5, 6, 7, 12], defeated: false, bonusActive: false },
-        { id: 3, name: "Social", hp: 100, maxHp: 100, reset: "weekly", attributes: [9, 10], defeated: false, bonusActive: false },
-        { id: 4, name: "Espiritual", hp: 100, maxHp: 100, reset: "weekly", attributes: [8, 11, 13], defeated: false, bonusActive: false },
-        { id: 5, name: "Trabalho", hp: 100, maxHp: 100, reset: "weekly", attributes: [14], defeated: false, bonusActive: false }
-    ],
     statistics: {
         workoutsDone: 0,
         workoutsIgnored: 0,
@@ -353,7 +345,6 @@ function loadFromLocalStorage() {
             ensureCoreAttributes();
             ensureClasses();
             ensureStartingLevels();
-            ensureWeeklyBossResets();
             normalizeClassIds();
             console.log('Dados carregados do localStorage');
         } catch (e) {
@@ -644,14 +635,6 @@ function ensureCriticalDataShape() {
         .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v));
 }
 
-function ensureWeeklyBossResets() {
-    if (!Array.isArray(appData.bosses)) return;
-    appData.bosses.forEach(boss => {
-        if (!boss || typeof boss !== 'object') return;
-        boss.reset = 'weekly';
-    });
-}
-
 function normalizeWeekdayValue(value) {
     const text = String(value ?? '').trim().toLowerCase();
     const byName = {
@@ -808,8 +791,6 @@ function checkWeeklyReset() {
     }
 
     if (lastWeeklyReset !== thisWeekKey) {
-        // Resetar todos os chefões semanalmente
-        resetBossGroup(["Físico", "Mental", "Social", "Espiritual", "Trabalho"]);
         
         appData.serverMeta.lastWeeklyReset = thisWeekKey;
         queueSave();
@@ -836,23 +817,6 @@ function getWeekKey(date) {
     const yearStart = new Date(weekYear, 0, 1);
     const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
     return `${weekYear}-W${weekNo}`;
-}
-
-function resetBossGroup(names) {
-    names.forEach(name => {
-        const boss = appData.bosses.find(b => b.name === name);
-        if (!boss) return;
-        if (!boss.defeated) {
-            boss.maxHp = Math.min(200, boss.maxHp + 1); // Limite máximo de HP
-        } else {
-            if (boss.maxHp > 10) {
-                boss.maxHp = Math.max(10, boss.maxHp - 1); // Limite mínimo de HP
-            }
-            boss.defeated = false;
-        }
-        boss.hp = boss.maxHp;
-        boss.bonusActive = false;
-    });
 }
 
 function addHeroLog(type, title, content) {
@@ -1659,9 +1623,6 @@ function updateUI(options = {}) {
         // Atualizar missões
         updateMissions();
         updateWorks();
-        
-        // Atualizar chefões
-        updateBosses();
         
         // Atualizar estatísticas
         updateStatistics();
@@ -2867,7 +2828,13 @@ function updateDailyWorks() {
         return '9999-12-31';
     };
 
-    dailyWorks.sort((a, b) => getWorkDueDate(a).localeCompare(getWorkDueDate(b)));
+    dailyWorks.sort((a, b) => {
+        // Urgentes primeiro
+        if (a.urgent && !b.urgent) return -1;
+        if (!a.urgent && b.urgent) return 1;
+        // Depois por data
+        return getWorkDueDate(a).localeCompare(getWorkDueDate(b));
+    });
 
     if (dailyWorks.length === 0) {
         container.innerHTML = '<p class="empty-message">Nenhum trabalho para hoje. Adicione novos trabalhos na aba de gerenciamento.</p>';
@@ -2877,7 +2844,8 @@ function updateDailyWorks() {
 
     dailyWorks.forEach(work => {
         const card = document.createElement('div');
-        card.className = 'mission-card with-side-actions';
+        const urgentClass = work.urgent ? 'urgent' : '';
+        card.className = `mission-card with-side-actions ${urgentClass}`;
 
         const attributesText = work.attributes.map(attrId => {
             const attr = appData.attributes.find(a => a.id === attrId);
@@ -2891,7 +2859,7 @@ function updateDailyWorks() {
             <div class="mission-header">
                 <div class="mission-name">
                     <span class="mission-emoji">${work.emoji || '💼'}</span>
-                    <span>${work.name}</span>
+                    <span>${work.name} ${work.urgent ? '<span class="urgent-badge">🚨 URGENTE</span>' : ''}</span>
                 </div>
                 <span class="mission-type ${work.type}">${getMissionTypeName(work.type)}</span>
             </div>
@@ -3074,7 +3042,14 @@ function updateWorksList() {
         return;
     }
 
-    appData.works.forEach(work => {
+    // Ordenar: urgentes primeiro, depois por data
+    const sortedWorks = [...appData.works].sort((a, b) => {
+        if (a.urgent && !b.urgent) return -1;
+        if (!a.urgent && b.urgent) return 1;
+        return 0;
+    });
+
+    sortedWorks.forEach(work => {
         const today = new Date();
         const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const isOverdue = (work.type === 'epica' && work.deadline && parseLocalDateString(work.deadline) < startOfToday) ||
@@ -3094,12 +3069,13 @@ function updateWorksList() {
         }
 
         const card = document.createElement('div');
-        card.className = `item-card ${isOverdue ? 'overdue' : ''}`;
+        const urgentClass = work.urgent ? 'urgent' : '';
+        card.className = `item-card ${isOverdue ? 'overdue' : ''} ${urgentClass}`;
         card.innerHTML = `
             <div class="item-info">
                 <span class="item-emoji">${work.emoji || '💼'}</span>
                 <div>
-                    <div class="item-name">${work.name}</div>
+                    <div class="item-name">${work.name} ${work.urgent ? '<span class="urgent-badge">🚨 URGENTE</span>' : ''}</div>
                     <div class="item-type">${getMissionTypeName(work.type)}</div>
                     ${classInfo}
                     ${deadlineInfo}
@@ -3107,6 +3083,7 @@ function updateWorksList() {
                 </div>
             </div>
             <div class="item-actions">
+                <button class="action-btn urgent-btn ${work.urgent ? 'active' : ''}" data-id="${work.id}" title="${work.urgent ? 'Remover urgência' : 'Marcar como urgente'}"><i class="fas fa-bell"></i></button>
                 <button class="action-btn edit-btn" data-id="${work.id}"><i class="fas fa-edit"></i></button>
                 <button class="action-btn delete-btn" data-id="${work.id}"><i class="fas fa-trash"></i></button>
             </div>
@@ -3126,6 +3103,19 @@ function updateWorksList() {
         btn.addEventListener('click', function() {
             const id = parseInt(this.getAttribute('data-id'), 10);
             deleteWork(id);
+        });
+    });
+    
+    // Toggle urgency
+    container.querySelectorAll('.urgent-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = parseInt(this.getAttribute('data-id'), 10);
+            const work = appData.works.find(w => w.id === id);
+            if (work) {
+                work.urgent = !work.urgent;
+                updateWorksList();
+                saveToLocalStorage();
+            }
         });
     });
 }
@@ -3448,40 +3438,6 @@ function updateMissionsList() {
             const id = parseInt(this.getAttribute('data-id'));
             deleteMission(id);
         });
-    });
-}
-// Atualizar chefões
-function updateBosses() {
-    appData.bosses.forEach(boss => {
-        const bossKey = boss.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        const hpElement = document.getElementById(`boss-${bossKey}-hp`);
-        const barElement = document.getElementById(`boss-${bossKey}-bar`);
-        
-        if (hpElement) {
-            hpElement.textContent = boss.hp;
-        }
-        
-        if (barElement) {
-            const percentage = (boss.hp / boss.maxHp) * 100;
-            const clampedPercentage = Math.max(0, Math.min(100, percentage));
-            barElement.style.width = `${clampedPercentage}%`;
-            
-            // Atualizar cor baseado na vida
-            if (percentage > 50) {
-                barElement.style.background = 'linear-gradient(to right, #4CAF50, #8BC34A)';
-            } else if (percentage > 25) {
-                barElement.style.background = 'linear-gradient(to right, #FF9800, #FFC107)';
-            } else {
-                barElement.style.background = 'linear-gradient(to right, #F44336, #FF5722)';
-            }
-        }
-        
-        // Atualizar status de derrotado
-        if (boss.hp <= 0 && !boss.defeated) {
-            boss.defeated = true;
-            boss.bonusActive = true;
-            showFeedback(`Chefe ${boss.name} derrotado! Você ganha +1 XP de bônus em todas as atividades até a próxima restauração.`, 'success', 3200);
-        }
     });
 }
 
@@ -4127,10 +4083,9 @@ function updateDiaryEntries() {
     const attributeFilter = document.getElementById('diary-filter-attribute')?.value || '';
     const xpFilter = document.getElementById('diary-filter-xp')?.value || 'all';
     
-    // Ordenar por data (mais recente primeiro)
-    const sortedEntries = [...entries].sort((a, b) => parseLocalDateString(b.date) - parseLocalDateString(a.date));
+    const sortedEntries = [...entries].sort((a, b) => new Date(b.date) - new Date(a.date));
     const filteredEntries = sortedEntries.filter(entry => {
-        const entryDate = parseLocalDateString(entry.date);
+        const entryDate = new Date(entry.date);
         const entryDateString = getLocalDateString(entryDate);
         const entryMonth = entryDateString.slice(0, 7);
 
@@ -4165,15 +4120,22 @@ function updateDiaryEntries() {
         const entryElement = document.createElement('div');
         entryElement.className = 'diary-entry';
         
-        const date = parseLocalDateString(entry.date);
-        const formattedDate = date.toLocaleDateString('pt-BR', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        // Usar localDate se disponível, caso contrário calcular a partir da data ISO
+        let formattedDate;
+        if (entry.localDate) {
+            formattedDate = entry.localDate;
+        } else {
+            const date = new Date(entry.date);
+            formattedDate = date.toLocaleString('pt-BR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZoneName: 'short'
+            });
+        }
         
         const attributesText = entry.attributes && entry.attributes.length > 0
             ? entry.attributes.map(attrId => {
@@ -5384,10 +5346,11 @@ function renderCalendarDetails(dateStr) {
     
     filteredItems.forEach(item => {
         const row = document.createElement('div');
-        row.className = 'calendar-details-item';
+        const isPending = item.status === 'pending';
+        row.className = `calendar-details-item ${isPending ? 'pending' : 'completed'}`;
         
         const statusTag = item.status === 'failed' ? 'Falhou' : item.status === 'skipped' ? 'Pulada' : item.status === 'done' ? 'Concluida' : 'Pendente';
-        const statusClass = item.status === 'failed' ? 'failed' : item.status === 'skipped' ? 'skipped' : item.status === 'done' ? 'done' : '';
+        const statusClass = item.status === 'failed' ? 'failed' : item.status === 'skipped' ? 'skipped' : item.status === 'done' ? 'done' : 'pending';
         
         row.innerHTML = `
             <div class="calendar-details-title">
@@ -6597,9 +6560,6 @@ function handleWorkoutCompletion() {
     // Atualizar dia produtivo
     updateProductiveDay(1, 0, 0, xpGained);
     
-    // Causar dano ao chefe físico (25 treinos para derrotar)
-    damageBoss('Físico', 4);
-
     addHeroLog(
         'workout',
         `Treino concluído: ${workout.name}`,
@@ -6726,10 +6686,6 @@ function completeStudy(studyDayId, feedbackText = '') {
     // Atualizar dia produtivo
     updateProductiveDay(0, 0, 1, xpGained);
     
-    // Causar dano ao chefe mental (maior se aplicado)
-    const mentalDamage = studyDay.applied ? 5 : 3;
-    damageBoss('Mental', mentalDamage);
-
     addHeroLog(
         'study',
         `Estudo concluído: ${study.name}`,
@@ -6761,9 +6717,6 @@ function completeBook(bookId) {
     // Atualizar estatísticas
     appData.statistics.booksRead = (appData.statistics.booksRead || 0) + 1;
     
-    // Causar dano ao chefe mental
-    damageBoss('Mental', 20);
-
     addHeroLog(
         'book',
         `Livro concluído: ${book.name}`,
@@ -6862,6 +6815,7 @@ function handleWorkSubmit(e) {
 
     const attributeCheckboxes = document.querySelectorAll('#work-attributes input[type="checkbox"]:checked');
     const attributes = Array.from(attributeCheckboxes).map(cb => parseInt(cb.value, 10));
+    const isUrgent = document.getElementById('work-urgent')?.checked === true;
 
     const newWork = {
         id: createUniqueId(appData.works, appData.completedWorks),
@@ -6871,6 +6825,7 @@ function handleWorkSubmit(e) {
         attributes,
         classId: Number.isFinite(classId) ? classId : null,
         completed: false,
+        urgent: isUrgent,
         dateAdded: getLocalDateString()
     };
 
@@ -7096,7 +7051,6 @@ function completeMission(missionId, feedbackText = '') {
     // Atualizar estatísticas
     appData.statistics.missionsDone = (appData.statistics.missionsDone || 0) + 1;
     updateProductiveDay(0, 1, 0, xpGained);
-    damageBossesByAttributes(mission.attributes);
 
     addHeroLog(
         'mission',
@@ -7177,8 +7131,6 @@ function completeWork(workId, feedbackText = '') {
     appData.hero.coins += coinsGained;
     appData.statistics.worksDone = (appData.statistics.worksDone || 0) + 1;
     updateProductiveDay(0, 0, 0, xpGained, 1);
-
-    damageBoss('Trabalho', 15);
 
     addHeroLog(
         'mission',
@@ -7511,40 +7463,7 @@ async function useItem(itemId) {
             addHeroLog('item', 'Escudo ativado', 'O próximo dano e quebra de streak serão evitados.');
             break;
             
-        case 'bomb':
-            const bossNameInput = await askInput('Selecione o chefe para atacar:\n1. Físico\n2. Mental\n3. Social\n4. Espiritual\n5. Trabalho', {
-                title: 'Usar bomba',
-                confirmText: 'Atacar',
-                validate: value => /^[1-5]$/.test(String(value).trim()) ? '' : 'Escolha um chefe entre 1 e 5.'
-            });
-            if (bossNameInput === null) {
-                appData.inventory.push({ id: itemId, purchaseDate: new Date().toISOString() });
-                return;
-            }
-            const bossName = String(bossNameInput).trim();
-            let boss;
-            
-            switch(bossName) {
-                case '1': boss = appData.bosses.find(b => b.name === 'Físico'); break;
-                case '2': boss = appData.bosses.find(b => b.name === 'Mental'); break;
-                case '3': boss = appData.bosses.find(b => b.name === 'Social'); break;
-                case '4': boss = appData.bosses.find(b => b.name === 'Espiritual'); break;
-                case '5': boss = appData.bosses.find(b => b.name === 'Trabalho'); break;
-                default: 
-                    showFeedback('Chefe inválido!', 'warn');
-                    appData.inventory.push({ id: itemId, purchaseDate: new Date().toISOString() });
-                    return;
-            }
-            
-            if (boss) {
-                damageBoss(boss.name, 50);
-                showToast(`Bomba usada! Causou 50 de dano no chefe ${boss.name}.`, 'success');
-                celebrateAction({ containerSelector: '#chefoes', message: `${boss.name} recebeu 50 de dano` });
-                addHeroLog('item', 'Bomba usada', `Dano de 50 no chefe ${boss.name}.`);
-            }
-            break;
-
-        case 'skip':
+case 'skip':
             // Token de pulo e consumido automaticamente ao pular atividades.
             appData.inventory.push({ id: itemId, purchaseDate: new Date().toISOString() });
             showFeedback('O item de pulo é usado ao clicar em "Pular" nas atividades.', 'info');
@@ -7563,11 +7482,7 @@ async function useItem(itemId) {
 
 // Adicionar XP ao herói
 function addXP(amount) {
-    // Aplicar bônus de chefões derrotados
-    const bonusMultiplier = 1 + (appData.bosses.filter(b => b.bonusActive).length * 0.01); // +1% por chefe derrotado
-    const finalAmount = Math.floor(amount * bonusMultiplier);
-    
-    appData.hero.xp += finalAmount;
+    appData.hero.xp += amount;
     
     // Verificar se subiu de nível
     while (appData.hero.xp >= appData.hero.maxXp) {
@@ -7594,12 +7509,8 @@ function addAttributeXP(attributeId, amount) {
     const attribute = appData.attributes.find(a => a.id === attributeId);
     if (!attribute) return;
     
-    // Aplicar bônus de chefões derrotados
-    const bonusMultiplier = 1 + (appData.bosses.filter(b => b.bonusActive).length * 0.01);
-    const finalAmount = Math.floor(amount * bonusMultiplier);
-
     const oldXp = Number.isFinite(attribute.xp) ? attribute.xp : 0;
-    attribute.xp = Math.max(0, oldXp + finalAmount);
+    attribute.xp = Math.max(0, oldXp + amount);
     
     // Verificar se subiu de nível
     const oldLevel = Math.floor(oldXp / 100);
@@ -7621,13 +7532,9 @@ function addClassXP(classId, amount) {
     const cls = appData.classes.find(c => c.id === classId);
     if (!cls) return;
     
-    // Aplicar bônus de chefes derrotados
-    const bonusMultiplier = 1 + (appData.bosses.filter(b => b.bonusActive).length * 0.01);
-    const finalAmount = Math.floor(amount * bonusMultiplier);
+    cls.xp += amount;
     
-    cls.xp += finalAmount;
-    
-    const oldLevel = Math.floor((cls.xp - finalAmount) / 100);
+    const oldLevel = Math.floor((cls.xp - amount) / 100);
     const newLevel = Math.floor(cls.xp / 100);
     
     if (newLevel > oldLevel) {
@@ -7638,84 +7545,7 @@ function addClassXP(classId, amount) {
     cls.level = newLevel;
 }
 
-function damageBossesByAttributes(attributeIds) {
-    // Cada atributo associado gera um "hit" no chefe correspondente.
-    // O dano por hit e diferente por chefe para calibrar progressao.
-    const bossHits = {
-        'Físico': 0,
-        'Mental': 0,
-        'Social': 0,
-        'Espiritual': 0
-    };
-    const damagePerHit = {
-        'Físico': 2,
-        'Mental': 2,
-        'Social': 2,
-        'Espiritual': 20
-    };
-    
-    // Mapear atributos para chefões
-    attributeIds.forEach(attrId => {
-        // Força, Vigor, Agilidade, Habilidade -> Físico
-        if ([1, 2, 3, 4].includes(attrId)) {
-            bossHits['Físico']++;
-        }
-        // Criatividade, Disciplina, Inteligência, Conhecimento -> Mental
-        if ([5, 6, 7, 12].includes(attrId)) {
-            bossHits['Mental']++;
-        }
-        // Liderança, Sociabilidade -> Social
-        if ([9, 10].includes(attrId)) {
-            bossHits['Social']++;
-        }
-        // Fé, Justiça, Casamento -> Espiritual
-        if ([8, 11, 13].includes(attrId)) {
-            bossHits['Espiritual']++;
-        }
-    });
-    
-    // Aplicar dano
-    Object.entries(bossHits).forEach(([bossName, hits]) => {
-        if (hits > 0) {
-            const totalDamage = hits * (damagePerHit[bossName] || 0);
-            damageBoss(bossName, totalDamage);
-        }
-    });
-}
-
-// Causar dano a um chefe específico
-function damageBoss(bossName, damage) {
-    const boss = appData.bosses.find(b => b.name === bossName);
-    if (!boss) return;
-    
-    boss.hp = Math.max(0, boss.hp - damage);
-    
-    // Verificar se foi derrotado
-    if (boss.hp <= 0 && !boss.defeated) {
-        boss.defeated = true;
-        boss.bonusActive = true;
-        
-        // Recompensas por derrotar chefe
-        addXP(20);
-        if (boss.attributes && boss.attributes.length > 0) {
-            boss.attributes.forEach(attrId => addAttributeXP(attrId, 10));
-        }
-        addHeroLog(
-            'boss',
-            `Chefe derrotado: ${boss.name}`,
-            '+20 XP e +10 XP em cada atributo associado'
-        );
-        celebrateAction({
-            containerSelector: '#chefoes',
-            xp: 20,
-            message: `Chefe ${boss.name} derrotado! Bônus ativo.`
-        });
-        
-    }
-}
-
-// Adicione esta função para gerar resumos do herói
-  function generateHeroLogs() {
+function generateHeroLogs() {
       const container = document.getElementById('hero-logs');
       if (!container) return;
       
@@ -7735,7 +7565,6 @@ function damageBoss(bossName, damage) {
           book: '📖',
           level: '🏆',
           item: '🎁',
-          boss: '🐉',
           rest: '🌙',
           penalty: '⚠️',
           system: '⚙️'
@@ -9587,6 +9416,8 @@ async function saveDiaryEntry() {
         title: title || 'Sem título',
         content,
         date: new Date().toISOString(),
+        // Armazenar também a data local para display rápido
+        localDate: getLocalDateString() + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         xpGained: diaryXpGained
     };
     
@@ -10068,7 +9899,7 @@ function applyPenalties(dateStr = getLocalDateString()) {
     const failedTypes = [];
     
     // Check workouts - was there any failed workout on this day?
-    const failedWorkouts = appData.dailyWorkouts.filter(item => 
+    let failedWorkouts = appData.dailyWorkouts.filter(item => 
         item.date === targetDateStr && !item.completed && !item.skipped);
     if (failedWorkouts.length > 0) {
         failedTypes.push('workout');
@@ -10088,15 +9919,23 @@ function applyPenalties(dateStr = getLocalDateString()) {
                     dw.date === targetDateStr &&
                     (dw.completed || dw.skipped || dw.failed)
                 );
-            const anyMissedWorkout = scheduledWorkouts.some(w => !hasWorkoutEntry(w.id));
-            if (anyMissedWorkout) {
+            const missedScheduledWorkouts = scheduledWorkouts.filter(w => !hasWorkoutEntry(w.id));
+            if (missedScheduledWorkouts.length > 0) {
                 failedTypes.push('workout');
+                // Also add to failedWorkouts array for processing below
+                missedScheduledWorkouts.forEach(workout => {
+                    failedWorkouts.push({
+                        workoutId: workout.id,
+                        date: targetDateStr,
+                        failed: true
+                    });
+                });
             }
         }
     }
     
     // Check studies - was there any failed study on this day?
-    const failedStudies = appData.dailyStudies.filter(item => 
+    let failedStudies = appData.dailyStudies.filter(item => 
         item.date === targetDateStr && !item.completed && !item.skipped);
     if (failedStudies.length > 0) {
         failedTypes.push('study');
@@ -10116,9 +9955,17 @@ function applyPenalties(dateStr = getLocalDateString()) {
                     ds.date === targetDateStr &&
                     (ds.completed || ds.skipped || ds.failed)
                 );
-            const anyMissedStudy = scheduledStudies.some(s => !hasStudyEntry(s.id));
-            if (anyMissedStudy) {
+            const missedScheduledStudies = scheduledStudies.filter(s => !hasStudyEntry(s.id));
+            if (missedScheduledStudies.length > 0) {
                 failedTypes.push('study');
+                // Also add to failedStudies array for processing below
+                missedScheduledStudies.forEach(study => {
+                    failedStudies.push({
+                        studyId: study.id,
+                        date: targetDateStr,
+                        failed: true
+                    });
+                });
             }
         }
     }
@@ -10222,9 +10069,37 @@ function applyPenalties(dateStr = getLocalDateString()) {
             appData.statistics.studiesIgnored = (appData.statistics.studiesIgnored || 0) + failedStudies.length;
         }
         
-        // Mark daily items as failed
-        failedWorkouts.forEach(item => { item.failed = true; });
-        failedStudies.forEach(item => { item.failed = true; });
+        // Mark daily items as failed and record in history
+        failedWorkouts.forEach(item => { 
+            item.failed = true;
+            // Also add to completedWorkouts history
+            if (!appData.completedWorkouts.some(w => w.workoutId === item.workoutId && w.date === item.date)) {
+                appData.completedWorkouts.push({
+                    id: createUniqueId(appData.completedWorkouts),
+                    workoutId: item.workoutId,
+                    date: item.date,
+                    completedDate: item.date,
+                    failedDate: item.date,
+                    failed: true,
+                    reason: 'Atividade não completada'
+                });
+            }
+        });
+        failedStudies.forEach(item => { 
+            item.failed = true;
+            // Also add to completedStudies history
+            if (!appData.completedStudies.some(s => s.studyId === item.studyId && s.date === item.date)) {
+                appData.completedStudies.push({
+                    id: createUniqueId(appData.completedStudies),
+                    studyId: item.studyId,
+                    date: item.date,
+                    completedDate: item.date,
+                    failedDate: item.date,
+                    failed: true,
+                    reason: 'Atividade não completada'
+                });
+            }
+        });
         
         // Build failure message
         let failMessage = 'Você perdeu vidas por não completar atividades: ';

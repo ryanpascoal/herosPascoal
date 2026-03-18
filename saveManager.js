@@ -120,7 +120,6 @@ window.loadFromLocalStorage = function() {
     ensureCoreAttributes();
     ensureClasses();
     ensureStartingLevels();
-    ensureWeeklyBossResets();
     normalizeClassIds();
     
     // Migrar resets antigos
@@ -143,10 +142,17 @@ window.loadFromLocalStorage = function() {
 // Auto-save periódico otimizado (a cada 30s se mudou algo)
 let lastSaveHash = '';
 setInterval(() => {
-    const dataHash = btoa(JSON.stringify(appData)).slice(0, 20);
-    if (dataHash !== lastSaveHash) {
+    try {
+        const jsonStr = JSON.stringify(appData);
+        // Usar encodeURIComponent para lidar com caracteres unicode (acentos)
+        const dataHash = btoa(unescape(encodeURIComponent(jsonStr))).slice(0, 20);
+        if (dataHash !== lastSaveHash) {
+            queueSave();
+            lastSaveHash = dataHash;
+        }
+    } catch (e) {
+        // Se falhar, apenas faça save sem comparação de hash
         queueSave();
-        lastSaveHash = dataHash;
     }
 }, 30000);
 
