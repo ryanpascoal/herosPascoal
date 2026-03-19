@@ -3,6 +3,7 @@
 
     const CLOUD_CACHE_KEY = 'heroJourneyData';
     const AUTH_CACHE_KEY = 'heroJourneyAuth';
+    const LAST_SYNC_KEY = 'heroJourneyLastSync';
 
     // Preencha com as credenciais do seu projeto Firebase.
     const FIREBASE_CONFIG = {
@@ -226,6 +227,73 @@
         pushCloud(false);
     }
 
+    // Função para verificar e notificar sobre modificações remotas
+    function checkRemoteModification(remoteTimestamp) {
+        if (!remoteTimestamp) return;
+        
+        // Converter timestamp do Firebase para data
+        let remoteDate;
+        if (remoteTimestamp.toDate && typeof remoteTimestamp.toDate === 'function') {
+            remoteDate = remoteTimestamp.toDate();
+        } else if (remoteTimestamp instanceof Date) {
+            remoteDate = remoteTimestamp;
+        } else if (typeof remoteTimestamp === 'string') {
+            remoteDate = new Date(remoteTimestamp);
+        } else {
+            return;
+        }
+        
+        // Obter último sincronização local
+        const lastLocalSync = localStorage.getItem(LAST_SYNC_KEY);
+        const lastSyncDate = lastLocalSync ? new Date(parseInt(lastLocalSync)) : null;
+        
+        // Se há dados locais e a nuvem foi modificada mais recentemente
+        if (lastSyncDate && remoteDate > lastSyncDate) {
+            const diffMs = Date.now() - remoteDate.getTime();
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            
+            let timeAgo;
+            if (diffMins < 1) timeAgo = 'há poucos segundos';
+            else if (diffMins < 60) timeAgo = `há ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
+            else if (diffHours < 24) timeAgo = `há ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+            else timeAgo = remoteDate.toLocaleDateString('pt-BR');
+            
+            // Mostrar notificação
+            showRemoteChangeNotification(timeAgo);
+        }
+    }
+    
+    // Mostrar notificação de alteração remota
+    function showRemoteChangeNotification(timeAgo) {
+        const notification = document.createElement('div');
+        notification.id = 'remote-change-notification';
+        notification.className = 'notification-banner info';
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px; padding: 12px;">
+                <span style="font-size: 1.5rem;">📱</span>
+                <div style="flex: 1;">
+                    <strong>Dados modificados em outro dispositivo</strong>
+                    <p style="margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9;">
+                        Última alteração na nuvem: ${timeAgo}
+                    </p>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" style="
+                    background: none; border: none; color: inherit; 
+                    font-size: 1.2rem; cursor: pointer; opacity: 0.7;
+                ">&times;</button>
+            </div>
+        `;
+        
+        // Inserir no topo da página
+        document.body.insertBefore(notification, document.body.firstChild);
+        
+        // Auto-remover após 10 segundos
+        setTimeout(() => {
+            if (notification.parentElement) notification.remove();
+        }, 10000);
+    }
+    
     async function pullCloud(uid) {
         const snap = await getProgressRef(uid).get();
         if (!snap.exists) {
@@ -235,6 +303,11 @@
         }
 
         const remote = snap.data() || {};
+        
+        // Verificar se houve modificação remota antes de sobrescrever
+        const remoteTimestamp = remote.updatedAt;
+        checkRemoteModification(remoteTimestamp);
+        
         if (remote.serverMeta && typeof remote.serverMeta === 'object') {
             serverMeta.lastDailyReset = remote.serverMeta.lastDailyReset || null;
             serverMeta.lastWeeklyReset = remote.serverMeta.lastWeeklyReset || null;
@@ -246,6 +319,9 @@
         // Carregar dados da nuvem (substitui dados locais)
         Object.keys(appData).forEach(key => delete appData[key]);
         Object.assign(appData, deepClone(remoteAppData));
+        
+        // Registrar timestamp local da última sincronização
+        localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
         
         setSyncStatus('Dados carregados da nuvem', 'ok');
         ensureDiaryMemoryMode();

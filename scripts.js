@@ -2522,6 +2522,16 @@ function failMission(missionId, reason = '') {
         appData.missions.splice(missionIndex, 1);
     }
     
+    // Se for missão diária, recriar para amanhã (como no completeMission)
+    if (mission.type === 'diaria') {
+        recreateDailyMissionForTomorrow(mission);
+    }
+    
+    // Se for missão semanal, recriar para o próximo dia agendado da semana
+    if (mission.type === 'semanal') {
+        recreateWeeklyMissionForNextWeek(mission);
+    }
+    
     // Atualizar UI
     updateUI();
     if (!hadShield) {
@@ -2650,6 +2660,17 @@ function failWork(workId, reason = '') {
     if (!isWeekly) {
         appData.works.splice(workIndex, 1);
     }
+    
+    // Se for trabalho diário, recriar para amanhã (como no skipWork)
+    if (work.type === 'diaria') {
+        recreateDailyWorkForTomorrow(work);
+    }
+    
+    // Se for trabalho semanal, recriar para o próximo dia agendado da semana
+    if (work.type === 'semanal') {
+        recreateWeeklyWorkForNextWeek(work);
+    }
+    
     updateUI({ mode: 'activity' });
     if (!hadShield) {
         handleGameOverIfNeeded();
@@ -7213,6 +7234,62 @@ function recreateDailyMissionForTomorrow(originalMission) {
     console.log(`Missão diária "${originalMission.name}" recriada para ${tomorrowStr} (disponível amanhã)`);
 }
 
+// Recriar missão semanal para o próximo dia agendado da semana
+function recreateWeeklyMissionForNextWeek(originalMission) {
+    if (!originalMission.days || originalMission.days.length === 0) {
+        console.log(`Missão semanal "${originalMission.name}" não tem dias agendados, não será recriada`);
+        return;
+    }
+    
+    const today = new Date();
+    const currentDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, etc.
+    
+    // Encontrar o próximo dia agendado
+    let nextDay = null;
+    for (let i = 0; i < 7; i++) {
+        const checkDay = (currentDayOfWeek + i + 1) % 7;
+        if (originalMission.days.includes(checkDay)) {
+            nextDay = checkDay;
+            break;
+        }
+    }
+    
+    if (nextDay === null) {
+        console.log(`Missão semanal "${originalMission.name}" não tem próximo dia agendado`);
+        return;
+    }
+    
+    // Calcular a data do próximo dia agendado
+    const nextDate = new Date(today);
+    const daysUntilNext = (nextDay - currentDayOfWeek + 7) % 7;
+    if (daysUntilNext === 0) {
+        nextDate.setDate(nextDate.getDate() + 7); // Se é hoje, vai para próxima semana
+    } else {
+        nextDate.setDate(nextDate.getDate() + daysUntilNext);
+    }
+    const nextDateStr = getLocalDateString(nextDate);
+    
+    // Criar nova missão semanal para o próximo dia
+    const newMission = {
+        id: createUniqueId(appData.missions, appData.completedMissions),
+        originalId: originalMission.originalId || originalMission.id,
+        name: originalMission.name,
+        emoji: originalMission.emoji || '🎯',
+        type: 'semanal',
+        attributes: [...originalMission.attributes],
+        days: [...originalMission.days],
+        completed: false,
+        dateAdded: nextDateStr,
+        availableDate: nextDateStr,
+        lastShownWeek: getWeekKey(nextDate)
+    };
+    
+    // Adicionar à lista de missões
+    appData.missions.push(newMission);
+    
+    console.log(`Missão semanal "${originalMission.name}" recriada para ${nextDateStr} (dia ${nextDay})`);
+}
+
 // Recriar missões diárias para o dia atual (VERSÃO CORRIGIDA)
 function recreateDailyMissionsForToday() {
     const today = new Date();
@@ -7325,6 +7402,63 @@ function recreateDailyWorkForTomorrow(originalWork) {
     };
 
     appData.works.push(newWork);
+}
+
+// Recriar trabalho semanal para o próximo dia agendado da semana
+function recreateWeeklyWorkForNextWeek(originalWork) {
+    if (!originalWork.days || originalWork.days.length === 0) {
+        console.log(`Trabalho semanal "${originalWork.name}" não tem dias agendados, não será recriado`);
+        return;
+    }
+    
+    const today = new Date();
+    const currentDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, etc.
+    
+    // Encontrar o próximo dia agendado
+    let nextDay = null;
+    for (let i = 0; i < 7; i++) {
+        const checkDay = (currentDayOfWeek + i + 1) % 7;
+        if (originalWork.days.includes(checkDay)) {
+            nextDay = checkDay;
+            break;
+        }
+    }
+    
+    if (nextDay === null) {
+        console.log(`Trabalho semanal "${originalWork.name}" não tem próximo dia agendado`);
+        return;
+    }
+    
+    // Calcular a data do próximo dia agendado
+    const nextDate = new Date(today);
+    const daysUntilNext = (nextDay - currentDayOfWeek + 7) % 7;
+    if (daysUntilNext === 0) {
+        nextDate.setDate(nextDate.getDate() + 7); // Se é hoje, vai para próxima semana
+    } else {
+        nextDate.setDate(nextDate.getDate() + daysUntilNext);
+    }
+    const nextDateStr = getLocalDateString(nextDate);
+    
+    // Criar novo trabalho semanal para o próximo dia
+    const newWork = {
+        id: createUniqueId(appData.works, appData.completedWorks),
+        originalId: originalWork.originalId || originalWork.id,
+        name: originalWork.name,
+        emoji: originalWork.emoji || '💼',
+        type: 'semanal',
+        attributes: [...originalWork.attributes],
+        days: [...originalWork.days],
+        classId: originalWork.classId || null,
+        completed: false,
+        dateAdded: nextDateStr,
+        availableDate: nextDateStr,
+        lastShownWeek: getWeekKey(nextDate)
+    };
+    
+    // Adicionar à lista de trabalhos
+    appData.works.push(newWork);
+    
+    console.log(`Trabalho semanal "${originalWork.name}" recriado para ${nextDateStr} (dia ${nextDay})`);
 }
 
 function recreateDailyWorksForToday() {

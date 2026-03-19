@@ -127,6 +127,44 @@
     transform: scale(1.05);
 }
 
+/* Remote Change Notification Banner */
+.notification-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    padding: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: slideDown 0.3s ease-out;
+}
+
+.notification-banner.info {
+    background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
+    color: white;
+}
+
+.notification-banner.warn {
+    background: linear-gradient(135deg, #ff9900 0%, #cc7700 100%);
+    color: white;
+}
+
+.notification-banner.error {
+    background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+    color: white;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
 /* Hero logs visual override (avoid gray-heavy look) */
 .hero-logs-section {
     background: linear-gradient(160deg, rgba(10, 16, 28, 0.98), rgba(19, 78, 112, 0.22));
@@ -4324,6 +4362,21 @@ body {
 
 body.light-theme .stats-item .stats-icon {
     color: #f59e0b; /* Cor dourada para moedas no modo claro */
+}
+
+/* Cor para o texto de moedas no modo claro */
+body.light-theme #coin-count {
+    color: #d97706; /* Texto dourado mais escuro para melhor legibilidade */
+}
+
+/* Cor para o texto de streak no modo claro */
+body.light-theme #streak-count {
+    color: #ea580c; /* Laranja escuro para melhor legibilidade */
+}
+
+/* Cor para o texto de vida no modo claro */
+body.light-theme #life-count {
+    color: #dc2626; /* Vermelho escuro para melhor legibilidade */
 }
 
 .main-nav {
