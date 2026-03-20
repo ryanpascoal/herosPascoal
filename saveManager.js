@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Save Manager - Centraliza todos os saves com debounce e error recovery
  * Step 2 do plano de revisão do sistema de salvamento
  */
@@ -8,6 +8,7 @@ let isSaving = false;
 let pendingSave = false;
 const DEBOUNCE_MS = 1000;
 const DATA_VERSION = 2; // Incrementar em mudanças estruturais
+const LOCAL_PROGRESS_KEY = 'heroJourneyData';
 
 // Adiciona versão e serverMeta ao appData se não existirem
 function ensureDataVersion() {
@@ -19,7 +20,7 @@ function ensureDataVersion() {
         // Aqui futuras migrações estruturais
         appData.dataVersion = DATA_VERSION;
     }
-    
+
     if (!appData.serverMeta) {
         appData.serverMeta = {
             lastDailyReset: null,
@@ -41,7 +42,9 @@ function safeLocalStorageSet(key, value) {
         return true;
     } catch (e) {
         console.error('Erro ao salvar localStorage:', e);
-        showFeedback('Erro ao salvar dados localmente. Verifique espaço do navegador.', 'error');
+        if (typeof showFeedback === 'function') {
+            showFeedback('Erro ao salvar dados localmente. Verifique espaço do navegador.', 'error');
+        }
         return false;
     }
 }
@@ -59,25 +62,26 @@ function safeLocalStorageGet(key, fallback = null) {
     } catch (e) {
         console.error('Erro ao carregar localStorage:', e);
         // Recovery automático com defaults
-        showFeedback('Dados corrompidos restaurados com configurações padrão.', 'warn');
+        if (typeof showFeedback === 'function') {
+            showFeedback('Dados corrompidos restaurados com configurações padrão.', 'warn');
+        }
         return fallback || APP_DEFAULTS;
     }
 }
 
-// Função centralizada de save - apenas na nuvem
+// Função centralizada de save - sempre salva localmente e tenta nuvem
 window.queueSave = function() {
-    // Salvar apenas na nuvem
+    const serialized = serializeAppData();
+    safeLocalStorageSet(LOCAL_PROGRESS_KEY, serialized);
+
+    // Tenta sincronizar na nuvem quando disponível
     if (typeof window.queueCloudSave === 'function') {
         window.queueCloudSave();
     }
 };
 
 function performSave() {
-    // Salvar apenas na nuvem
-    if (typeof window.queueCloudSave === 'function') {
-        window.queueCloudSave();
-    }
-    // Não salva mais localmente
+    window.queueSave();
 }
 
 // Substitui funções originais para compatibilidade
@@ -86,14 +90,14 @@ window.loadFromLocalStorage = function() {
     // Se estiver logado na nuvem, a função do cloud-sync será usada automaticamente
     // (cloud-sync.js sobrescreve esta função após a autenticação)
     // Aqui é apenas um fallback para modo offline total
-    
+
     // Verificar se existe dados locais (fallback)
-    const saved = safeLocalStorageGet('heroJourneyData', null);
+    const saved = safeLocalStorageGet(LOCAL_PROGRESS_KEY, null);
     if (saved && typeof saved === 'object') {
         mergeData(appData, saved);
     }
     ensureDataIntegrity();
-    
+
     // Migrar resets antigos
     const oldDailyReset = localStorage.getItem('lastDailyReset');
     const oldWeeklyReset = localStorage.getItem('lastWeeklyReset');
@@ -107,8 +111,8 @@ window.loadFromLocalStorage = function() {
         localStorage.removeItem('lastWeeklyReset');
         console.log('Migrado lastWeeklyReset para appData.serverMeta');
     }
-    
-    console.log('✅ Dados carregados (v' + (appData.dataVersion || 1) + ')');
+
+    console.log('Dados carregados (v' + (appData.dataVersion || 1) + ')');
 };
 
 // Auto-save periódico otimizado (a cada 30s se mudou algo)
@@ -119,26 +123,18 @@ setInterval(() => {
         // Usar encodeURIComponent para lidar com caracteres unicode (acentos)
         const dataHash = btoa(unescape(encodeURIComponent(jsonStr))).slice(0, 20);
         if (dataHash !== lastSaveHash) {
-            // Salvar apenas na nuvem
-            if (typeof window.queueCloudSave === 'function') {
-                window.queueCloudSave();
-            }
+            window.queueSave();
             lastSaveHash = dataHash;
         }
     } catch (e) {
-        // Se falhar, tente salvar na nuvem
-        if (typeof window.queueCloudSave === 'function') {
-            window.queueCloudSave();
-        }
+        // Em erro de hash, tenta persistir estado mesmo assim
+        window.queueSave();
     }
 }, 30000);
 
-// Cleanup na unload - salva apenas na nuvem
+// Cleanup na unload - salva local e tenta nuvem
 window.addEventListener('beforeunload', () => {
-    if (typeof window.queueCloudSave === 'function') {
-        window.queueCloudSave();
-    }
+    window.queueSave();
 });
 
-console.log('🔧 SaveManager v1.0 carregado - Saves apenas na nuvem');
-
+console.log('SaveManager v1.1 carregado - backup local + sync nuvem');

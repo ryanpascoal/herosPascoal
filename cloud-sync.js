@@ -49,6 +49,14 @@
         return JSON.parse(JSON.stringify(value));
     }
 
+    function persistLocalCache() {
+        try {
+            localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify(deepClone(appData)));
+        } catch (err) {
+            console.warn('Falha ao persistir cache local:', err);
+        }
+    }
+
     function ensureDiaryMemoryMode() {
         if (typeof diaryDbAvailable !== 'undefined') diaryDbAvailable = false;
         if (!Array.isArray(appData.diaryEntries)) appData.diaryEntries = [];
@@ -74,6 +82,21 @@
         const payload = deepClone(appData);
         payload.diaryEntries = Array.isArray(diaryCache) ? deepClone(diaryCache) : deepClone(appData.diaryEntries || []);
         return payload;
+    }
+
+    async function loadLegacyDiaryFromIndexedDBIfNeeded() {
+        if (Array.isArray(appData.diaryEntries) && appData.diaryEntries.length > 0) return;
+        if (typeof getAllDiaryEntriesFromDB !== 'function') return;
+        try {
+            const legacyEntries = await getAllDiaryEntriesFromDB();
+            if (!Array.isArray(legacyEntries) || legacyEntries.length === 0) return;
+            appData.diaryEntries = legacyEntries.slice();
+            diaryCache = appData.diaryEntries;
+            diaryLoaded = true;
+            console.log('Diário legado migrado do IndexedDB para memória/nuvem');
+        } catch (err) {
+            console.warn('Falha ao ler diário legado do IndexedDB:', err);
+        }
     }
 
     function updateServerMetaFromLocal() {
@@ -184,6 +207,11 @@
         return db.collection('users').doc(uid).collection('progress').doc('main');
     }
 
+    function canRunCriticalResets() {
+        return cloudReady && !!currentUser;
+    }
+    window.shouldRunCriticalResets = canRunCriticalResets;
+
     async function pushCloud(force) {
         if (!cloudReady || !currentUser) return;
         if (saveInFlight) {
@@ -219,8 +247,8 @@
     // Salva apenas na nuvem (sem localStorage)
     function queueCloudSave() {
         if (!cloudReady || !currentUser) {
-            // Usuário não está logado - mostrar aviso
-            setSyncStatus('☁️ Faça login para salvar na nuvem', 'warn');
+            // Sem login: em modo cloud-only ignoramos saves automáticos silenciosamente.
+            // O estado de conexão já é exibido via onAuthStateChanged.
             return;
         }
         // Push imediato para a nuvem (mais seguro)
@@ -298,6 +326,7 @@
     async function pullCloud(uid) {
         const snap = await getProgressRef(uid).get();
         if (!snap.exists) {
+            await loadLegacyDiaryFromIndexedDBIfNeeded();
             updateServerMetaFromLocal();
             return { hasRemoteData: false };
         }
@@ -324,6 +353,7 @@
         
         // Registrar timestamp local da última sincronização
         localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+        persistLocalCache();
         
         setSyncStatus('Dados carregados da nuvem', 'ok');
         ensureDiaryMemoryMode();
@@ -350,12 +380,10 @@
             updateServerMetaFromLocal();
         };
 
-        // Salva apenas na nuvem, sem localStorage
+        // Salva na nuvem quando autenticado; sem login, mantem cache local.
         window.saveToLocalStorage = function () {
             if (!cloudReady || !currentUser) {
-                // Usuário não está logado - mostrar aviso
-                setSyncStatus('☁️ Faça login para salvar', 'warn');
-                console.warn('Tentativa de save sem login na nuvem');
+                persistLocalCache();
                 return;
             }
             // Salvar na nuvem
@@ -368,15 +396,10 @@
         };
 
         window.saveDiaryEntryToStorage = async function (entry) {
-            // 🔧 Step 3: Usa funções IndexedDB corretas + saveManager
-            if (typeof saveDiaryEntryToStorage === 'function' && diaryDbAvailable) {
-                await saveDiaryEntryToStorage(entry);
-            } else {
-                if (!Array.isArray(appData.diaryEntries)) appData.diaryEntries = [];
-                appData.diaryEntries.push(entry);
-                diaryCache = appData.diaryEntries;
-                diaryLoaded = true;
-            }
+            if (!Array.isArray(appData.diaryEntries)) appData.diaryEntries = [];
+            appData.diaryEntries.push(entry);
+            diaryCache = appData.diaryEntries;
+            diaryLoaded = true;
             if (typeof queueSave === 'function') {
                 queueSave();
             }
@@ -385,18 +408,37 @@
 
         window.checkDailyReset = function () {
             const today = getLocalDateString();
-            if (serverMeta.lastDailyReset !== today) {
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                applyPenalties(getLocalDateString(yesterday));
+            let lastReset = serverMeta.lastDailyReset || appData.serverMeta?.lastDailyReset || null;
+            if (!Number.isFinite(appData.hero.maxLives) || appData.hero.maxLives <= 0) appData.hero.maxLives = 10;
+            if (!Number.isFinite(appData.hero.lives) || appData.hero.lives < 0) appData.hero.lives = appData.hero.maxLives;
+
+            if (!lastReset) {
+                serverMeta.lastDailyReset = today;
+                persistServerMetaToApp();
+                saveToLocalStorage();
+                return;
+            }
+
+            if (lastReset !== today) {
+                const lastDate = parseLocalDateString(lastReset);
+                const todayDate = parseLocalDateString(today);
+                const cursor = new Date(lastDate);
+
+                while (cursor < todayDate) {
+                    applyPenalties(getLocalDateString(cursor));
+                    cursor.setDate(cursor.getDate() + 1);
+                }
 
                 appData.dailyWorkouts = [];
                 appData.dailyStudies = [];
+                cleanupOldDailyMissions();
+                cleanupOldDailyWorks();
                 generateDailyActivities();
 
                 serverMeta.lastDailyReset = today;
                 persistServerMetaToApp();
                 saveToLocalStorage();
+                if (typeof updateUI === 'function') updateUI({ mode: 'activity' });
             }
         };
 
@@ -405,11 +447,18 @@
             const thisWeekKey = (typeof getWeekKey === 'function')
                 ? getWeekKey(today)
                 : `${today.getFullYear()}-W${getWeekNumber(today)}`;
-            if (!serverMeta.lastWeeklyReset) {
+            const lastWeeklyReset = serverMeta.lastWeeklyReset || appData.serverMeta?.lastWeeklyReset || null;
+            if (!lastWeeklyReset) {
                 serverMeta.lastWeeklyReset = thisWeekKey;
                 persistServerMetaToApp();
                 saveToLocalStorage();
                 return;
+            }
+            if (lastWeeklyReset !== thisWeekKey) {
+                serverMeta.lastWeeklyReset = thisWeekKey;
+                persistServerMetaToApp();
+                saveToLocalStorage();
+                if (typeof updateUI === 'function') updateUI({ mode: 'activity' });
             }
         };
 
@@ -529,6 +578,13 @@
                 if (result && result.hasRemoteData === false) {
                     await pushCloud(true);
                 }
+                if (typeof checkDailyReset === 'function') checkDailyReset();
+                if (typeof checkOverdueMissions === 'function') checkOverdueMissions({ isInitialCheck: true });
+                if (typeof checkOverdueWorks === 'function') checkOverdueWorks({ isInitialCheck: true });
+                if (typeof checkWeeklyReset === 'function') checkWeeklyReset();
+                if (typeof updateStreaks === 'function') updateStreaks();
+                if (typeof handleGameOverIfNeeded === 'function') handleGameOverIfNeeded({ isInitialCheck: true });
+                if (typeof updateUI === 'function') updateUI({ mode: 'full', forceCalendar: true });
             } catch (err) {
                 console.error('Erro ao carregar nuvem:', err);
                 setSyncStatus('Falha ao carregar nuvem', 'err');
@@ -554,4 +610,3 @@
 
     init();
 })();
-

@@ -293,6 +293,18 @@
                         <button class="settings-btn" id="import-btn"><i class="fas fa-upload"></i> Importar Dados</button>
                         <button class="settings-btn" onclick="toggleTheme()"> Alternar Tema</button>
                     </div>
+                    <div class="day-sim-panel">
+                        <h4><i class="fas fa-calendar-day"></i> Simulação de Dia (Teste)</h4>
+                        <p class="day-sim-note">Use para testar virada diária/semanal sem mudar o relógio do computador.</p>
+                        <div class="day-sim-controls">
+                            <button class="settings-btn" id="day-sim-minus" type="button"><i class="fas fa-minus"></i> -1 dia</button>
+                            <input id="day-sim-date" type="date" />
+                            <button class="settings-btn" id="day-sim-apply" type="button"><i class="fas fa-check"></i> Aplicar</button>
+                            <button class="settings-btn" id="day-sim-plus" type="button"><i class="fas fa-plus"></i> +1 dia</button>
+                            <button class="settings-btn" id="day-sim-reset" type="button"><i class="fas fa-clock"></i> Tempo Real</button>
+                        </div>
+                        <div class="day-sim-status" id="day-sim-status">Tempo real ativo</div>
+                    </div>
 
                     <div class="cloud-sync-card">
                         <h4><i class="fas fa-cloud"></i> Sincronização na Nuvem</h4>
@@ -1534,7 +1546,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
-
 
 
 

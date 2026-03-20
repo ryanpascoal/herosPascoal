@@ -678,6 +678,47 @@ body {
     box-shadow: 0 0 16px rgba(124, 92, 255, 0.18);
 }
 
+.day-sim-panel {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 196, 76, 0.35);
+    background: linear-gradient(135deg, rgba(255, 196, 76, 0.12), rgba(255, 255, 255, 0.03));
+}
+
+.day-sim-panel h4 {
+    margin-bottom: 6px;
+}
+
+.day-sim-note {
+    color: var(--gray-color);
+    font-size: 0.88rem;
+    margin-bottom: 10px;
+}
+
+.day-sim-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    align-items: center;
+}
+
+.day-sim-controls input[type="date"] {
+    width: 100%;
+    min-height: 40px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(16, 21, 35, 0.75);
+    color: var(--light-color);
+    padding: 8px 10px;
+}
+
+.day-sim-status {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #FFE58A;
+}
+
 
 .cloud-sync-card {
     margin-top: 16px;

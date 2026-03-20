@@ -117,14 +117,18 @@ const appData = {
         startDate: null,
         logDates: [],
         goalHitDates: []
+    },
+    devTime: {
+        enabled: false,
+        currentDate: null
     }
 };
 const APP_DEFAULTS = JSON.parse(JSON.stringify(appData));
 
 // Estado do calendário (aba Calendários)
 let calendarState = {
-    month: new Date().getMonth(),
-    year: new Date().getFullYear(),
+    month: getGameNow().getMonth(),
+    year: getGameNow().getFullYear(),
     selectedDate: null,
     detailsFilter: 'all'
 };
@@ -299,22 +303,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // 1. Primeiro: carregar dados salvos
     loadFromLocalStorage();
     normalizeActivityDays();
-    checkDailyReset();
+    const canRunCriticalResets = (typeof window.shouldRunCriticalResets === 'function')
+        ? window.shouldRunCriticalResets()
+        : true;
     
-    // 2. Verificar e recriar missões diárias para HOJE (coloque AQUI!)
-    recreateDailyMissionsForToday();
-    recreateDailyWorksForToday();
-    
-    cleanupOldDailyMissions();
-    cleanupOldDailyWorks();
+    if (canRunCriticalResets) {
+        checkDailyReset();
+        
+        // 2. Verificar e recriar missões diárias para HOJE (coloque AQUI!)
+        recreateDailyMissionsForToday();
+        recreateDailyWorksForToday();
+        
+        cleanupOldDailyMissions();
+        cleanupOldDailyWorks();
 
-    // 3. Depois: verificar outras coisas
-    checkOverdueMissions({ isInitialCheck: true });
-    checkOverdueWorks({ isInitialCheck: true });
-    checkWeeklyReset();
-    
-    // 4. Gerar atividades do dia
-    generateDailyActivities();
+        // 3. Depois: verificar outras coisas
+        checkOverdueMissions({ isInitialCheck: true });
+        checkOverdueWorks({ isInitialCheck: true });
+        checkWeeklyReset();
+        
+        // 4. Gerar atividades do dia
+        generateDailyActivities();
+    }
     
     // 5. Resto da inicialização...
     updateStreaks();
@@ -331,16 +341,19 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(checkDailyReset, 60000);
     setInterval(checkWeeklyReset, 60000);
     setInterval(updateStreaks, 60000);
-    handleGameOverIfNeeded({ isInitialCheck: true });
+    if (canRunCriticalResets) {
+        handleGameOverIfNeeded({ isInitialCheck: true });
+    }
 });
 
 // Carregar dados - agora delega para a nuvem quando disponível
 function loadFromLocalStorage() {
+    const delegatedLoader = window.loadFromLocalStorage;
     // Delegar para a função do cloud-sync se estiver disponível (ela é definida após autenticação)
     // A função cloud-sync carrega os dados da nuvem quando o usuário está logado
-    if (typeof window.loadFromLocalStorage === 'function') {
+    if (typeof delegatedLoader === 'function' && delegatedLoader !== loadFromLocalStorage) {
         // Chamar a função global (pode ser do cloud-sync ou fallback)
-        window.loadFromLocalStorage();
+        delegatedLoader();
     } else {
         // Fallback: apenas para desenvolvimento offline sem Firebase
         const savedData = localStorage.getItem('heroJourneyData');
@@ -637,6 +650,14 @@ function ensureCriticalDataShape() {
     appData.hydration.goalHitDates = appData.hydration.goalHitDates
         .map(v => String(v || '').trim())
         .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v));
+
+    if (!appData.devTime || typeof appData.devTime !== 'object') {
+        appData.devTime = { enabled: false, currentDate: getLocalDateString(new Date()) };
+    }
+    appData.devTime.enabled = appData.devTime.enabled === true;
+    if (typeof appData.devTime.currentDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(appData.devTime.currentDate)) {
+        appData.devTime.currentDate = getLocalDateString(new Date());
+    }
 }
 
 function normalizeWeekdayValue(value) {
@@ -798,7 +819,7 @@ function checkDailyReset() {
 
 // Verificar reset semanal - usa apenas serverMeta (salvo na nuvem)
 function checkWeeklyReset() {
-    const today = new Date();
+    const today = getGameNow();
     const thisWeekKey = getWeekKey(today);
     // Agora usa apenas serverMeta.lastWeeklyReset (que é salvo na nuvem)
     let lastWeeklyReset = appData.serverMeta?.lastWeeklyReset;
@@ -1175,7 +1196,7 @@ function generateDailyActivities() {
     if (!Array.isArray(appData.workouts)) appData.workouts = [];
     if (!Array.isArray(appData.studies)) appData.studies = [];
 
-    const today = new Date();
+    const today = getGameNow();
     const dayOfWeek = today.getDay();
     const todayStr = getLocalDateString(today);
     const hasScheduledDay = (days) => Array.isArray(days) && days.some(day => normalizeWeekdayValue(day) === dayOfWeek);
@@ -1231,7 +1252,7 @@ function initUI() {
     // Configurar a data atual
     const currentDateElement = document.getElementById('current-date');
     if (currentDateElement) {
-        const now = new Date();
+        const now = getGameNow();
         currentDateElement.textContent = now.toLocaleDateString('pt-BR', {
             weekday: 'long',
             year: 'numeric',
@@ -1241,15 +1262,16 @@ function initUI() {
     }
     const currentDateWorkElement = document.getElementById('current-date-work');
     if (currentDateWorkElement) {
-        currentDateWorkElement.textContent = currentDateElement?.textContent || new Date().toLocaleDateString('pt-BR');
+        currentDateWorkElement.textContent = currentDateElement?.textContent || getGameNow().toLocaleDateString('pt-BR');
     }
     
     // Configurar a data do diário
     const diaryDateElement = document.getElementById('diary-date');
     if (diaryDateElement) {
-        const now = new Date();
+        const now = getGameNow();
         diaryDateElement.textContent = now.toLocaleDateString('pt-BR');
     }
+    updateDaySimulationStatus();
     
     // Inicializar os seletores de atributos
     initAttributesSelectors();
@@ -1463,6 +1485,17 @@ function initEvents() {
     document.getElementById('reset-btn')?.addEventListener('click', resetProgress);
     document.getElementById('export-btn')?.addEventListener('click', exportData);
     document.getElementById('import-btn')?.addEventListener('click', importData);
+    document.getElementById('day-sim-minus')?.addEventListener('click', () => shiftSimulatedDate(-1));
+    document.getElementById('day-sim-plus')?.addEventListener('click', () => shiftSimulatedDate(1));
+    document.getElementById('day-sim-apply')?.addEventListener('click', () => {
+        const dateInput = document.getElementById('day-sim-date');
+        if (!dateInput || !dateInput.value) {
+            showFeedback('Selecione uma data para simular.', 'warn');
+            return;
+        }
+        applySimulatedDate(dateInput.value);
+    });
+    document.getElementById('day-sim-reset')?.addEventListener('click', resetToRealTime);
 
     // Calendário
     document.getElementById('cal-prev-month')?.addEventListener('click', () => {
@@ -2311,7 +2344,7 @@ async function deleteShopItem(id) {
 // Função para verificar e atualizar streaks
 function updateStreaks() {
     const today = getLocalDateString();
-    const todayDate = new Date(today);
+    const todayDate = parseLocalDateString(today);
     const DAY_MS = 1000 * 60 * 60 * 24;
     
     // Inicializar se não existir
@@ -2333,7 +2366,7 @@ function updateStreaks() {
             return;
         }
 
-        const lastCheckDate = new Date(lastCheckStr);
+        const lastCheckDate = parseLocalDateString(lastCheckStr);
         const diffDays = Math.floor((todayDate - lastCheckDate) / DAY_MS);
 
         if (diffDays > 1) {
@@ -2829,7 +2862,7 @@ function updateDailyWorks() {
 
     container.innerHTML = '';
 
-    const today = new Date();
+    const today = getGameNow();
     const dayOfWeek = today.getDay();
     const todayStr = getLocalDateString();
 
@@ -3017,7 +3050,7 @@ function checkOverdueWorks(options = {}) {
         }
     }
     
-    const today = new Date();
+    const today = getGameNow();
     const todayStr = getLocalDateString();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -3053,7 +3086,7 @@ function checkOverdueWorks(options = {}) {
         
         // Semanais: falha apenas se não foi concluída E não foi falha essa semana
         if (work.type === 'semanal') {
-            const weekKey = getWeekKey(new Date());
+            const weekKey = getWeekKey(getGameNow());
             const lastShownWeek = work.lastShownWeek || getWeekKey(parseLocalDateString(work.availableDate || work.dateAdded || todayStr));
             const workLineageKey = work.originalId || work.id;
             
@@ -3176,7 +3209,7 @@ function updateDailyMissions() {
     
     container.innerHTML = '';
     
-    const today = new Date();
+    const today = getGameNow();
     const dayOfWeek = today.getDay();
     const todayStr = getLocalDateString();
     
@@ -3357,7 +3390,7 @@ function checkOverdueMissions(options = {}) {
         }
     }
     
-    const today = new Date();
+    const today = getGameNow();
     const todayStr = getLocalDateString();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -3393,7 +3426,7 @@ function checkOverdueMissions(options = {}) {
         
         // Semanais: falha apenas se não foi concluída E não foi falha essa semana
         if (mission.type === 'semanal') {
-            const weekKey = getWeekKey(new Date());
+            const weekKey = getWeekKey(getGameNow());
             const lastShownWeek = mission.lastShownWeek || getWeekKey(parseLocalDateString(mission.availableDate || mission.dateAdded || todayStr));
             const missionLineageKey = mission.originalId || mission.id;
             
@@ -7221,7 +7254,7 @@ function completeWork(workId, feedbackText = '') {
 
 // Recriar missão diária para o próximo dia (VERSÃO CORRIGIDA)
 function recreateDailyMissionForTomorrow(originalMission) {
-    const tomorrow = new Date();
+    const tomorrow = getGameNow();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = getLocalDateString(tomorrow);
     
@@ -7251,7 +7284,7 @@ function recreateWeeklyMissionForNextWeek(originalMission) {
         return;
     }
     
-    const today = new Date();
+    const today = getGameNow();
     const currentDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, etc.
     
     // Encontrar o próximo dia agendado
@@ -7302,7 +7335,7 @@ function recreateWeeklyMissionForNextWeek(originalMission) {
 
 // Recriar missões diárias para o dia atual (VERSÃO CORRIGIDA)
 function recreateDailyMissionsForToday() {
-    const today = new Date();
+    const today = getGameNow();
     const todayStr = getLocalDateString();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -7347,7 +7380,7 @@ function recreateDailyMissionsForToday() {
 
 // Limpar missões diárias antigas que não foram completadas
 function cleanupOldDailyMissions() {
-    const today = new Date();
+    const today = getGameNow();
     const todayStr = getLocalDateString();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -7394,7 +7427,7 @@ function cleanupOldDailyMissions() {
 }
 
 function recreateDailyWorkForTomorrow(originalWork) {
-    const tomorrow = new Date();
+    const tomorrow = getGameNow();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = getLocalDateString(tomorrow);
 
@@ -7421,7 +7454,7 @@ function recreateWeeklyWorkForNextWeek(originalWork) {
         return;
     }
     
-    const today = new Date();
+    const today = getGameNow();
     const currentDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, etc.
     
     // Encontrar o próximo dia agendado
@@ -7472,7 +7505,7 @@ function recreateWeeklyWorkForNextWeek(originalWork) {
 }
 
 function recreateDailyWorksForToday() {
-    const today = new Date();
+    const today = getGameNow();
     const todayStr = getLocalDateString();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -9146,31 +9179,51 @@ function recordHydrationDay(dateStr, glasses, goal) {
     }
 }
 
-function addHydrationGlass() {
-    const today = getLocalDateString();
-    
-    // Verificar se é um novo dia
-    if (appData.hydration.lastDate !== today) {
-        // Verificar se atingiu a meta no dia anterior para manter streak
-        if (appData.hydration.lastDate) {
-            recordHydrationDay(appData.hydration.lastDate, appData.hydration.glasses, appData.hydration.goal);
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = getLocalDateString(yesterday);
-            if (appData.hydration.lastDate === yesterdayStr && appData.hydration.glasses >= appData.hydration.goal) {
-                appData.hydration.currentStreak++;
-            } else if (appData.hydration.lastDate !== yesterdayStr) {
+function rolloverHydrationDay(today = getLocalDateString()) {
+    if (!appData.hydration || typeof appData.hydration !== 'object') {
+        appData.hydration = { glasses: 0, goal: 8, lastDate: null, currentStreak: 0, bestStreak: 0, startDate: today, logDates: [], goalHitDates: [] };
+    }
+    const goal = Number.isFinite(Number(appData.hydration.goal)) && Number(appData.hydration.goal) > 0
+        ? Number(appData.hydration.goal)
+        : 8;
+    appData.hydration.goal = goal;
+
+    if (appData.hydration.lastDate === today) return;
+
+    if (appData.hydration.lastDate) {
+        const previousDate = appData.hydration.lastDate;
+        const previousGlasses = Number.isFinite(Number(appData.hydration.glasses)) ? Number(appData.hydration.glasses) : 0;
+        recordHydrationDay(previousDate, previousGlasses, goal);
+
+        const yesterday = getGameNow();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = getLocalDateString(yesterday);
+
+        if (previousDate === yesterdayStr) {
+            if (previousGlasses >= goal) {
+                appData.hydration.currentStreak = (appData.hydration.currentStreak || 0) + 1;
+            } else {
                 appData.hydration.currentStreak = 0;
             }
+        } else {
+            appData.hydration.currentStreak = 0;
         }
-        
-        // Resetar para novo dia
-        appData.hydration.glasses = 0;
-        appData.hydration.lastDate = today;
     }
+
+    if ((appData.hydration.currentStreak || 0) > (appData.hydration.bestStreak || 0)) {
+        appData.hydration.bestStreak = appData.hydration.currentStreak;
+    }
+
+    appData.hydration.glasses = 0;
+    appData.hydration.lastDate = today;
+}
+
+function addHydrationGlass() {
+    const today = getLocalDateString();
+    rolloverHydrationDay(today);
     
-    // Adicionar copo (máximo 8)
-    if (appData.hydration.glasses < 8) {
+    // Adicionar copo (máximo = meta do dia)
+    if (appData.hydration.glasses < appData.hydration.goal) {
         appData.hydration.glasses++;
     }
     
@@ -9184,7 +9237,7 @@ function addHydrationGlass() {
     
     // Feedback se atingiu a meta
     if (appData.hydration.glasses >= appData.hydration.goal) {
-        showFeedback('🎉 Meta diária atingida! 8 copos de água!', 'success');
+        showFeedback(`🎉 Meta diária atingida! ${appData.hydration.goal} copos de água!`, 'success');
     } else {
         showFeedback('💧 +1 copo de água!', 'info');
     }
@@ -9192,15 +9245,7 @@ function addHydrationGlass() {
 
 function removeHydrationGlass() {
     const today = getLocalDateString();
-    
-    // Verificar se é um novo dia
-    if (appData.hydration.lastDate !== today) {
-        if (appData.hydration.lastDate) {
-            recordHydrationDay(appData.hydration.lastDate, appData.hydration.glasses, appData.hydration.goal);
-        }
-        appData.hydration.glasses = 0;
-        appData.hydration.lastDate = today;
-    }
+    rolloverHydrationDay(today);
     
     // Remover copo (mínimo 0)
     if (appData.hydration.glasses > 0) {
@@ -9286,25 +9331,7 @@ function updateHydrationUI() {
 // Inicializar UI de hidratação
 function initHydrationUI() {
     const today = getLocalDateString();
-    
-    // Verificar se é um novo dia
-    if (appData.hydration.lastDate !== today) {
-        // Verificar streak do dia anterior
-        if (appData.hydration.lastDate) {
-            recordHydrationDay(appData.hydration.lastDate, appData.hydration.glasses, appData.hydration.goal);
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = getLocalDateString(yesterday);
-            if (appData.hydration.lastDate === yesterdayStr && appData.hydration.glasses >= appData.hydration.goal) {
-                // Mantém a streak
-            } else if (appData.hydration.lastDate !== yesterdayStr) {
-                appData.hydration.currentStreak = 0;
-            }
-        }
-        
-        appData.hydration.glasses = 0;
-        appData.hydration.lastDate = today;
-    }
+    rolloverHydrationDay(today);
     
     updateHydrationUI();
 }
@@ -9540,14 +9567,108 @@ function handleNutritionGoalsSubmit(event) {
     showFeedback('Metas nutricionais atualizadas!', 'success');
 }
 
+function getGameNow() {
+    const realNow = new Date();
+    const simulated = appData?.devTime;
+    if (simulated && simulated.enabled === true && /^\d{4}-\d{2}-\d{2}$/.test(simulated.currentDate || '')) {
+        const simDate = parseLocalDateString(simulated.currentDate);
+        simDate.setHours(realNow.getHours(), realNow.getMinutes(), realNow.getSeconds(), realNow.getMilliseconds());
+        return simDate;
+    }
+    return realNow;
+}
+
+function updateDaySimulationStatus() {
+    const statusEl = document.getElementById('day-sim-status');
+    const inputEl = document.getElementById('day-sim-date');
+    if (!statusEl && !inputEl) return;
+    const isEnabled = appData.devTime?.enabled === true;
+    const currentDate = appData.devTime?.currentDate || getLocalDateString(new Date());
+    if (inputEl) inputEl.value = currentDate;
+    if (statusEl) {
+        statusEl.textContent = isEnabled ? `Simulação ativa: ${currentDate}` : 'Tempo real ativo';
+    }
+}
+
+function runSimulationDailyPipeline() {
+    const canRunCriticalResets = (typeof window.shouldRunCriticalResets === 'function')
+        ? window.shouldRunCriticalResets()
+        : true;
+
+    if (!canRunCriticalResets) {
+        updateCurrentDate();
+        updateMidnightCountdown();
+        updateUI({ mode: 'full', forceCalendar: true });
+        showFeedback('Faça login e aguarde sincronização para simular regras diárias.', 'warn');
+        return;
+    }
+
+    checkDailyReset();
+    recreateDailyMissionsForToday();
+    recreateDailyWorksForToday();
+    cleanupOldDailyMissions();
+    cleanupOldDailyWorks();
+    checkOverdueMissions({ isInitialCheck: true });
+    checkOverdueWorks({ isInitialCheck: true });
+    checkWeeklyReset();
+    generateDailyActivities();
+    updateStreaks();
+    handleGameOverIfNeeded({ isInitialCheck: true });
+    updateCurrentDate();
+    updateMidnightCountdown();
+    updateUI({ mode: 'full', forceCalendar: true });
+}
+
+function applySimulatedDate(dateStr, options = {}) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) {
+        showFeedback('Data inválida para simulação.', 'warn');
+        return;
+    }
+    appData.devTime.enabled = true;
+    appData.devTime.currentDate = String(dateStr);
+    const simulatedDate = parseLocalDateString(appData.devTime.currentDate);
+    calendarState.month = simulatedDate.getMonth();
+    calendarState.year = simulatedDate.getFullYear();
+    updateDaySimulationStatus();
+    if (options.runPipeline !== false) {
+        runSimulationDailyPipeline();
+    } else {
+        updateCurrentDate();
+        updateMidnightCountdown();
+        updateUI({ mode: 'full', forceCalendar: true });
+    }
+    saveToLocalStorage();
+}
+
+function shiftSimulatedDate(days) {
+    const baseDate = appData.devTime?.enabled
+        ? parseLocalDateString(appData.devTime.currentDate)
+        : parseLocalDateString(getLocalDateString(getGameNow()));
+    baseDate.setDate(baseDate.getDate() + days);
+    applySimulatedDate(getLocalDateString(baseDate));
+}
+
+function resetToRealTime() {
+    appData.devTime.enabled = false;
+    appData.devTime.currentDate = getLocalDateString(new Date());
+    calendarState.month = getGameNow().getMonth();
+    calendarState.year = getGameNow().getFullYear();
+    updateDaySimulationStatus();
+    updateCurrentDate();
+    updateMidnightCountdown();
+    updateUI({ mode: 'full', forceCalendar: true });
+    saveToLocalStorage();
+    showFeedback('Simulação desativada. Tempo real restaurado.', 'info');
+}
+
 
 // Atualizar contador para meia-noite
 function updateMidnightCountdown() {
     const countdownElement = document.getElementById('midnight-countdown');
     if (!countdownElement) return;
     
-    const now = new Date();
-    const midnight = new Date();
+    const now = getGameNow();
+    const midnight = new Date(now);
     midnight.setHours(24, 0, 0, 0);
     
     const diff = midnight - now;
@@ -9566,7 +9687,7 @@ function updateCurrentDate() {
     const workDateElement = document.getElementById('current-date-work');
     if (!dateElement && !workDateElement) return;
     
-    const now = new Date();
+    const now = getGameNow();
     const formattedDate = now.toLocaleDateString('pt-BR', {
         weekday: 'long',
         year: 'numeric',
@@ -9575,6 +9696,7 @@ function updateCurrentDate() {
     });
     if (dateElement) dateElement.textContent = formattedDate;
     if (workDateElement) workDateElement.textContent = formattedDate;
+    updateDaySimulationStatus();
 }
 
 // Salvar entrada no diário
@@ -9869,7 +9991,7 @@ function getDueBadgeHtml(dueDateStr, todayStr, type) {
 }
 
 // Obter data local no formato YYYY-MM-DD
-function getLocalDateString(date = new Date()) {
+function getLocalDateString(date = getGameNow()) {
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');
@@ -10327,7 +10449,21 @@ function applyPenalties(dateStr = getLocalDateString()) {
     // Only penalize if not a rest day
     const diaryEntries = diaryDbAvailable ? (diaryCache || []) : (appData.diaryEntries || []);
     const diaryActive = diaryLoaded && diaryEntries.length > 0;
-    const hasDiaryEntry = diaryEntries.some(e => e.date === targetDateStr);
+    const hasDiaryEntry = diaryEntries.some(entry => {
+        if (!entry || typeof entry !== 'object') return false;
+        if (typeof entry.localDate === 'string' && entry.localDate.length >= 10) {
+            return entry.localDate.slice(0, 10) === targetDateStr;
+        }
+        if (typeof entry.date === 'string' && entry.date.length >= 10) {
+            const isoPrefix = entry.date.slice(0, 10);
+            if (/^\d{4}-\d{2}-\d{2}$/.test(isoPrefix) && isoPrefix === targetDateStr) {
+                return true;
+            }
+        }
+        if (!entry.date) return false;
+        const parsed = new Date(entry.date);
+        return Number.isFinite(parsed.getTime()) && getLocalDateString(parsed) === targetDateStr;
+    });
     if (diaryActive && !hasDiaryEntry && !isRestDay(targetDateStr)) {
         failedTypes.push('diary');
     }
