@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
     'use strict';
 
     const CLOUD_CACHE_KEY = 'heroJourneyData';
@@ -23,6 +23,14 @@
     let saveInFlight = false;
     let saveQueued = false;
     let cloudReady = false;
+    let progressUnsubscribe = null;
+    let realtimeEnabled = false;
+    let syncBlockedByConflict = false;
+    let conflictInProgress = false;
+    let pendingRemoteConflict = null;
+    let hasUnsyncedLocalChanges = false;
+    let lastAppliedRemoteMs = 0;
+    const CLIENT_SESSION_ID = `session-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
     const serverMeta = {
         lastDailyReset: null,
@@ -47,6 +55,27 @@
 
     function deepClone(value) {
         return JSON.parse(JSON.stringify(value));
+    }
+
+    function getTimestampMs(ts) {
+        if (!ts) return 0;
+        if (typeof ts.toMillis === 'function') return ts.toMillis();
+        if (typeof ts.toDate === 'function') return ts.toDate().getTime();
+        if (ts instanceof Date) return ts.getTime();
+        if (typeof ts === 'number') return ts;
+        if (typeof ts === 'string') {
+            const parsed = Date.parse(ts);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+        return 0;
+    }
+
+    function unsubscribeRealtime() {
+        if (typeof progressUnsubscribe === 'function') {
+            progressUnsubscribe();
+        }
+        progressUnsubscribe = null;
+        realtimeEnabled = false;
     }
 
     function persistLocalCache() {
@@ -93,9 +122,9 @@
             appData.diaryEntries = legacyEntries.slice();
             diaryCache = appData.diaryEntries;
             diaryLoaded = true;
-            console.log('Diário legado migrado do IndexedDB para memória/nuvem');
+            console.log('DiÃ¡rio legado migrado do IndexedDB para memÃ³ria/nuvem');
         } catch (err) {
-            console.warn('Falha ao ler diário legado do IndexedDB:', err);
+            console.warn('Falha ao ler diÃ¡rio legado do IndexedDB:', err);
         }
     }
 
@@ -119,14 +148,14 @@
             status.classList.add(kind || 'warn');
         }
         
-        // Atualizar indicador no cabeçalho também
+        // Atualizar indicador no cabeÃ§alho tambÃ©m
         updateHeaderSyncIndicator(message, kind);
     }
     
     function updateHeaderSyncIndicator(message, kind) {
         let indicator = document.getElementById('header-sync-indicator');
         if (!indicator) {
-            // Criar indicador no cabeçalho se não existir
+            // Criar indicador no cabeÃ§alho se nÃ£o existir
             const headerStats = document.querySelector('.header-stats');
             if (headerStats) {
                 indicator = document.createElement('div');
@@ -141,7 +170,7 @@
                     if (cloudReady && currentUser) {
                         pushCloud(true);
                     } else {
-                        // Se não está conectado, mostra o painel de login
+                        // Se nÃ£o estÃ¡ conectado, mostra o painel de login
                         const panel = document.getElementById('cloud-auth-panel');
                         if (panel) {
                             panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
@@ -152,21 +181,21 @@
         }
         
         if (indicator) {
-            // Mapear mensagens para ícones e cores
-            let icon = '☁️';
+            // Mapear mensagens para Ã­cones e cores
+            let icon = 'â˜ï¸';
             let bgColor = 'rgba(255,255,255,0.05)';
             let textColor = 'var(--gray-color)';
             
             if (kind === 'ok') {
-                icon = '✅';
+                icon = 'âœ…';
                 bgColor = 'rgba(32, 217, 128, 0.2)';
                 textColor = '#20D980';
             } else if (kind === 'err') {
-                icon = '❌';
+                icon = 'âŒ';
                 bgColor = 'rgba(255, 77, 109, 0.2)';
                 textColor = '#FF4D6D';
             } else if (message && message.toLowerCase().includes('sincronizando')) {
-                icon = '🔄';
+                icon = 'ðŸ”„';
                 bgColor = 'rgba(16, 242, 255, 0.2)';
                 textColor = '#10F2FF';
             }
@@ -198,7 +227,7 @@
             '<button id="cloud-register-btn" type="button">Criar conta</button>' +
             '<button id="cloud-logout-btn" type="button">Sair</button>' +
             '<button id="cloud-sync-now-btn" type="button">Sincronizar Agora</button>' +
-            '<span id="cloud-user-label">Não autenticado</span>' +
+            '<span id="cloud-user-label">NÃ£o autenticado</span>' +
             '<span id="cloud-sync-status" class="warn">Modo local</span>';
         document.body.appendChild(panel);
     }
@@ -214,6 +243,10 @@
 
     async function pushCloud(force) {
         if (!cloudReady || !currentUser) return;
+        if (syncBlockedByConflict) {
+            setSyncStatus('SincronizaÃ§Ã£o pausada por conflito', 'warn');
+            return;
+        }
         if (saveInFlight) {
             saveQueued = true;
             return;
@@ -228,9 +261,11 @@
                 appData: payload,
                 serverMeta: { ...serverMeta },
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedBy: currentUser.email || currentUser.uid
+                updatedBy: currentUser.email || currentUser.uid,
+                updatedBySession: CLIENT_SESSION_ID
             }, { merge: true });
             
+            hasUnsyncedLocalChanges = false;
             setSyncStatus(force ? 'Sincronizado (agora)' : 'Sincronizado', 'ok');
         } catch (err) {
             console.error('Erro ao salvar na nuvem:', err);
@@ -247,8 +282,8 @@
     // Salva apenas na nuvem (sem localStorage)
     function queueCloudSave() {
         if (!cloudReady || !currentUser) {
-            // Sem login: em modo cloud-only ignoramos saves automáticos silenciosamente.
-            // O estado de conexão já é exibido via onAuthStateChanged.
+            // Sem login: em modo cloud-only ignoramos saves automÃ¡ticos silenciosamente.
+            // O estado de conexÃ£o jÃ¡ Ã© exibido via onAuthStateChanged.
             return;
         }
         // Push imediato para a nuvem (mais seguro)
@@ -256,7 +291,7 @@
     }
     window.queueCloudSave = queueCloudSave;
 
-    // Função para verificar e notificar sobre modificações remotas
+    // FunÃ§Ã£o para verificar e notificar sobre modificaÃ§Ãµes remotas
     function checkRemoteModification(remoteTimestamp) {
         if (!remoteTimestamp) return;
         
@@ -272,39 +307,39 @@
             return;
         }
         
-        // Obter último sincronização local
+        // Obter Ãºltimo sincronizaÃ§Ã£o local
         const lastLocalSync = localStorage.getItem(LAST_SYNC_KEY);
         const lastSyncDate = lastLocalSync ? new Date(parseInt(lastLocalSync)) : null;
         
-        // Se há dados locais e a nuvem foi modificada mais recentemente
+        // Se hÃ¡ dados locais e a nuvem foi modificada mais recentemente
         if (lastSyncDate && remoteDate > lastSyncDate) {
             const diffMs = Date.now() - remoteDate.getTime();
             const diffMins = Math.floor(diffMs / 60000);
             const diffHours = Math.floor(diffMs / 3600000);
             
             let timeAgo;
-            if (diffMins < 1) timeAgo = 'há poucos segundos';
-            else if (diffMins < 60) timeAgo = `há ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
-            else if (diffHours < 24) timeAgo = `há ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+            if (diffMins < 1) timeAgo = 'hÃ¡ poucos segundos';
+            else if (diffMins < 60) timeAgo = `hÃ¡ ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
+            else if (diffHours < 24) timeAgo = `hÃ¡ ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
             else timeAgo = remoteDate.toLocaleDateString('pt-BR');
             
-            // Mostrar notificação
+            // Mostrar notificaÃ§Ã£o
             showRemoteChangeNotification(timeAgo);
         }
     }
     
-    // Mostrar notificação de alteração remota
+    // Mostrar notificaÃ§Ã£o de alteraÃ§Ã£o remota
     function showRemoteChangeNotification(timeAgo) {
         const notification = document.createElement('div');
         notification.id = 'remote-change-notification';
         notification.className = 'notification-banner info';
         notification.innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px; padding: 12px;">
-                <span style="font-size: 1.5rem;">📱</span>
+                <span style="font-size: 1.5rem;">ðŸ“±</span>
                 <div style="flex: 1;">
                     <strong>Dados modificados em outro dispositivo</strong>
                     <p style="margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9;">
-                        Última alteração na nuvem: ${timeAgo}
+                        Ãšltima alteraÃ§Ã£o na nuvem: ${timeAgo}
                     </p>
                 </div>
                 <button onclick="this.parentElement.parentElement.remove()" style="
@@ -314,13 +349,134 @@
             </div>
         `;
         
-        // Inserir no topo da página
+        // Inserir no topo da pÃ¡gina
         document.body.insertBefore(notification, document.body.firstChild);
         
-        // Auto-remover após 10 segundos
+        // Auto-remover apÃ³s 10 segundos
         setTimeout(() => {
             if (notification.parentElement) notification.remove();
         }, 10000);
+    }
+
+    function applyRemoteState(remote, options = {}) {
+        if (!remote || typeof remote !== 'object') return false;
+
+        if (remote.serverMeta && typeof remote.serverMeta === 'object') {
+            serverMeta.lastDailyReset = remote.serverMeta.lastDailyReset || null;
+            serverMeta.lastWeeklyReset = remote.serverMeta.lastWeeklyReset || null;
+        }
+
+        const remoteAppData = remote.appData;
+        if (!remoteAppData || typeof remoteAppData !== 'object') {
+            return false;
+        }
+
+        Object.keys(appData).forEach(key => delete appData[key]);
+        Object.assign(appData, deepClone(remoteAppData));
+
+        ensureDiaryMemoryMode();
+        if (Array.isArray(remoteAppData.diaryEntries)) {
+            appData.diaryEntries = remoteAppData.diaryEntries.slice();
+            diaryCache = appData.diaryEntries;
+            diaryLoaded = true;
+        }
+
+        applyDataGuards();
+        persistLocalCache();
+        localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+
+        const remoteMs = getTimestampMs(remote.updatedAt);
+        if (remoteMs > 0) lastAppliedRemoteMs = remoteMs;
+        hasUnsyncedLocalChanges = false;
+
+        if (options.statusMessage) {
+            setSyncStatus(options.statusMessage, options.statusKind || 'ok');
+        }
+        if (typeof updateUI === 'function') updateUI({ mode: 'full', forceCalendar: true });
+        return true;
+    }
+
+    async function askConflictKeepLocal() {
+        const message = 'Conflito detectado: dados mudaram em outro dispositivo enquanto havia alteraÃ§Ãµes locais. Deseja manter a versÃ£o LOCAL e sobrescrever a nuvem?';
+        if (typeof askConfirmation === 'function') {
+            return await askConfirmation(message, {
+                title: 'Conflito de sincronizaÃ§Ã£o',
+                confirmText: 'Manter local',
+                cancelText: 'Usar nuvem'
+            });
+        }
+        return confirm(message);
+    }
+
+    async function resolveRemoteConflict(remote) {
+        if (!remote || typeof remote !== 'object') return;
+        conflictInProgress = true;
+        syncBlockedByConflict = true;
+        setSyncStatus('Conflito detectado. Escolha local ou nuvem.', 'warn');
+
+        const keepLocal = await askConflictKeepLocal();
+        if (keepLocal) {
+            syncBlockedByConflict = false;
+            conflictInProgress = false;
+            setSyncStatus('Mantendo local. Enviando para nuvem...', 'syncing');
+            hasUnsyncedLocalChanges = true;
+            await pushCloud(true);
+        } else {
+            applyRemoteState(remote, { statusMessage: 'Conflito resolvido: versÃ£o da nuvem aplicada', statusKind: 'ok' });
+            syncBlockedByConflict = false;
+            conflictInProgress = false;
+        }
+
+        if (pendingRemoteConflict) {
+            const next = pendingRemoteConflict;
+            pendingRemoteConflict = null;
+            await resolveRemoteConflict(next);
+        }
+    }
+
+    function handleRealtimeRemoteUpdate(remote) {
+        if (!remote || typeof remote !== 'object' || !remote.appData) return;
+
+        const remoteSession = remote.updatedBySession || '';
+        const remoteMs = getTimestampMs(remote.updatedAt);
+
+        if (remoteSession && remoteSession === CLIENT_SESSION_ID) {
+            if (remoteMs > 0) lastAppliedRemoteMs = Math.max(lastAppliedRemoteMs, remoteMs);
+            hasUnsyncedLocalChanges = false;
+            return;
+        }
+
+        if (remoteMs > 0 && remoteMs <= lastAppliedRemoteMs) return;
+
+        if (hasUnsyncedLocalChanges || syncBlockedByConflict) {
+            if (conflictInProgress) {
+                pendingRemoteConflict = remote;
+                return;
+            }
+            resolveRemoteConflict(remote).catch(function (err) {
+                console.error('Erro ao resolver conflito:', err);
+                syncBlockedByConflict = false;
+                conflictInProgress = false;
+                setSyncStatus('Falha ao resolver conflito', 'err');
+            });
+            return;
+        }
+
+        applyRemoteState(remote, { statusMessage: 'Atualizado em tempo real (outro dispositivo)', statusKind: 'ok' });
+    }
+
+    function startRealtimeSync(uid) {
+        if (!uid || !db) return;
+        unsubscribeRealtime();
+        progressUnsubscribe = getProgressRef(uid).onSnapshot(function (snap) {
+            if (!snap.exists) return;
+            const remote = snap.data() || {};
+            handleRealtimeRemoteUpdate(remote);
+        }, function (err) {
+            console.error('Erro no listener em tempo real:', err);
+            setSyncStatus('Falha na sincronizaÃ§Ã£o em tempo real', 'err');
+        });
+        realtimeEnabled = true;
     }
     
     async function pullCloud(uid) {
@@ -333,40 +489,11 @@
 
         const remote = snap.data() || {};
         
-        // Verificar se houve modificação remota antes de sobrescrever
+        // Verificar se houve modificaÃ§Ã£o remota antes de sobrescrever
         const remoteTimestamp = remote.updatedAt;
         checkRemoteModification(remoteTimestamp);
-        
-        if (remote.serverMeta && typeof remote.serverMeta === 'object') {
-            serverMeta.lastDailyReset = remote.serverMeta.lastDailyReset || null;
-            serverMeta.lastWeeklyReset = remote.serverMeta.lastWeeklyReset || null;
-        }
-
-        const remoteAppData = remote.appData;
-        if (!remoteAppData || typeof remoteAppData !== 'object') {
-            return { hasRemoteData: true };
-        }
-
-        // Carregar dados da nuvem (substitui dados locais)
-        Object.keys(appData).forEach(key => delete appData[key]);
-        Object.assign(appData, deepClone(remoteAppData));
-        
-        // Registrar timestamp local da última sincronização
-        localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
-        persistLocalCache();
-        
-        setSyncStatus('Dados carregados da nuvem', 'ok');
-        ensureDiaryMemoryMode();
-
-        if (Array.isArray(remoteAppData.diaryEntries)) {
-            appData.diaryEntries = remoteAppData.diaryEntries.slice();
-            diaryCache = appData.diaryEntries;
-            diaryLoaded = true;
-        }
-
-        applyDataGuards();
-
-        if (typeof updateUI === 'function') updateUI({ mode: 'full', forceCalendar: true });
+        const applied = applyRemoteState(remote, { statusMessage: 'Dados carregados da nuvem', statusKind: 'ok' });
+        if (!applied) return { hasRemoteData: true };
         return { hasRemoteData: true };
     }
 
@@ -383,9 +510,17 @@
         // Salva na nuvem quando autenticado; sem login, mantem cache local.
         window.saveToLocalStorage = function () {
             if (!cloudReady || !currentUser) {
+                hasUnsyncedLocalChanges = true;
                 persistLocalCache();
                 return;
             }
+            if (syncBlockedByConflict) {
+                hasUnsyncedLocalChanges = true;
+                persistLocalCache();
+                setSyncStatus('SincronizaÃ§Ã£o pausada atÃ© resolver conflito', 'warn');
+                return;
+            }
+            hasUnsyncedLocalChanges = true;
             // Salvar na nuvem
             queueCloudSave();
         };
@@ -463,13 +598,14 @@
         };
 
         window.resetProgress = async function () {
-            if (!confirm('Tem certeza que deseja resetar todo o progresso? Isso não pode ser desfeito.')) return;
-            const confirmationText = prompt('Digite RESETAR para confirmar a exclusão total do progresso:');
+            if (!confirm('Tem certeza que deseja resetar todo o progresso? Isso nÃ£o pode ser desfeito.')) return;
+            const confirmationText = prompt('Digite RESETAR para confirmar a exclusÃ£o total do progresso:');
             if (confirmationText !== 'RESETAR') {
                 alert('Reset cancelado.');
                 return;
             }
 
+            window.__suppressSave = true;
             localStorage.removeItem(CLOUD_CACHE_KEY);
             localStorage.removeItem(AUTH_CACHE_KEY);
 
@@ -481,6 +617,7 @@
                 }
             }
 
+            window.__suppressSave = true;
             location.reload();
         };
     }
@@ -534,7 +671,7 @@
 
         syncNowBtn.addEventListener('click', async function () {
             if (!cloudReady || !currentUser) {
-                alert('Faça login para sincronizar.');
+                alert('FaÃ§a login para sincronizar.');
                 return;
             }
             await pushCloud(true);
@@ -543,7 +680,7 @@
 
     async function initFirebaseSync() {
         if (!window.firebase) {
-            setSyncStatus('SDK Firebase não carregado', 'err');
+            setSyncStatus('SDK Firebase nÃ£o carregado', 'err');
             return;
         }
 
@@ -562,19 +699,29 @@
             currentUser = user;
 
             if (!user) {
+                unsubscribeRealtime();
                 cloudReady = false;
-                setUserLabel('Não autenticado');
+                syncBlockedByConflict = false;
+                conflictInProgress = false;
+                pendingRemoteConflict = null;
+                hasUnsyncedLocalChanges = false;
+                setUserLabel('NÃ£o autenticado');
                 setSyncStatus('Modo local (sem login)', 'warn');
                 return;
             }
 
+            unsubscribeRealtime();
             cloudReady = false;
+            syncBlockedByConflict = false;
+            conflictInProgress = false;
+            pendingRemoteConflict = null;
             setUserLabel('Usuario: ' + (user.email || user.uid));
             setSyncStatus('Conectado. Sincronizando...', 'warn');
 
             try {
                 const result = await pullCloud(user.uid);
                 cloudReady = true;
+                startRealtimeSync(user.uid);
                 if (result && result.hasRemoteData === false) {
                     await pushCloud(true);
                 }
@@ -610,3 +757,4 @@
 
     init();
 })();
+

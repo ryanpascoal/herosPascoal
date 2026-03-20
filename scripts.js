@@ -2489,7 +2489,7 @@ function updateShopItemsList() {
 
 
 // Função para falhar uma missão
-function failMission(missionId, reason = '') {
+function failMission(missionId, reason = '', options = {}) {
     const missionIndex = appData.missions.findIndex(m => m.id === missionId);
     if (missionIndex === -1) return;
     
@@ -2507,27 +2507,25 @@ function failMission(missionId, reason = '') {
         mission.failedDate = todayStr;
     }
     
-    // Aplicar penalidades (escudo protege perda de vida e streak)
-    const hadShield = appData.hero.protection?.shield === true;
-    if (hadShield) {
-        appData.hero.protection.shield = false;
-    } else {
-        appData.hero.lives = Math.max(0, appData.hero.lives - 1); // Perde 1 vida
-        appData.hero.streak.general = 0; // Reseta streak geral
-    }
-    
-    // Atualizar estatísticas
-    if (!appData.statistics) appData.statistics = {};
-    appData.statistics.missionsFailed = (appData.statistics.missionsFailed || 0) + 1;
-    
+    // Registrar falha para o pipeline unificado de penalidades (applyPenalties)
+    const penaltyDate = options.missedDate || todayStr;
+    const missionLineageKey = mission.originalId || mission.id;
+    const alreadyFailedForDate = appData.completedMissions.some(m =>
+        m.failed &&
+        String(m.originalId || m.id) === String(missionLineageKey) &&
+        m.failedDate === penaltyDate
+    );
+    if (alreadyFailedForDate) return;
+
     // Mover para missões concluídas (com status de falha)
     appData.completedMissions.push({
         ...mission,
         completedDate: todayStr,
-        failedDate: todayStr,
+        failedDate: penaltyDate,
         failed: true,
-        penaltyApplied: true,
-        reason: reason
+        penaltyApplied: false,
+        reason: reason,
+        missedDate: options.missedDate || null
     });
     
     // Remover da lista de missões ativas
@@ -2540,26 +2538,16 @@ function failMission(missionId, reason = '') {
         recreateDailyMissionForTomorrow(mission);
     }
     
-    // Se for missão semanal, recriar para o próximo dia agendado da semana
-    if (mission.type === 'semanal') {
-        recreateWeeklyMissionForNextWeek(mission);
-    }
-    
     // Atualizar UI
     updateUI();
-    if (!hadShield) {
-        handleGameOverIfNeeded();
-    }
-    
-    const penaltyText = hadShield
-        ? 'Escudo consumido! Você evitou perder 1 vida e streak.'
-        : 'Você perdeu 1 vida e resetou o streak geral.';
+    applyPenalties(penaltyDate, { onlyTypes: ['mission'] });
+
     addHeroLog(
         'mission',
         `Missão falhada: ${mission.name}`,
-        hadShield ? 'Escudo consumido para evitar penalidade.' : 'Perdeu 1 vida e streak geral.'
+        `Falha registrada para ${penaltyDate}. Penalidades aplicadas no pipeline diário.`
     );
-    showFeedback(`Missão "${mission.name}" falhou! ${penaltyText}`, 'error', 3200);
+    showFeedback(`Missão "${mission.name}" falhou (${penaltyDate}).`, 'error', 3200);
 }
 
 // Atualizar missões
@@ -2636,7 +2624,7 @@ async function skipMission(missionId) {
     showFeedback(`Missao "${mission.name}" pulada sem penalidade.`, 'info');
 }
 
-function failWork(workId, reason = '') {
+function failWork(workId, reason = '', options = {}) {
     const workIndex = appData.works.findIndex(w => w.id === workId);
     if (workIndex === -1) return;
 
@@ -2652,24 +2640,23 @@ function failWork(workId, reason = '') {
         work.failedDate = todayStr;
     }
 
-    const hadShield = appData.hero.protection?.shield === true;
-    if (hadShield) {
-        appData.hero.protection.shield = false;
-    } else {
-        appData.hero.lives = Math.max(0, appData.hero.lives - 1);
-        appData.hero.streak.general = 0;
-    }
-
+    const penaltyDate = options.missedDate || todayStr;
+    const workLineageKey = work.originalId || work.id;
+    const alreadyFailedForDate = appData.completedWorks.some(w =>
+        w.failed &&
+        String(w.originalId || w.id) === String(workLineageKey) &&
+        w.failedDate === penaltyDate
+    );
+    if (alreadyFailedForDate) return;
     appData.completedWorks.push({
         ...work,
         completedDate: todayStr,
-        failedDate: todayStr,
+        failedDate: penaltyDate,
         failed: true,
-        penaltyApplied: true,
-        reason
+        penaltyApplied: false,
+        reason,
+        missedDate: options.missedDate || null
     });
-    if (!appData.statistics) appData.statistics = {};
-    appData.statistics.worksFailed = (appData.statistics.worksFailed || 0) + 1;
 
     if (!isWeekly) {
         appData.works.splice(workIndex, 1);
@@ -2680,20 +2667,13 @@ function failWork(workId, reason = '') {
         recreateDailyWorkForTomorrow(work);
     }
     
-    // Se for trabalho semanal, recriar para o próximo dia agendado da semana
-    if (work.type === 'semanal') {
-        recreateWeeklyWorkForNextWeek(work);
-    }
-    
     updateUI({ mode: 'activity' });
-    if (!hadShield) {
-        handleGameOverIfNeeded();
-    }
+    applyPenalties(penaltyDate, { onlyTypes: ['work'] });
 
     addHeroLog(
         'mission',
         `Trabalho falhado: ${work.name}`,
-        hadShield ? 'Escudo consumido para evitar penalidade.' : 'Perdeu 1 vida e streak geral.'
+        `Falha registrada para ${penaltyDate}. Penalidades aplicadas no pipeline diário.`
     );
 }
 
@@ -3043,7 +3023,7 @@ function checkOverdueWorks(options = {}) {
         if (work.type === 'eventual' && work.date) {
             const workDateStr = getLocalDateString(parseLocalDateString(work.date));
             if (workDateStr < todayStr) {
-                overdueToFail.push({ id: work.id, reason: 'Data do trabalho já passou (eventual)' });
+                overdueToFail.push({ id: work.id, reason: 'Falha no dia seguinte ao prazo (eventual)' });
             }
         }
         
@@ -3051,41 +3031,41 @@ function checkOverdueWorks(options = {}) {
         if (work.type === 'epica' && work.deadline) {
             const deadlineStr = getLocalDateString(parseLocalDateString(work.deadline));
             if (deadlineStr < todayStr) {
-                overdueToFail.push({ id: work.id, reason: 'Prazo expirado (épica)' });
+                overdueToFail.push({ id: work.id, reason: 'Falha no dia seguinte ao prazo (épica)' });
             }
         }
         
-        // Diárias NOVO: falha se availableDate ou dateAdded < ontem
+        // Diárias: falha se availableDate ou dateAdded <= ontem
         if (work.type === 'diaria') {
             const availableDate = work.availableDate || work.dateAdded;
-            if (availableDate && availableDate < yesterdayStr) {
+            if (availableDate && availableDate <= yesterdayStr) {
                 overdueToFail.push({ id: work.id, reason: 'Prazo diário expirado' });
             }
         }
         
-        // Semanais: falha apenas se não foi concluída E não foi falha essa semana
+        // Semanais: falha no dia seguinte ao dia programado não cumprido
         if (work.type === 'semanal') {
-            const weekKey = getWeekKey(getGameNow());
-            const lastShownWeek = work.lastShownWeek || getWeekKey(parseLocalDateString(work.availableDate || work.dateAdded || todayStr));
             const workLineageKey = work.originalId || work.id;
-            
-            // Verificar se já foi falha essa semana
-            const alreadyFailedThisWeek = appData.completedWorks.some(w => 
-                (w.originalId || w.id) === workLineageKey &&
-                w.failed && 
-                w.failedDate && 
-                getWeekKey(parseLocalDateString(w.failedDate)) === weekKey
-            );
-            
-            if (lastShownWeek !== weekKey && !alreadyFailedThisWeek) {
-                overdueToFail.push({ id: work.id, reason: 'Semanal não concluída na semana' });
+            const yesterdayDayOfWeek = yesterday.getDay();
+            const availableFrom = work.availableDate || work.dateAdded || todayStr;
+            const shouldCheckYesterday = work.days && work.days.includes(yesterdayDayOfWeek) && availableFrom <= yesterdayStr;
+            if (shouldCheckYesterday) {
+                const alreadyLoggedYesterday = wasItemLoggedForDate(work, appData.completedWorks, yesterdayStr);
+                const alreadyFailedForMissedDate = appData.completedWorks.some(w =>
+                    String(w.originalId || w.id) === String(workLineageKey) &&
+                    w.failed === true &&
+                    w.missedDate === yesterdayStr
+                );
+                if (!alreadyLoggedYesterday && !alreadyFailedForMissedDate) {
+                    overdueToFail.push({ id: work.id, reason: 'Semanal não concluída no dia programado', missedDate: yesterdayStr });
+                }
             }
         }
     });
     
     if (overdueToFail.length > 0) {
         console.log(`Auto-falhando ${overdueToFail.length} trabalhos por atraso:`, overdueToFail.map(i => i.reason));
-        overdueToFail.forEach(item => failWork(item.id, `[AUTO] ${item.reason}`));
+        overdueToFail.forEach(item => failWork(item.id, `[AUTO] ${item.reason}`, { missedDate: item.missedDate }));
     }
     
     recreateDailyWorksForToday();
@@ -3385,7 +3365,7 @@ function checkOverdueMissions(options = {}) {
         if (mission.type === 'eventual' && mission.date) {
             const missionDateStr = getLocalDateString(parseLocalDateString(mission.date));
             if (missionDateStr < todayStr) {
-                overdueToFail.push({ id: mission.id, reason: 'Data da missão já passou (eventual)' });
+                overdueToFail.push({ id: mission.id, reason: 'Falha no dia seguinte ao prazo (eventual)' });
             }
         }
         
@@ -3393,41 +3373,41 @@ function checkOverdueMissions(options = {}) {
         if (mission.type === 'epica' && mission.deadline) {
             const deadlineStr = getLocalDateString(parseLocalDateString(mission.deadline));
             if (deadlineStr < todayStr) {
-                overdueToFail.push({ id: mission.id, reason: 'Prazo expirado (épica)' });
+                overdueToFail.push({ id: mission.id, reason: 'Falha no dia seguinte ao prazo (épica)' });
             }
         }
         
-        // Diárias NOVO: falha se availableDate ou dateAdded < ontem
+        // Diárias: falha se availableDate ou dateAdded <= ontem
         if (mission.type === 'diaria') {
             const availableDate = mission.availableDate || mission.dateAdded;
-            if (availableDate && availableDate < yesterdayStr) {
+            if (availableDate && availableDate <= yesterdayStr) {
                 overdueToFail.push({ id: mission.id, reason: 'Prazo diário expirado' });
             }
         }
         
-        // Semanais: falha apenas se não foi concluída E não foi falha essa semana
+        // Semanais: falha no dia seguinte ao dia programado não cumprido
         if (mission.type === 'semanal') {
-            const weekKey = getWeekKey(getGameNow());
-            const lastShownWeek = mission.lastShownWeek || getWeekKey(parseLocalDateString(mission.availableDate || mission.dateAdded || todayStr));
             const missionLineageKey = mission.originalId || mission.id;
-            
-            // Verificar se já foi falha essa semana
-            const alreadyFailedThisWeek = appData.completedMissions.some(m => 
-                (m.originalId || m.id) === missionLineageKey &&
-                m.failed && 
-                m.failedDate && 
-                getWeekKey(parseLocalDateString(m.failedDate)) === weekKey
-            );
-            
-            if (lastShownWeek !== weekKey && !alreadyFailedThisWeek) {
-                overdueToFail.push({ id: mission.id, reason: 'Semanal não concluída na semana' });
+            const yesterdayDayOfWeek = yesterday.getDay();
+            const availableFrom = mission.availableDate || mission.dateAdded || todayStr;
+            const shouldCheckYesterday = mission.days && mission.days.includes(yesterdayDayOfWeek) && availableFrom <= yesterdayStr;
+            if (shouldCheckYesterday) {
+                const alreadyLoggedYesterday = wasItemLoggedForDate(mission, appData.completedMissions, yesterdayStr);
+                const alreadyFailedForMissedDate = appData.completedMissions.some(m =>
+                    String(m.originalId || m.id) === String(missionLineageKey) &&
+                    m.failed === true &&
+                    m.missedDate === yesterdayStr
+                );
+                if (!alreadyLoggedYesterday && !alreadyFailedForMissedDate) {
+                    overdueToFail.push({ id: mission.id, reason: 'Semanal não concluída no dia programado', missedDate: yesterdayStr });
+                }
             }
         }
     });
     
     if (overdueToFail.length > 0) {
         console.log(`Auto-falhando ${overdueToFail.length} missões por atraso:`, overdueToFail.map(i => i.reason));
-        overdueToFail.forEach(item => failMission(item.id, `[AUTO] ${item.reason}`));
+        overdueToFail.forEach(item => failMission(item.id, `[AUTO] ${item.reason}`, { missedDate: item.missedDate }));
     }
     
     recreateDailyMissionsForToday();
@@ -9672,6 +9652,7 @@ async function resetProgress() {
             return;
         }
 
+        window.__suppressSave = true;
         // Limpar localStorage
         localStorage.removeItem('heroJourneyData');
         
@@ -9690,12 +9671,14 @@ async function resetProgress() {
         if (diaryDbAvailable) {
             replaceDiaryEntriesInDB([]).then(() => {
                 diaryCache = [];
+                window.__suppressSave = true;
                 location.reload();
             });
             return;
         }
 
         // Recarregar a página
+        window.__suppressSave = true;
         location.reload();
         return;
     }
@@ -9717,6 +9700,7 @@ async function resetProgress() {
         return;
     }
 
+    window.__suppressSave = true;
     // Limpar localStorage
     localStorage.removeItem('heroJourneyData');
     
@@ -9733,12 +9717,14 @@ async function resetProgress() {
     if (diaryDbAvailable) {
         replaceDiaryEntriesInDB([]).then(() => {
             diaryCache = [];
+            window.__suppressSave = true;
             location.reload();
         });
         return;
     }
 
     // Recarregar a página
+    window.__suppressSave = true;
     location.reload();
 }
 
@@ -10115,14 +10101,16 @@ async function deleteClass(id) {
     showFeedback('Classe excluída com sucesso!', 'success');
 }
 
-function applyPenalties(dateStr = getLocalDateString()) {
+function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     const targetDateStr = dateStr;
+    const onlyTypes = Array.isArray(options.onlyTypes) ? new Set(options.onlyTypes) : null;
+    const shouldCheckType = type => !onlyTypes || onlyTypes.has(type);
 
     if (isRestDay(targetDateStr)) {
         return;
     }
 
-    const logMissedWeeklyItems = (list, completedList, typeLabel) => {
+    const logMissedWeeklyItems = (list, completedList, typeLabel, entryType) => {
         const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
         const missed = list.filter(item =>
             item &&
@@ -10146,6 +10134,7 @@ function applyPenalties(dateStr = getLocalDateString()) {
                 completedDate: targetDateStr,
                 failedDate: targetDateStr,
                 failed: true,
+                ...(entryType === 'mission' || entryType === 'work' ? { penaltyApplied: true } : {}),
                 reason: `Não concluída no dia (${typeLabel} semanal)`
             });
             added++;
@@ -10159,11 +10148,14 @@ function applyPenalties(dateStr = getLocalDateString()) {
     const failedTypes = [];
     
     // Check workouts - was there any failed workout on this day?
-    let failedWorkouts = appData.dailyWorkouts.filter(item => 
-        item.date === targetDateStr && !item.completed && !item.skipped);
-    if (failedWorkouts.length > 0) {
+    let failedWorkouts = [];
+    if (shouldCheckType('workout')) {
+        failedWorkouts = appData.dailyWorkouts.filter(item => 
+            item.date === targetDateStr && !item.completed && !item.skipped && !item.failed);
+    }
+    if (shouldCheckType('workout') && failedWorkouts.length > 0) {
         failedTypes.push('workout');
-    } else {
+    } else if (shouldCheckType('workout')) {
         const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
         const scheduledWorkouts = appData.workouts.filter(w =>
             Array.isArray(w.days) && w.days.some(d => normalizeWeekdayValue(d) === dayOfWeek)
@@ -10195,11 +10187,14 @@ function applyPenalties(dateStr = getLocalDateString()) {
     }
     
     // Check studies - was there any failed study on this day?
-    let failedStudies = appData.dailyStudies.filter(item => 
-        item.date === targetDateStr && !item.completed && !item.skipped);
-    if (failedStudies.length > 0) {
+    let failedStudies = [];
+    if (shouldCheckType('study')) {
+        failedStudies = appData.dailyStudies.filter(item => 
+            item.date === targetDateStr && !item.completed && !item.skipped && !item.failed);
+    }
+    if (shouldCheckType('study') && failedStudies.length > 0) {
         failedTypes.push('study');
-    } else {
+    } else if (shouldCheckType('study')) {
         const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
         const scheduledStudies = appData.studies.filter(s =>
             Array.isArray(s.days) && s.days.some(d => normalizeWeekdayValue(d) === dayOfWeek)
@@ -10231,96 +10226,103 @@ function applyPenalties(dateStr = getLocalDateString()) {
     }
     
     // Check missions - was there any failed mission on this day?
-    const failedMissions = appData.completedMissions.filter(m => 
-        m.failedDate === targetDateStr && m.failed && m.penaltyApplied !== true);
-    if (failedMissions.length > 0) {
-        failedTypes.push('mission');
-    }
-
-    // Processar missões diárias que falharam (não foram completadas)
-    const todayStr = getLocalDateString();
-    const missedDailyMissions = (appData.missions || []).filter(m => 
-        m.type === 'diaria' && 
-        !m.completed && 
-        !m.failed && 
-        m.dateAdded && 
-        m.dateAdded < targetDateStr
-    );
-    missedDailyMissions.forEach(mission => {
-        // Verificar se já foi registrada como falha
-        const alreadyLogged = appData.completedMissions.some(entry =>
-            entry.failed &&
-            (entry.originalId || entry.id) === (mission.originalId || mission.id) &&
-            entry.failedDate === targetDateStr
-        );
-        if (!alreadyLogged) {
-            appData.completedMissions.push({
-                ...mission,
-                completedDate: targetDateStr,
-                failedDate: targetDateStr,
-                failed: true,
-                reason: 'Missão diária não completada'
-            });
+    if (shouldCheckType('mission')) {
+        const failedMissions = appData.completedMissions.filter(m => 
+            m.failedDate === targetDateStr && m.failed && m.penaltyApplied !== true);
+        if (failedMissions.length > 0) {
+            failedTypes.push('mission');
+            failedMissions.forEach(m => { m.penaltyApplied = true; });
         }
-    });
-    // Remover missões diárias falhadas da lista ativa
-    if (missedDailyMissions.length > 0) {
-        const idsToRemove = new Set(missedDailyMissions.map(m => m.id));
-        appData.missions = (appData.missions || []).filter(m => !idsToRemove.has(m.id));
-        if (!failedTypes.includes('mission')) {
+    
+        // Processar missões diárias que falharam (não foram completadas)
+        const missedDailyMissions = (appData.missions || []).filter(m => 
+            m.type === 'diaria' && 
+            !m.completed && 
+            !m.failed && 
+            m.dateAdded && 
+            m.dateAdded < targetDateStr
+        );
+        missedDailyMissions.forEach(mission => {
+            // Verificar se já foi registrada como falha
+            const alreadyLogged = appData.completedMissions.some(entry =>
+                entry.failed &&
+                (entry.originalId || entry.id) === (mission.originalId || mission.id) &&
+                entry.failedDate === targetDateStr
+            );
+            if (!alreadyLogged) {
+                appData.completedMissions.push({
+                    ...mission,
+                    completedDate: targetDateStr,
+                    failedDate: targetDateStr,
+                    failed: true,
+                    penaltyApplied: true,
+                    reason: 'Missão diária não completada'
+                });
+            }
+        });
+        // Remover missões diárias falhadas da lista ativa
+        if (missedDailyMissions.length > 0) {
+            const idsToRemove = new Set(missedDailyMissions.map(m => m.id));
+            appData.missions = (appData.missions || []).filter(m => !idsToRemove.has(m.id));
+            if (!failedTypes.includes('mission')) {
+                failedTypes.push('mission');
+            }
+        }
+    
+        const missedWeeklyMissions = logMissedWeeklyItems(appData.missions || [], appData.completedMissions || [], 'missão', 'mission');
+        if (missedWeeklyMissions > 0 && !failedTypes.includes('mission')) {
             failedTypes.push('mission');
         }
     }
-
-    const missedWeeklyMissions = logMissedWeeklyItems(appData.missions || [], appData.completedMissions || [], 'missão');
-    if (missedWeeklyMissions > 0 && !failedTypes.includes('mission')) {
-        failedTypes.push('mission');
-    }
     
     // Check works - was there any failed work on this day?
-    const failedWorks = appData.completedWorks.filter(w => 
-        w.failedDate === targetDateStr && w.failed && w.penaltyApplied !== true);
-    if (failedWorks.length > 0) {
-        failedTypes.push('work');
-    }
-
-    // Processar trabalhos diários que falharam (não foram completados)
-    const missedDailyWorks = (appData.works || []).filter(w => 
-        w.type === 'diaria' && 
-        !w.completed && 
-        !w.failed && 
-        w.dateAdded && 
-        w.dateAdded < targetDateStr
-    );
-    missedDailyWorks.forEach(work => {
-        // Verificar se já foi registrada como falha
-        const alreadyLogged = appData.completedWorks.some(entry =>
-            entry.failed &&
-            (entry.originalId || entry.id) === (work.originalId || work.id) &&
-            entry.failedDate === targetDateStr
-        );
-        if (!alreadyLogged) {
-            appData.completedWorks.push({
-                ...work,
-                completedDate: targetDateStr,
-                failedDate: targetDateStr,
-                failed: true,
-                reason: 'Trabalho diário não completado'
-            });
+    if (shouldCheckType('work')) {
+        const failedWorks = appData.completedWorks.filter(w => 
+            w.failedDate === targetDateStr && w.failed && w.penaltyApplied !== true);
+        if (failedWorks.length > 0) {
+            failedTypes.push('work');
+            failedWorks.forEach(w => { w.penaltyApplied = true; });
         }
-    });
-    // Remover trabalhos diários falhados da lista ativa
-    if (missedDailyWorks.length > 0) {
-        const idsToRemove = new Set(missedDailyWorks.map(w => w.id));
-        appData.works = (appData.works || []).filter(w => !idsToRemove.has(w.id));
-        if (!failedTypes.includes('work')) {
+    
+        // Processar trabalhos diários que falharam (não foram completados)
+        const missedDailyWorks = (appData.works || []).filter(w => 
+            w.type === 'diaria' && 
+            !w.completed && 
+            !w.failed && 
+            w.dateAdded && 
+            w.dateAdded < targetDateStr
+        );
+        missedDailyWorks.forEach(work => {
+            // Verificar se já foi registrada como falha
+            const alreadyLogged = appData.completedWorks.some(entry =>
+                entry.failed &&
+                (entry.originalId || entry.id) === (work.originalId || work.id) &&
+                entry.failedDate === targetDateStr
+            );
+            if (!alreadyLogged) {
+                appData.completedWorks.push({
+                    ...work,
+                    completedDate: targetDateStr,
+                    failedDate: targetDateStr,
+                    failed: true,
+                    penaltyApplied: true,
+                    reason: 'Trabalho diário não completado'
+                });
+            }
+        });
+        // Remover trabalhos diários falhados da lista ativa
+        if (missedDailyWorks.length > 0) {
+            const idsToRemove = new Set(missedDailyWorks.map(w => w.id));
+            appData.works = (appData.works || []).filter(w => !idsToRemove.has(w.id));
+            if (!failedTypes.includes('work')) {
+                failedTypes.push('work');
+            }
+        }
+    
+        const missedWeeklyWorks = logMissedWeeklyItems(appData.works || [], appData.completedWorks || [], 'trabalho', 'work');
+        if (missedWeeklyWorks > 0 && !failedTypes.includes('work')) {
             failedTypes.push('work');
         }
-    }
-
-    const missedWeeklyWorks = logMissedWeeklyItems(appData.works || [], appData.completedWorks || [], 'trabalho');
-    if (missedWeeklyWorks > 0 && !failedTypes.includes('work')) {
-        failedTypes.push('work');
     }
     
     // Check nutrition - was there any food logged on this day?
@@ -10329,7 +10331,7 @@ function applyPenalties(dateStr = getLocalDateString()) {
         (appData.foodItems && appData.foodItems.length > 0) ||
         (appData.nutritionStats?.logDates && appData.nutritionStats.logDates.length > 0);
     const hasNutritionLog = appData.nutritionStats?.logDates?.includes(targetDateStr);
-    if (nutritionActive && !hasNutritionLog && !isRestDay(targetDateStr)) {
+    if (shouldCheckType('nutrition') && nutritionActive && !hasNutritionLog && !isRestDay(targetDateStr)) {
         // Check if there's any nutrition goal/activity that was expected
         // For now, we assume nutrition should be logged daily
         // You can modify this condition if nutrition should not be required every day
@@ -10355,12 +10357,12 @@ function applyPenalties(dateStr = getLocalDateString()) {
         const parsed = new Date(entry.date);
         return Number.isFinite(parsed.getTime()) && getLocalDateString(parsed) === targetDateStr;
     });
-    if (diaryActive && !hasDiaryEntry && !isRestDay(targetDateStr)) {
+    if (shouldCheckType('diary') && diaryActive && !hasDiaryEntry && !isRestDay(targetDateStr)) {
         failedTypes.push('diary');
     }
 
     // Check hydration - penalize every day the goal is not met
-    if (appData.hydration && appData.hydration.startDate) {
+    if (shouldCheckType('hydration') && appData.hydration && appData.hydration.startDate) {
         if (targetDateStr >= appData.hydration.startDate) {
             const hydrationGoalHit = appData.hydration.goalHitDates?.includes(targetDateStr);
             if (!hydrationGoalHit) {

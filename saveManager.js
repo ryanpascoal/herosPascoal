@@ -71,6 +71,8 @@ function safeLocalStorageGet(key, fallback = null) {
 
 // Função centralizada de save - sempre salva localmente e tenta nuvem
 window.queueSave = function() {
+    if (window.__suppressSave === true) return;
+
     const serialized = serializeAppData();
     safeLocalStorageSet(LOCAL_PROGRESS_KEY, serialized);
 
@@ -134,6 +136,7 @@ setInterval(() => {
 
 // Cleanup na unload - salva local e tenta nuvem
 window.addEventListener('beforeunload', () => {
+    if (window.__suppressSave === true) return;
     window.queueSave();
 });
 
