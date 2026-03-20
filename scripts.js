@@ -117,10 +117,6 @@ const appData = {
         startDate: null,
         logDates: [],
         goalHitDates: []
-    },
-    devTime: {
-        enabled: false,
-        currentDate: null
     }
 };
 const APP_DEFAULTS = JSON.parse(JSON.stringify(appData));
@@ -651,13 +647,6 @@ function ensureCriticalDataShape() {
         .map(v => String(v || '').trim())
         .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v));
 
-    if (!appData.devTime || typeof appData.devTime !== 'object') {
-        appData.devTime = { enabled: false, currentDate: getLocalDateString(new Date()) };
-    }
-    appData.devTime.enabled = appData.devTime.enabled === true;
-    if (typeof appData.devTime.currentDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(appData.devTime.currentDate)) {
-        appData.devTime.currentDate = getLocalDateString(new Date());
-    }
 }
 
 function normalizeWeekdayValue(value) {
@@ -1271,8 +1260,7 @@ function initUI() {
         const now = getGameNow();
         diaryDateElement.textContent = now.toLocaleDateString('pt-BR');
     }
-    updateDaySimulationStatus();
-    
+
     // Inicializar os seletores de atributos
     initAttributesSelectors();
     initClassSelectors();
@@ -1485,18 +1473,6 @@ function initEvents() {
     document.getElementById('reset-btn')?.addEventListener('click', resetProgress);
     document.getElementById('export-btn')?.addEventListener('click', exportData);
     document.getElementById('import-btn')?.addEventListener('click', importData);
-    document.getElementById('day-sim-minus')?.addEventListener('click', () => shiftSimulatedDate(-1));
-    document.getElementById('day-sim-plus')?.addEventListener('click', () => shiftSimulatedDate(1));
-    document.getElementById('day-sim-apply')?.addEventListener('click', () => {
-        const dateInput = document.getElementById('day-sim-date');
-        if (!dateInput || !dateInput.value) {
-            showFeedback('Selecione uma data para simular.', 'warn');
-            return;
-        }
-        applySimulatedDate(dateInput.value);
-    });
-    document.getElementById('day-sim-reset')?.addEventListener('click', resetToRealTime);
-
     // Calendário
     document.getElementById('cal-prev-month')?.addEventListener('click', () => {
         calendarState.month -= 1;
@@ -2054,14 +2030,17 @@ function updateBooks() {
     container.innerHTML = '';
     
     appData.books.forEach(book => {
+        const safeEmoji = escapeHtml(book.emoji || '📖');
+        const safeName = escapeHtml(book.name || 'Livro');
+        const safeAuthor = escapeHtml(book.author || '');
         const bookCard = document.createElement('div');
         bookCard.className = `item-card ${book.completed ? 'completed' : ''}`;
         bookCard.innerHTML = `
             <div class="item-info">
-                <span class="item-emoji">${book.emoji}</span>
+                <span class="item-emoji">${safeEmoji}</span>
                 <div>
-                    <div class="item-name">${book.name}</div>
-                    ${book.author ? `<div class="item-author">${book.author}</div>` : ''}
+                    <div class="item-name">${safeName}</div>
+                    ${safeAuthor ? `<div class="item-author">${safeAuthor}</div>` : ''}
                     ${book.completed ? `<div class="item-completed">Concluído em: ${formatDate(book.dateCompleted)}</div>` : ''}
                 </div>
             </div>
@@ -3136,7 +3115,9 @@ function updateWorksList() {
         const isOverdue = (work.type === 'epica' && work.deadline && parseLocalDateString(work.deadline) < startOfToday) ||
             (work.type === 'eventual' && work.date && parseLocalDateString(work.date) < startOfToday);
         const className = work.classId ? getClassNameById(work.classId) : '';
-        const classInfo = className ? `<div class="item-type">Classe: ${className}</div>` : '';
+        const classInfo = className ? `<div class="item-type">Classe: ${escapeHtml(className)}</div>` : '';
+        const safeWorkName = escapeHtml(work.name || 'Trabalho');
+        const safeWorkEmoji = escapeHtml(work.emoji || '💼');
 
         let deadlineInfo = '';
         if (work.type === 'epica' && work.deadline) {
@@ -3154,9 +3135,9 @@ function updateWorksList() {
         card.className = `item-card ${isOverdue ? 'overdue' : ''} ${urgentClass}`;
         card.innerHTML = `
             <div class="item-info">
-                <span class="item-emoji">${work.emoji || '💼'}</span>
+                <span class="item-emoji">${safeWorkEmoji}</span>
                 <div>
-                    <div class="item-name">${work.name} ${work.urgent ? '<span class="urgent-badge">🚨 URGENTE</span>' : ''}</div>
+                    <div class="item-name">${safeWorkName} ${work.urgent ? '<span class="urgent-badge">🚨 URGENTE</span>' : ''}</div>
                     <div class="item-type">${getMissionTypeName(work.type)}</div>
                     ${classInfo}
                     ${deadlineInfo}
@@ -9568,97 +9549,7 @@ function handleNutritionGoalsSubmit(event) {
 }
 
 function getGameNow() {
-    const realNow = new Date();
-    const simulated = appData?.devTime;
-    if (simulated && simulated.enabled === true && /^\d{4}-\d{2}-\d{2}$/.test(simulated.currentDate || '')) {
-        const simDate = parseLocalDateString(simulated.currentDate);
-        simDate.setHours(realNow.getHours(), realNow.getMinutes(), realNow.getSeconds(), realNow.getMilliseconds());
-        return simDate;
-    }
-    return realNow;
-}
-
-function updateDaySimulationStatus() {
-    const statusEl = document.getElementById('day-sim-status');
-    const inputEl = document.getElementById('day-sim-date');
-    if (!statusEl && !inputEl) return;
-    const isEnabled = appData.devTime?.enabled === true;
-    const currentDate = appData.devTime?.currentDate || getLocalDateString(new Date());
-    if (inputEl) inputEl.value = currentDate;
-    if (statusEl) {
-        statusEl.textContent = isEnabled ? `Simulação ativa: ${currentDate}` : 'Tempo real ativo';
-    }
-}
-
-function runSimulationDailyPipeline() {
-    const canRunCriticalResets = (typeof window.shouldRunCriticalResets === 'function')
-        ? window.shouldRunCriticalResets()
-        : true;
-
-    if (!canRunCriticalResets) {
-        updateCurrentDate();
-        updateMidnightCountdown();
-        updateUI({ mode: 'full', forceCalendar: true });
-        showFeedback('Faça login e aguarde sincronização para simular regras diárias.', 'warn');
-        return;
-    }
-
-    checkDailyReset();
-    recreateDailyMissionsForToday();
-    recreateDailyWorksForToday();
-    cleanupOldDailyMissions();
-    cleanupOldDailyWorks();
-    checkOverdueMissions({ isInitialCheck: true });
-    checkOverdueWorks({ isInitialCheck: true });
-    checkWeeklyReset();
-    generateDailyActivities();
-    updateStreaks();
-    handleGameOverIfNeeded({ isInitialCheck: true });
-    updateCurrentDate();
-    updateMidnightCountdown();
-    updateUI({ mode: 'full', forceCalendar: true });
-}
-
-function applySimulatedDate(dateStr, options = {}) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) {
-        showFeedback('Data inválida para simulação.', 'warn');
-        return;
-    }
-    appData.devTime.enabled = true;
-    appData.devTime.currentDate = String(dateStr);
-    const simulatedDate = parseLocalDateString(appData.devTime.currentDate);
-    calendarState.month = simulatedDate.getMonth();
-    calendarState.year = simulatedDate.getFullYear();
-    updateDaySimulationStatus();
-    if (options.runPipeline !== false) {
-        runSimulationDailyPipeline();
-    } else {
-        updateCurrentDate();
-        updateMidnightCountdown();
-        updateUI({ mode: 'full', forceCalendar: true });
-    }
-    saveToLocalStorage();
-}
-
-function shiftSimulatedDate(days) {
-    const baseDate = appData.devTime?.enabled
-        ? parseLocalDateString(appData.devTime.currentDate)
-        : parseLocalDateString(getLocalDateString(getGameNow()));
-    baseDate.setDate(baseDate.getDate() + days);
-    applySimulatedDate(getLocalDateString(baseDate));
-}
-
-function resetToRealTime() {
-    appData.devTime.enabled = false;
-    appData.devTime.currentDate = getLocalDateString(new Date());
-    calendarState.month = getGameNow().getMonth();
-    calendarState.year = getGameNow().getFullYear();
-    updateDaySimulationStatus();
-    updateCurrentDate();
-    updateMidnightCountdown();
-    updateUI({ mode: 'full', forceCalendar: true });
-    saveToLocalStorage();
-    showFeedback('Simulação desativada. Tempo real restaurado.', 'info');
+    return new Date();
 }
 
 
@@ -9696,7 +9587,6 @@ function updateCurrentDate() {
     });
     if (dateElement) dateElement.textContent = formattedDate;
     if (workDateElement) workDateElement.textContent = formattedDate;
-    updateDaySimulationStatus();
 }
 
 // Salvar entrada no diário
@@ -9755,9 +9645,10 @@ async function saveDiaryEntry() {
 
 // Resetar progresso
 async function resetProgress() {
+    const delegatedReset = window.resetProgress;
     // Delegar para cloud-sync quando disponível (reset local + nuvem)
-    if (typeof window.resetProgress === 'function') {
-        await window.resetProgress();
+    if (typeof delegatedReset === 'function' && delegatedReset !== resetProgress) {
+        await delegatedReset();
         return;
     }
     
