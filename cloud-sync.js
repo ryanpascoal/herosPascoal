@@ -122,9 +122,9 @@
             appData.diaryEntries = legacyEntries.slice();
             diaryCache = appData.diaryEntries;
             diaryLoaded = true;
-            console.log('DiÃ¡rio legado migrado do IndexedDB para memÃ³ria/nuvem');
+            console.log('Diário legado migrado do IndexedDB para memória/nuvem');
         } catch (err) {
-            console.warn('Falha ao ler diÃ¡rio legado do IndexedDB:', err);
+            console.warn('Falha ao ler diário legado do IndexedDB:', err);
         }
     }
 
@@ -148,14 +148,14 @@
             status.classList.add(kind || 'warn');
         }
         
-        // Atualizar indicador no cabeÃ§alho tambÃ©m
+        // Atualizar indicador no cabeçalho também
         updateHeaderSyncIndicator(message, kind);
     }
     
     function updateHeaderSyncIndicator(message, kind) {
         let indicator = document.getElementById('header-sync-indicator');
         if (!indicator) {
-            // Criar indicador no cabeÃ§alho se nÃ£o existir
+            // Criar indicador no cabeçalho se não existir
             const headerStats = document.querySelector('.header-stats');
             if (headerStats) {
                 indicator = document.createElement('div');
@@ -170,7 +170,7 @@
                     if (cloudReady && currentUser) {
                         pushCloud(true);
                     } else {
-                        // Se nÃ£o estÃ¡ conectado, mostra o painel de login
+                        // Se não está conectado, mostra o painel de login
                         const panel = document.getElementById('cloud-auth-panel');
                         if (panel) {
                             panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
@@ -181,21 +181,21 @@
         }
         
         if (indicator) {
-            // Mapear mensagens para Ã­cones e cores
-            let icon = 'â˜ï¸';
+            // Mapear mensagens para ícones e cores
+            let icon = '☁️';
             let bgColor = 'rgba(255,255,255,0.05)';
             let textColor = 'var(--gray-color)';
             
             if (kind === 'ok') {
-                icon = 'âœ…';
+                icon = '✅';
                 bgColor = 'rgba(32, 217, 128, 0.2)';
                 textColor = '#20D980';
             } else if (kind === 'err') {
-                icon = 'âŒ';
+                icon = '❌';
                 bgColor = 'rgba(255, 77, 109, 0.2)';
                 textColor = '#FF4D6D';
             } else if (message && message.toLowerCase().includes('sincronizando')) {
-                icon = 'ðŸ”„';
+                icon = '🔄';
                 bgColor = 'rgba(16, 242, 255, 0.2)';
                 textColor = '#10F2FF';
             }
@@ -227,7 +227,7 @@
             '<button id="cloud-register-btn" type="button">Criar conta</button>' +
             '<button id="cloud-logout-btn" type="button">Sair</button>' +
             '<button id="cloud-sync-now-btn" type="button">Sincronizar Agora</button>' +
-            '<span id="cloud-user-label">NÃ£o autenticado</span>' +
+            '<span id="cloud-user-label">Não autenticado</span>' +
             '<span id="cloud-sync-status" class="warn">Modo local</span>';
         document.body.appendChild(panel);
     }
@@ -244,7 +244,7 @@
     async function pushCloud(force) {
         if (!cloudReady || !currentUser) return;
         if (syncBlockedByConflict) {
-            setSyncStatus('SincronizaÃ§Ã£o pausada por conflito', 'warn');
+            setSyncStatus('Sincronização pausada por conflito', 'warn');
             return;
         }
         if (saveInFlight) {
@@ -282,8 +282,8 @@
     // Salva apenas na nuvem (sem localStorage)
     function queueCloudSave() {
         if (!cloudReady || !currentUser) {
-            // Sem login: em modo cloud-only ignoramos saves automÃ¡ticos silenciosamente.
-            // O estado de conexÃ£o jÃ¡ Ã© exibido via onAuthStateChanged.
+            // Sem login: em modo cloud-only ignoramos saves automáticos silenciosamente.
+            // O estado de conexão já é exibido via onAuthStateChanged.
             return;
         }
         // Push imediato para a nuvem (mais seguro)
@@ -291,7 +291,7 @@
     }
     window.queueCloudSave = queueCloudSave;
 
-    // FunÃ§Ã£o para verificar e notificar sobre modificaÃ§Ãµes remotas
+    // Função para verificar e notificar sobre modificações remotas
     function checkRemoteModification(remoteTimestamp) {
         if (!remoteTimestamp) return;
         
@@ -307,39 +307,39 @@
             return;
         }
         
-        // Obter Ãºltimo sincronizaÃ§Ã£o local
+        // Obter última sincronização local
         const lastLocalSync = localStorage.getItem(LAST_SYNC_KEY);
         const lastSyncDate = lastLocalSync ? new Date(parseInt(lastLocalSync)) : null;
         
-        // Se hÃ¡ dados locais e a nuvem foi modificada mais recentemente
+        // Se Há dados locais e a nuvem foi modificada mais recentemente
         if (lastSyncDate && remoteDate > lastSyncDate) {
             const diffMs = Date.now() - remoteDate.getTime();
             const diffMins = Math.floor(diffMs / 60000);
             const diffHours = Math.floor(diffMs / 3600000);
             
             let timeAgo;
-            if (diffMins < 1) timeAgo = 'hÃ¡ poucos segundos';
-            else if (diffMins < 60) timeAgo = `hÃ¡ ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
-            else if (diffHours < 24) timeAgo = `hÃ¡ ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+            if (diffMins < 1) timeAgo = 'Há poucos segundos';
+            else if (diffMins < 60) timeAgo = `Há ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
+            else if (diffHours < 24) timeAgo = `Há ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
             else timeAgo = remoteDate.toLocaleDateString('pt-BR');
             
-            // Mostrar notificaÃ§Ã£o
+            // Mostrar notificação
             showRemoteChangeNotification(timeAgo);
         }
     }
     
-    // Mostrar notificaÃ§Ã£o de alteraÃ§Ã£o remota
+    // Mostrar notificação de alteração remota
     function showRemoteChangeNotification(timeAgo) {
         const notification = document.createElement('div');
         notification.id = 'remote-change-notification';
         notification.className = 'notification-banner info';
         notification.innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px; padding: 12px;">
-                <span style="font-size: 1.5rem;">ðŸ“±</span>
+                <span style="font-size: 1.5rem;">📱</span>
                 <div style="flex: 1;">
                     <strong>Dados modificados em outro dispositivo</strong>
                     <p style="margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9;">
-                        Ãšltima alteraÃ§Ã£o na nuvem: ${timeAgo}
+                        Última alteração na nuvem: ${timeAgo}
                     </p>
                 </div>
                 <button onclick="this.parentElement.parentElement.remove()" style="
@@ -349,10 +349,10 @@
             </div>
         `;
         
-        // Inserir no topo da pÃ¡gina
+        // Inserir no topo da página
         document.body.insertBefore(notification, document.body.firstChild);
         
-        // Auto-remover apÃ³s 10 segundos
+        // Auto-remover após 10 segundos
         setTimeout(() => {
             if (notification.parentElement) notification.remove();
         }, 10000);
@@ -397,10 +397,10 @@
     }
 
     async function askConflictKeepLocal() {
-        const message = 'Conflito detectado: dados mudaram em outro dispositivo enquanto havia alteraÃ§Ãµes locais. Deseja manter a versÃ£o LOCAL e sobrescrever a nuvem?';
+        const message = 'Conflito detectado: dados mudaram em outro dispositivo enquanto havia alterações locais. Deseja manter a versão LOCAL e sobrescrever a nuvem?';
         if (typeof askConfirmation === 'function') {
             return await askConfirmation(message, {
-                title: 'Conflito de sincronizaÃ§Ã£o',
+                title: 'Conflito de sincronização',
                 confirmText: 'Manter local',
                 cancelText: 'Usar nuvem'
             });
@@ -422,7 +422,7 @@
             hasUnsyncedLocalChanges = true;
             await pushCloud(true);
         } else {
-            applyRemoteState(remote, { statusMessage: 'Conflito resolvido: versÃ£o da nuvem aplicada', statusKind: 'ok' });
+            applyRemoteState(remote, { statusMessage: 'Conflito resolvido: versão da nuvem aplicada', statusKind: 'ok' });
             syncBlockedByConflict = false;
             conflictInProgress = false;
         }
@@ -474,7 +474,7 @@
             handleRealtimeRemoteUpdate(remote);
         }, function (err) {
             console.error('Erro no listener em tempo real:', err);
-            setSyncStatus('Falha na sincronizaÃ§Ã£o em tempo real', 'err');
+            setSyncStatus('Falha na sincronização em tempo real', 'err');
         });
         realtimeEnabled = true;
     }
@@ -489,7 +489,7 @@
 
         const remote = snap.data() || {};
         
-        // Verificar se houve modificaÃ§Ã£o remota antes de sobrescrever
+        // Verificar se houve modificação remota antes de sobrescrever
         const remoteTimestamp = remote.updatedAt;
         checkRemoteModification(remoteTimestamp);
         const applied = applyRemoteState(remote, { statusMessage: 'Dados carregados da nuvem', statusKind: 'ok' });
@@ -517,7 +517,7 @@
             if (syncBlockedByConflict) {
                 hasUnsyncedLocalChanges = true;
                 persistLocalCache();
-                setSyncStatus('SincronizaÃ§Ã£o pausada atÃ© resolver conflito', 'warn');
+                setSyncStatus('Sincronização pausada até resolver conflito', 'warn');
                 return;
             }
             hasUnsyncedLocalChanges = true;
@@ -598,8 +598,8 @@
         };
 
         window.resetProgress = async function () {
-            if (!confirm('Tem certeza que deseja resetar todo o progresso? Isso nÃ£o pode ser desfeito.')) return;
-            const confirmationText = prompt('Digite RESETAR para confirmar a exclusÃ£o total do progresso:');
+            if (!confirm('Tem certeza que deseja resetar todo o progresso? Isso não pode ser desfeito.')) return;
+            const confirmationText = prompt('Digite RESETAR para confirmar a exclusão total do progresso:');
             if (confirmationText !== 'RESETAR') {
                 alert('Reset cancelado.');
                 return;
@@ -671,7 +671,7 @@
 
         syncNowBtn.addEventListener('click', async function () {
             if (!cloudReady || !currentUser) {
-                alert('FaÃ§a login para sincronizar.');
+                alert('Faça login para sincronizar.');
                 return;
             }
             await pushCloud(true);
@@ -680,7 +680,7 @@
 
     async function initFirebaseSync() {
         if (!window.firebase) {
-            setSyncStatus('SDK Firebase nÃ£o carregado', 'err');
+            setSyncStatus('SDK Firebase não carregado', 'err');
             return;
         }
 
@@ -705,7 +705,7 @@
                 conflictInProgress = false;
                 pendingRemoteConflict = null;
                 hasUnsyncedLocalChanges = false;
-                setUserLabel('NÃ£o autenticado');
+                setUserLabel('Não autenticado');
                 setSyncStatus('Modo local (sem login)', 'warn');
                 return;
             }
@@ -757,4 +757,3 @@
 
     init();
 })();
-
