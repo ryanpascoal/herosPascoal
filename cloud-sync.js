@@ -226,6 +226,7 @@
         // Push imediato para a nuvem (mais seguro)
         pushCloud(false);
     }
+    window.queueCloudSave = queueCloudSave;
 
     // Função para verificar e notificar sobre modificações remotas
     function checkRemoteModification(remoteTimestamp) {
@@ -298,8 +299,7 @@
         const snap = await getProgressRef(uid).get();
         if (!snap.exists) {
             updateServerMetaFromLocal();
-            await pushCloud(true);
-            return;
+            return { hasRemoteData: false };
         }
 
         const remote = snap.data() || {};
@@ -314,7 +314,9 @@
         }
 
         const remoteAppData = remote.appData;
-        if (!remoteAppData || typeof remoteAppData !== 'object') return;
+        if (!remoteAppData || typeof remoteAppData !== 'object') {
+            return { hasRemoteData: true };
+        }
 
         // Carregar dados da nuvem (substitui dados locais)
         Object.keys(appData).forEach(key => delete appData[key]);
@@ -335,6 +337,7 @@
         applyDataGuards();
 
         if (typeof updateUI === 'function') updateUI({ mode: 'full', forceCalendar: true });
+        return { hasRemoteData: true };
     }
 
 
@@ -516,12 +519,16 @@
                 return;
             }
 
-            cloudReady = true;
+            cloudReady = false;
             setUserLabel('Usuario: ' + (user.email || user.uid));
             setSyncStatus('Conectado. Sincronizando...', 'warn');
 
             try {
-                await pullCloud(user.uid);
+                const result = await pullCloud(user.uid);
+                cloudReady = true;
+                if (result && result.hasRemoteData === false) {
+                    await pushCloud(true);
+                }
             } catch (err) {
                 console.error('Erro ao carregar nuvem:', err);
                 setSyncStatus('Falha ao carregar nuvem', 'err');
@@ -547,5 +554,4 @@
 
     init();
 })();
-
 

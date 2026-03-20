@@ -299,6 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 1. Primeiro: carregar dados salvos
     loadFromLocalStorage();
     normalizeActivityDays();
+    checkDailyReset();
     
     // 2. Verificar e recriar missões diárias para HOJE (coloque AQUI!)
     recreateDailyMissionsForToday();
@@ -321,7 +322,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initEvents();
     initHydrationUI();
     initDiaryStorage().then(() => {
-        checkDailyReset();
         updateDiaryEntries();
     });
     updateUI();
@@ -2514,6 +2514,7 @@ function failMission(missionId, reason = '') {
         completedDate: todayStr,
         failedDate: todayStr,
         failed: true,
+        penaltyApplied: true,
         reason: reason
     });
     
@@ -2652,6 +2653,7 @@ function failWork(workId, reason = '') {
         completedDate: todayStr,
         failedDate: todayStr,
         failed: true,
+        penaltyApplied: true,
         reason
     });
     if (!appData.statistics) appData.statistics = {};
@@ -3053,10 +3055,11 @@ function checkOverdueWorks(options = {}) {
         if (work.type === 'semanal') {
             const weekKey = getWeekKey(new Date());
             const lastShownWeek = work.lastShownWeek || getWeekKey(parseLocalDateString(work.availableDate || work.dateAdded || todayStr));
+            const workLineageKey = work.originalId || work.id;
             
             // Verificar se já foi falha essa semana
             const alreadyFailedThisWeek = appData.completedWorks.some(w => 
-                w.originalId === work.id && 
+                (w.originalId || w.id) === workLineageKey &&
                 w.failed && 
                 w.failedDate && 
                 getWeekKey(parseLocalDateString(w.failedDate)) === weekKey
@@ -3392,10 +3395,11 @@ function checkOverdueMissions(options = {}) {
         if (mission.type === 'semanal') {
             const weekKey = getWeekKey(new Date());
             const lastShownWeek = mission.lastShownWeek || getWeekKey(parseLocalDateString(mission.availableDate || mission.dateAdded || todayStr));
+            const missionLineageKey = mission.originalId || mission.id;
             
             // Verificar se já foi falha essa semana
             const alreadyFailedThisWeek = appData.completedMissions.some(m => 
-                m.originalId === mission.id && 
+                (m.originalId || m.id) === missionLineageKey &&
                 m.failed && 
                 m.failedDate && 
                 getWeekKey(parseLocalDateString(m.failedDate)) === weekKey
@@ -6833,6 +6837,9 @@ function handleMissionSubmit(e) {
         completed: false,
         dateAdded: getLocalDateString()
     };
+    if (type === 'diaria' || type === 'semanal') {
+        newMission.originalId = newMission.id;
+    }
     
     // Adicionar campos específicos por tipo
     if (type === 'semanal') {
@@ -6887,6 +6894,9 @@ function handleWorkSubmit(e) {
         urgent: isUrgent,
         dateAdded: getLocalDateString()
     };
+    if (type === 'diaria' || type === 'semanal') {
+        newWork.originalId = newWork.id;
+    }
 
     if (type === 'semanal') {
         const dayCheckboxes = document.querySelectorAll('#work-days-container input[type="checkbox"]:checked');
@@ -9623,15 +9633,14 @@ async function saveDiaryEntry() {
 
 // Resetar progresso
 async function resetProgress() {
-    // Verificar se o Firebase está disponível e o usuário está logado
-    // Se sim, usar a função do cloud-sync para apagar os dados na nuvem também
-    if (typeof firebase !== 'undefined' && typeof auth !== 'undefined') {
-        // Usar a função de reset que apaga dados na nuvem
-        // delegar para a função do cloud-sync se disponível
-        if (typeof window.resetProgress === 'function') {
-            await window.resetProgress();
-            return;
-        }
+    // Delegar para cloud-sync quando disponível (reset local + nuvem)
+    if (typeof window.resetProgress === 'function') {
+        await window.resetProgress();
+        return;
+    }
+    
+    // Verificar se o Firebase está disponível para tentar limpar também o remoto
+    if (typeof firebase !== 'undefined') {
         
         // Se a função global não existe, fazer o reset manualmente com nuvem
         const confirmed = await askConfirmation('Tem certeza que deseja resetar todo o progresso? Isso não pode ser desfeito.', {
@@ -10210,7 +10219,7 @@ function applyPenalties(dateStr = getLocalDateString()) {
     
     // Check missions - was there any failed mission on this day?
     const failedMissions = appData.completedMissions.filter(m => 
-        m.failedDate === targetDateStr && m.failed);
+        m.failedDate === targetDateStr && m.failed && m.penaltyApplied !== true);
     if (failedMissions.length > 0) {
         failedTypes.push('mission');
     }
@@ -10257,7 +10266,7 @@ function applyPenalties(dateStr = getLocalDateString()) {
     
     // Check works - was there any failed work on this day?
     const failedWorks = appData.completedWorks.filter(w => 
-        w.failedDate === targetDateStr && w.failed);
+        w.failedDate === targetDateStr && w.failed && w.penaltyApplied !== true);
     if (failedWorks.length > 0) {
         failedTypes.push('work');
     }

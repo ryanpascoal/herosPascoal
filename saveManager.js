@@ -67,15 +67,15 @@ function safeLocalStorageGet(key, fallback = null) {
 // Função centralizada de save - apenas na nuvem
 window.queueSave = function() {
     // Salvar apenas na nuvem
-    if (typeof queueCloudSave === 'function') {
-        queueCloudSave();
+    if (typeof window.queueCloudSave === 'function') {
+        window.queueCloudSave();
     }
 };
 
 function performSave() {
     // Salvar apenas na nuvem
-    if (typeof queueCloudSave === 'function') {
-        queueCloudSave();
+    if (typeof window.queueCloudSave === 'function') {
+        window.queueCloudSave();
     }
     // Não salva mais localmente
 }
@@ -120,23 +120,23 @@ setInterval(() => {
         const dataHash = btoa(unescape(encodeURIComponent(jsonStr))).slice(0, 20);
         if (dataHash !== lastSaveHash) {
             // Salvar apenas na nuvem
-            if (typeof queueCloudSave === 'function') {
-                queueCloudSave();
+            if (typeof window.queueCloudSave === 'function') {
+                window.queueCloudSave();
             }
             lastSaveHash = dataHash;
         }
     } catch (e) {
         // Se falhar, tente salvar na nuvem
-        if (typeof queueCloudSave === 'function') {
-            queueCloudSave();
+        if (typeof window.queueCloudSave === 'function') {
+            window.queueCloudSave();
         }
     }
 }, 30000);
 
 // Cleanup na unload - salva apenas na nuvem
 window.addEventListener('beforeunload', () => {
-    if (typeof queueCloudSave === 'function') {
-        queueCloudSave();
+    if (typeof window.queueCloudSave === 'function') {
+        window.queueCloudSave();
     }
 });
 
