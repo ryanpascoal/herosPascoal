@@ -912,21 +912,25 @@ function recreateDailyMissionsForToday() {
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
 
-  // Encontrar missões diárias concluídas ontem
-  const yesterdayCompletedMissions = appData.completedMissions.filter(
-    (mission) =>
-      mission.type === 'diaria' && mission.completedDate === yesterdayStr && !mission.failed
-  );
+  // Encontrar missões diárias de ontem (concluídas, falhadas ou puladas), 1 por linhagem
+  const yesterdayDailyMissionsByLineage = new Map();
+  appData.completedMissions.forEach((mission) => {
+    if (mission.type !== 'diaria') return;
+    const missionDate = mission.completedDate || mission.failedDate || mission.skippedDate;
+    if (missionDate !== yesterdayStr) return;
+    const lineageKey = String(mission.originalId || mission.id);
+    if (!yesterdayDailyMissionsByLineage.has(lineageKey)) {
+      yesterdayDailyMissionsByLineage.set(lineageKey, mission);
+    }
+  });
 
-  // Recriar cada missão diária concluída ontem
-  yesterdayCompletedMissions.forEach((originalMission) => {
+  // Recriar cada missão diária de ontem para hoje
+  yesterdayDailyMissionsByLineage.forEach((originalMission, lineageKey) => {
     // Verificar se já existe uma missão igual disponível HOJE
     const alreadyExists = appData.missions.some(
       (mission) =>
         mission.type === 'diaria' &&
-        mission.originalId === originalMission.originalId &&
-        !mission.completed &&
-        !mission.failed &&
+        String(mission.originalId || mission.id) === lineageKey &&
         mission.dateAdded === todayStr
     );
 
@@ -1091,17 +1095,22 @@ function recreateDailyWorksForToday() {
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
 
-  const yesterdayCompletedWorks = appData.completedWorks.filter(
-    (work) => work.type === 'diaria' && work.completedDate === yesterdayStr && !work.failed
-  );
+  const yesterdayDailyWorksByLineage = new Map();
+  appData.completedWorks.forEach((work) => {
+    if (work.type !== 'diaria') return;
+    const workDate = work.completedDate || work.failedDate || work.skippedDate;
+    if (workDate !== yesterdayStr) return;
+    const lineageKey = String(work.originalId || work.id);
+    if (!yesterdayDailyWorksByLineage.has(lineageKey)) {
+      yesterdayDailyWorksByLineage.set(lineageKey, work);
+    }
+  });
 
-  yesterdayCompletedWorks.forEach((originalWork) => {
+  yesterdayDailyWorksByLineage.forEach((originalWork, lineageKey) => {
     const alreadyExists = appData.works.some(
       (work) =>
         work.type === 'diaria' &&
-        work.originalId === originalWork.originalId &&
-        !work.completed &&
-        !work.failed &&
+        String(work.originalId || work.id) === lineageKey &&
         work.dateAdded === todayStr
     );
 

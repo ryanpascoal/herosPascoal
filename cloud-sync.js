@@ -30,6 +30,8 @@
   let pendingRemoteConflict = null;
   let hasUnsyncedLocalChanges = false;
   let lastAppliedRemoteMs = 0;
+  let lastAppliedRemoteHash = '';
+  let applyingRemoteState = false;
   const CLIENT_SESSION_ID = `session-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
   const serverMeta = {
@@ -115,6 +117,14 @@
       ? deepClone(diaryCache)
       : deepClone(appData.diaryEntries || []);
     return payload;
+  }
+
+  function getDataHash(data) {
+    try {
+      return JSON.stringify(data || {});
+    } catch (err) {
+      return '';
+    }
   }
 
   async function loadLegacyDiaryFromIndexedDBIfNeeded() {
@@ -380,6 +390,14 @@
       return false;
     }
 
+    const remoteHash = getDataHash(remoteAppData);
+    if (options.skipIfUnchanged && remoteHash && remoteHash === lastAppliedRemoteHash) {
+      const remoteMsSkip = getTimestampMs(remote.updatedAt);
+      if (remoteMsSkip > 0) lastAppliedRemoteMs = Math.max(lastAppliedRemoteMs, remoteMsSkip);
+      hasUnsyncedLocalChanges = false;
+      return false;
+    }
+
     Object.keys(appData).forEach((key) => delete appData[key]);
     Object.assign(appData, deepClone(remoteAppData));
 
@@ -396,12 +414,25 @@
 
     const remoteMs = getTimestampMs(remote.updatedAt);
     if (remoteMs > 0) lastAppliedRemoteMs = remoteMs;
+    if (remoteHash) lastAppliedRemoteHash = remoteHash;
     hasUnsyncedLocalChanges = false;
 
     if (options.statusMessage) {
       setSyncStatus(options.statusMessage, options.statusKind || 'ok');
     }
-    if (typeof updateUI === 'function') updateUI({ mode: 'full', forceCalendar: true });
+    if (typeof updateUI === 'function') {
+      const uiMode = options.uiMode || 'activity';
+      const forceCalendar = options.forceCalendar === true;
+      const forceNutrition = options.forceNutrition === true;
+      applyingRemoteState = true;
+      window.__suppressSave = true;
+      try {
+        updateUI({ mode: uiMode, forceCalendar, forceNutrition });
+      } finally {
+        window.__suppressSave = false;
+        applyingRemoteState = false;
+      }
+    }
     return true;
   }
 
@@ -461,6 +492,12 @@
 
     if (remoteMs > 0 && remoteMs <= lastAppliedRemoteMs) return;
 
+    const incomingHash = getDataHash(remote.appData);
+    if (incomingHash && incomingHash === lastAppliedRemoteHash) {
+      if (remoteMs > 0) lastAppliedRemoteMs = Math.max(lastAppliedRemoteMs, remoteMs);
+      return;
+    }
+
     if (hasUnsyncedLocalChanges || syncBlockedByConflict) {
       if (conflictInProgress) {
         pendingRemoteConflict = remote;
@@ -478,6 +515,8 @@
     applyRemoteState(remote, {
       statusMessage: 'Atualizado em tempo real (outro dispositivo)',
       statusKind: 'ok',
+      uiMode: 'activity',
+      skipIfUnchanged: true,
     });
   }
 
@@ -514,6 +553,9 @@
     const applied = applyRemoteState(remote, {
       statusMessage: 'Dados carregados da nuvem',
       statusKind: 'ok',
+      uiMode: 'full',
+      forceCalendar: true,
+      skipIfUnchanged: true,
     });
     if (!applied) return { hasRemoteData: true };
     return { hasRemoteData: true };
@@ -530,6 +572,7 @@
 
     // Salva na nuvem quando autenticado; sem login, mantem cache local.
     window.saveToLocalStorage = function () {
+      if (window.__suppressSave === true || applyingRemoteState) return;
       if (!cloudReady || !currentUser) {
         hasUnsyncedLocalChanges = true;
         persistLocalCache();
