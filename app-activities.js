@@ -219,6 +219,8 @@ function updateCompletedWorks() {
 }
 
 function checkOverdueWorks(options = {}) {
+  const skipWeekly = options.skipWeekly === true;
+
   // Se for verificação inicial e lives <= 3, pode ser que o usuário acabou de restaurar
   // Neste caso, pular falhas automáticas para evitar loop de game over
   if (options.isInitialCheck && appData.hero.lives <= 3 && appData.hero.gameOverCounted === false) {
@@ -268,7 +270,7 @@ function checkOverdueWorks(options = {}) {
     }
 
     // Semanais: falha no dia seguinte ao dia programado não cumprido
-    if (work.type === 'semanal') {
+    if (!skipWeekly && work.type === 'semanal') {
       const workLineageKey = work.originalId || work.id;
       const yesterdayDayOfWeek = yesterday.getDay();
       const availableFrom = work.availableDate || work.dateAdded || todayStr;
@@ -600,6 +602,8 @@ function updateCompletedMissions() {
 
 // Verificar missões atrasadas diariamente (função ajustada)
 function checkOverdueMissions(options = {}) {
+  const skipWeekly = options.skipWeekly === true;
+
   // Se for verificação inicial e lives <= 3, pode ser que o usuário acabou de restaurar
   // Neste caso, pular falhas automáticas para evitar loop de game over
   if (options.isInitialCheck && appData.hero.lives <= 3 && appData.hero.gameOverCounted === false) {
@@ -649,7 +653,7 @@ function checkOverdueMissions(options = {}) {
     }
 
     // Semanais: falha no dia seguinte ao dia programado não cumprido
-    if (mission.type === 'semanal') {
+    if (!skipWeekly && mission.type === 'semanal') {
       const missionLineageKey = mission.originalId || mission.id;
       const yesterdayDayOfWeek = yesterday.getDay();
       const availableFrom = mission.availableDate || mission.dateAdded || todayStr;

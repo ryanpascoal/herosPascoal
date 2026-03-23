@@ -695,9 +695,14 @@ function checkDailyReset() {
     cleanupOldDailyMissions();
     cleanupOldDailyWorks();
 
-    // OBS: checkOverdueMissions/Works NÃO são chamados aqui porque
-    // applyPenalties já lida com falhas de atividades semanais.
-    // Chamá-los causaria penalidades duplicadas.
+    // Processar atrasos de itens com prazo (eventual/epica).
+    // skipWeekly evita duplicidade com o pipeline de applyPenalties para semanais.
+    if (typeof checkOverdueMissions === 'function') {
+      checkOverdueMissions({ skipWeekly: true });
+    }
+    if (typeof checkOverdueWorks === 'function') {
+      checkOverdueWorks({ skipWeekly: true });
+    }
 
     // Gerar novas atividades do dia
     generateDailyActivities();

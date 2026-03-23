@@ -957,7 +957,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         !m.completed &&
         !m.failed &&
         m.dateAdded &&
-        m.dateAdded < targetDateStr
+        m.dateAdded <= targetDateStr
     );
     missedDailyMissions.forEach((mission) => {
       // Verificar se já foi registrada como falha
@@ -1017,7 +1017,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         !w.completed &&
         !w.failed &&
         w.dateAdded &&
-        w.dateAdded < targetDateStr
+        w.dateAdded <= targetDateStr
     );
     missedDailyWorks.forEach((work) => {
       // Verificar se já foi registrada como falha
