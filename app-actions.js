@@ -12,6 +12,14 @@
       handleNewStudy();
       break;
 
+    case 'edit-workout':
+      handleEditWorkout();
+      break;
+
+    case 'edit-study':
+      handleEditStudy();
+      break;
+
     case 'book':
       handleNewBook();
       break;
@@ -62,6 +70,54 @@ function handleNewStudy() {
   appData.studies.push(newStudy);
   updateUI();
   showFeedback('Estudo cadastrado com sucesso!', 'success');
+}
+
+function handleEditWorkout() {
+  const id = parseInt(document.getElementById('modal-item-id').value, 10);
+  const workout = appData.workouts.find((item) => item.id === id);
+  if (!workout) return;
+
+  const name = document.getElementById('modal-item-name').value.trim();
+  const emoji = document.getElementById('modal-item-emoji').value.trim();
+  const type = document.getElementById('modal-item-type').value;
+  const days = getCheckedDays('#item-form .days-selector input[type="checkbox"]:checked');
+
+  if (!name) {
+    showFeedback('Informe um nome válido para o treino.', 'warn');
+    return;
+  }
+
+  workout.name = name;
+  workout.emoji = emoji || '💪';
+  workout.type = type;
+  workout.days = days;
+
+  updateUI({ mode: 'activity' });
+  showFeedback('Treino atualizado com sucesso!', 'success');
+}
+
+function handleEditStudy() {
+  const id = parseInt(document.getElementById('modal-item-id').value, 10);
+  const study = appData.studies.find((item) => item.id === id);
+  if (!study) return;
+
+  const name = document.getElementById('modal-item-name').value.trim();
+  const emoji = document.getElementById('modal-item-emoji').value.trim();
+  const type = document.getElementById('modal-item-type').value;
+  const days = getCheckedDays('#item-form .days-selector input[type="checkbox"]:checked');
+
+  if (!name) {
+    showFeedback('Informe um nome válido para o estudo.', 'warn');
+    return;
+  }
+
+  study.name = name;
+  study.emoji = emoji || '📚';
+  study.type = type;
+  study.days = days;
+
+  updateUI({ mode: 'activity' });
+  showFeedback('Estudo atualizado com sucesso!', 'success');
 }
 
 // Manipular novo livro

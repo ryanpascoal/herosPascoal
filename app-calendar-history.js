@@ -927,7 +927,7 @@ function switchSubTab(subTabName, parentElement) {
 }
 
 // Mostrar modal para adicionar item
-function showItemModal(itemType) {
+function showItemModal(itemType, existingItem = null) {
   const modal = document.getElementById('item-modal');
   const modalTitle = document.getElementById('modal-title');
   const form = document.getElementById('item-form');
@@ -939,75 +939,81 @@ function showItemModal(itemType) {
 
   // Configurar título e formulário baseado no tipo de item
   let formHTML = '';
+  const selectedDays = new Set(
+    Array.isArray(existingItem?.days) ? existingItem.days.map((day) => String(day)) : []
+  );
+  const isEditing = !!existingItem;
 
   switch (itemType) {
     case 'treino':
-      modalTitle.textContent = 'Adicionar Novo Treino';
+      modalTitle.textContent = isEditing ? 'Editar Treino' : 'Adicionar Novo Treino';
       formHTML = `
                 <div class="form-group">
                     <label for="modal-item-name">Nome do Treino</label>
-                    <input type="text" id="modal-item-name" required>
+                    <input type="text" id="modal-item-name" value="${existingItem?.name || ''}" required>
                 </div>
                 <div class="form-group">
                     <label for="modal-item-emoji">Emoji (opcional)</label>
-                    <input type="text" id="modal-item-emoji" placeholder="💪">
+                    <input type="text" id="modal-item-emoji" placeholder="💪" value="${existingItem?.emoji || ''}">
                 </div>
                 <div class="form-group">
                     <label for="modal-item-type">Tipo de Treino</label>
                     <select id="modal-item-type" required>
-                        <option value="repeticao">Repetição</option>
-                        <option value="distancia">Distância</option>
-                        <option value="maior-tempo">Maior Tempo</option>
-                        <option value="menor-tempo">Menor Tempo</option>
+                        <option value="repeticao" ${existingItem?.type === 'repeticao' ? 'selected' : ''}>Repetição</option>
+                        <option value="distancia" ${existingItem?.type === 'distancia' ? 'selected' : ''}>Distância</option>
+                        <option value="maior-tempo" ${existingItem?.type === 'maior-tempo' ? 'selected' : ''}>Maior Tempo</option>
+                        <option value="menor-tempo" ${existingItem?.type === 'menor-tempo' ? 'selected' : ''}>Menor Tempo</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Dias da Semana</label>
                     <div class="days-selector">
-                        <label class="day-checkbox"><input type="checkbox" value="0"> Dom</label>
-                        <label class="day-checkbox"><input type="checkbox" value="1"> Seg</label>
-                        <label class="day-checkbox"><input type="checkbox" value="2"> Ter</label>
-                        <label class="day-checkbox"><input type="checkbox" value="3"> Qua</label>
-                        <label class="day-checkbox"><input type="checkbox" value="4"> Qui</label>
-                        <label class="day-checkbox"><input type="checkbox" value="5"> Sex</label>
-                        <label class="day-checkbox"><input type="checkbox" value="6"> Sáb</label>
+                        <label class="day-checkbox"><input type="checkbox" value="0" ${selectedDays.has('0') ? 'checked' : ''}> Dom</label>
+                        <label class="day-checkbox"><input type="checkbox" value="1" ${selectedDays.has('1') ? 'checked' : ''}> Seg</label>
+                        <label class="day-checkbox"><input type="checkbox" value="2" ${selectedDays.has('2') ? 'checked' : ''}> Ter</label>
+                        <label class="day-checkbox"><input type="checkbox" value="3" ${selectedDays.has('3') ? 'checked' : ''}> Qua</label>
+                        <label class="day-checkbox"><input type="checkbox" value="4" ${selectedDays.has('4') ? 'checked' : ''}> Qui</label>
+                        <label class="day-checkbox"><input type="checkbox" value="5" ${selectedDays.has('5') ? 'checked' : ''}> Sex</label>
+                        <label class="day-checkbox"><input type="checkbox" value="6" ${selectedDays.has('6') ? 'checked' : ''}> Sáb</label>
                     </div>
                 </div>
-                <input type="hidden" id="modal-item-category" value="workout">
+                <input type="hidden" id="modal-item-category" value="${isEditing ? 'edit-workout' : 'workout'}">
+                ${isEditing ? `<input type="hidden" id="modal-item-id" value="${existingItem.id}">` : ''}
             `;
       break;
 
     case 'estudo':
-      modalTitle.textContent = 'Adicionar Novo Estudo';
+      modalTitle.textContent = isEditing ? 'Editar Estudo' : 'Adicionar Novo Estudo';
       formHTML = `
                 <div class="form-group">
                     <label for="modal-item-name">Nome do Estudo</label>
-                    <input type="text" id="modal-item-name" required>
+                    <input type="text" id="modal-item-name" value="${existingItem?.name || ''}" required>
                 </div>
                 <div class="form-group">
                     <label for="modal-item-emoji">Emoji (opcional)</label>
-                    <input type="text" id="modal-item-emoji" placeholder="📚">
+                    <input type="text" id="modal-item-emoji" placeholder="📚" value="${existingItem?.emoji || ''}">
                 </div>
                 <div class="form-group">
                     <label for="modal-item-type">Tipo de Estudo</label>
                     <select id="modal-item-type" required>
-                        <option value="logico">Lógico</option>
-                        <option value="criativo">Criativo</option>
+                        <option value="logico" ${existingItem?.type === 'logico' ? 'selected' : ''}>Lógico</option>
+                        <option value="criativo" ${existingItem?.type === 'criativo' ? 'selected' : ''}>Criativo</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Dias da Semana</label>
                     <div class="days-selector">
-                        <label class="day-checkbox"><input type="checkbox" value="0"> Dom</label>
-                        <label class="day-checkbox"><input type="checkbox" value="1"> Seg</label>
-                        <label class="day-checkbox"><input type="checkbox" value="2"> Ter</label>
-                        <label class="day-checkbox"><input type="checkbox" value="3"> Qua</label>
-                        <label class="day-checkbox"><input type="checkbox" value="4"> Qui</label>
-                        <label class="day-checkbox"><input type="checkbox" value="5"> Sex</label>
-                        <label class="day-checkbox"><input type="checkbox" value="6"> Sáb</label>
+                        <label class="day-checkbox"><input type="checkbox" value="0" ${selectedDays.has('0') ? 'checked' : ''}> Dom</label>
+                        <label class="day-checkbox"><input type="checkbox" value="1" ${selectedDays.has('1') ? 'checked' : ''}> Seg</label>
+                        <label class="day-checkbox"><input type="checkbox" value="2" ${selectedDays.has('2') ? 'checked' : ''}> Ter</label>
+                        <label class="day-checkbox"><input type="checkbox" value="3" ${selectedDays.has('3') ? 'checked' : ''}> Qua</label>
+                        <label class="day-checkbox"><input type="checkbox" value="4" ${selectedDays.has('4') ? 'checked' : ''}> Qui</label>
+                        <label class="day-checkbox"><input type="checkbox" value="5" ${selectedDays.has('5') ? 'checked' : ''}> Sex</label>
+                        <label class="day-checkbox"><input type="checkbox" value="6" ${selectedDays.has('6') ? 'checked' : ''}> Sáb</label>
                     </div>
                 </div>
-                <input type="hidden" id="modal-item-category" value="study">
+                <input type="hidden" id="modal-item-category" value="${isEditing ? 'edit-study' : 'study'}">
+                ${isEditing ? `<input type="hidden" id="modal-item-id" value="${existingItem.id}">` : ''}
             `;
       break;
   }

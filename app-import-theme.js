@@ -651,13 +651,9 @@ async function maybeEditItemDeadline(item, options = {}) {
 
 // Editar e excluir funções (implementações básicas)
 function editWorkout(id) {
-  editNamedEmojiItem({
-    list: appData.workouts,
-    id,
-    namePrompt: 'Novo nome do treino:',
-    emojiPrompt: 'Novo emoji (opcional):',
-    updateMode: 'activity',
-  });
+  const workout = appData.workouts.find((item) => item.id === id);
+  if (!workout) return;
+  showItemModal('treino', workout);
 }
 
 function deleteWorkout(id) {
@@ -671,13 +667,9 @@ function deleteWorkout(id) {
 }
 
 function editStudy(id) {
-  editNamedEmojiItem({
-    list: appData.studies,
-    id,
-    namePrompt: 'Novo nome do estudo:',
-    emojiPrompt: 'Novo emoji (opcional):',
-    updateMode: 'activity',
-  });
+  const study = appData.studies.find((item) => item.id === id);
+  if (!study) return;
+  showItemModal('estudo', study);
 }
 
 function deleteStudy(id) {
