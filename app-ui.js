@@ -151,6 +151,7 @@ function initEvents() {
     'diary-filter-attribute': updateDiaryEntries,
     'diary-filter-xp': updateDiaryEntries,
     'stats-chart-period': updateCharts,
+    'workout-evolution-select': updateWorkoutEvolutionChart,
     'import-foods-file': handleImportFoods,
     'nutrition-diary-date': updateNutritionView,
     'nutrition-entry-date': updateNutritionView,

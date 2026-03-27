@@ -1759,6 +1759,26 @@ body.light-theme .calendar-day.death-day {
     line-height: 1.2;
 }
 
+.compact-history {
+    padding: 7px 8px;
+}
+
+.compact-history .mission-header {
+    margin-bottom: 3px;
+}
+
+.compact-history .mission-details {
+    gap: 4px 8px;
+}
+
+.compact-history .mission-details p {
+    margin: 0;
+}
+
+.compact-history-type {
+    white-space: nowrap;
+}
+
 .trend-up {
     color: #2ecc71;
     font-weight: 600;
@@ -1802,6 +1822,8 @@ body.light-theme .calendar-day.death-day {
 .mission-type.semanal { background-color: var(--primary-color); }
 .mission-type.eventual { background-color: var(--warning-color); }
 .mission-type.epica { background-color: var(--danger-color); }
+.workout-type { background-color: #e05a5a; }
+.study-type { background-color: #4a8dff; }
 
 .mission-details, .workout-details, .study-details {
     font-size: 0.8rem;

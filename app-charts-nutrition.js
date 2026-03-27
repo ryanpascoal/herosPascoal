@@ -10,6 +10,8 @@ function updateCharts() {
   // Verificar se Chart.js está disponível
   if (typeof Chart === 'undefined') return;
 
+  populateWorkoutEvolutionOptions();
+
   // Atualizar gráfico de atributos
   updateAttributesChart();
 
@@ -30,6 +32,12 @@ function updateCharts() {
 
   // Atualizar gráfico de XP por fonte
   updateXpBySourceChart();
+
+  // Atualizar volume semanal de treinos
+  updateWorkoutVolumeChart();
+
+  // Atualizar evolução por exercício
+  updateWorkoutEvolutionChart();
 }
 
 function getSelectedStatsChartPeriodDays() {
@@ -47,6 +55,98 @@ function getStatsChartPeriodDateKeys(days) {
     keys.push(getLocalDateString(date));
   }
   return keys;
+}
+
+function getDateFromKey(dateKey) {
+  if (typeof parseLocalDateString === 'function') {
+    return parseLocalDateString(dateKey);
+  }
+  if (typeof dateKey === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+  return new Date(dateKey);
+}
+
+function getWeekStartKey(dateKey) {
+  const date = getDateFromKey(dateKey);
+  if (!Number.isFinite(date.getTime())) return '';
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  return getLocalDateString(date);
+}
+
+function formatShortDate(dateKey) {
+  const date = getDateFromKey(dateKey);
+  if (!Number.isFinite(date.getTime())) return '';
+  return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getWorkoutEntryMetric(entry) {
+  if (!entry || entry.failed || entry.skipped) {
+    return { primaryLabel: 'Volume', primaryValue: 0, typeLabel: '', extraSeries: [] };
+  }
+
+  if (entry.type === 'repeticao') {
+    const totalReps = Array.isArray(entry.series)
+      ? entry.series.reduce((sum, value) => sum + (parseInt(value, 10) || 0), 0)
+      : 0;
+    return {
+      primaryLabel: 'Repetições',
+      primaryValue: totalReps,
+      typeLabel: 'Repetição',
+      extraSeries: [],
+    };
+  }
+
+  if (entry.type === 'distancia') {
+    const distance = Number(entry.distance || 0);
+    const time = Number(entry.time || 0);
+    const speed = distance > 0 && time > 0 ? (distance / time) * 60 : 0;
+    return {
+      primaryLabel: 'Distância (km)',
+      primaryValue: distance,
+      typeLabel: 'Distância',
+      extraSeries: [
+        { label: 'Tempo (min)', value: time },
+        { label: 'Velocidade média (km/h)', value: speed },
+      ],
+    };
+  }
+
+  const time = Number(entry.time || 0);
+  return {
+    primaryLabel: 'Tempo (min)',
+    primaryValue: time,
+    typeLabel: entry.type === 'menor-tempo' ? 'Menor tempo' : 'Maior tempo',
+    extraSeries: [],
+  };
+}
+
+function populateWorkoutEvolutionOptions() {
+  const select = document.getElementById('workout-evolution-select');
+  if (!select) return;
+
+  const previousValue = select.value;
+  const workouts = Array.isArray(appData.workouts) ? appData.workouts.slice() : [];
+
+  if (workouts.length === 0) {
+    select.innerHTML = '<option value="">Nenhum treino cadastrado</option>';
+    select.disabled = true;
+    return;
+  }
+
+  select.disabled = false;
+  select.innerHTML = workouts
+    .map(
+      (workout) =>
+        `<option value="${workout.id}">${workout.emoji || '💪'} ${workout.name}</option>`
+    )
+    .join('');
+
+  const hasPrevious = workouts.some((workout) => String(workout.id) === String(previousValue));
+  select.value = hasPrevious ? previousValue : String(workouts[0].id);
 }
 
 // Atualizar gráfico de atributos
@@ -670,6 +770,232 @@ function updateXpBySourceChart() {
           title: {
             display: true,
             text: 'XP',
+          },
+        },
+      },
+    },
+  });
+}
+
+function updateWorkoutVolumeChart() {
+  const ctx = document.getElementById('workout-volume-chart');
+  if (!ctx) return;
+
+  if (ctx.chart) {
+    ctx.chart.destroy();
+  }
+
+  const periodDays = getSelectedStatsChartPeriodDays();
+  const periodDates = getStatsChartPeriodDateKeys(periodDays);
+  const weeks = new Map();
+
+  periodDates.forEach((dateKey) => {
+    const weekKey = getWeekStartKey(dateKey);
+    if (!weeks.has(weekKey)) {
+      weeks.set(weekKey, {
+        label: `Sem. ${formatShortDate(weekKey)}`,
+        sessions: 0,
+        reps: 0,
+        distance: 0,
+        time: 0,
+      });
+    }
+  });
+
+  (appData.completedWorkouts || []).forEach((entry) => {
+    if (entry.failed || entry.skipped) return;
+    const dateKey = getEventDateKey(entry);
+    if (!dateKey) return;
+    const weekKey = getWeekStartKey(dateKey);
+    const bucket = weeks.get(weekKey);
+    if (!bucket) return;
+
+    bucket.sessions += 1;
+
+    if (entry.type === 'repeticao' && Array.isArray(entry.series)) {
+      bucket.reps += entry.series.reduce((sum, value) => sum + (parseInt(value, 10) || 0), 0);
+      return;
+    }
+
+    if (entry.type === 'distancia') {
+      bucket.distance += Number(entry.distance || 0);
+      bucket.time += Number(entry.time || 0);
+      return;
+    }
+
+    bucket.time += Number(entry.time || 0);
+  });
+
+  const weekBuckets = Array.from(weeks.values());
+
+  ctx.chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: weekBuckets.map((week) => week.label),
+      datasets: [
+        {
+          label: 'Sessões',
+          data: weekBuckets.map((week) => week.sessions),
+          backgroundColor: CATEGORY_COLORS.workout.solid,
+          borderColor: CATEGORY_COLORS.workout.border,
+          borderWidth: 1,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Repetições',
+          data: weekBuckets.map((week) => week.reps),
+          type: 'line',
+          borderColor: '#ff9f40',
+          backgroundColor: 'rgba(255, 159, 64, 0.2)',
+          tension: 0.35,
+          yAxisID: 'yReps',
+        },
+        {
+          label: 'Distância (km)',
+          data: weekBuckets.map((week) => Number(week.distance.toFixed(2))),
+          type: 'line',
+          borderColor: '#36a2eb',
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+          tension: 0.35,
+          yAxisID: 'yDistance',
+        },
+        {
+          label: 'Tempo (min)',
+          data: weekBuckets.map((week) => Number(week.time.toFixed(1))),
+          type: 'line',
+          borderColor: '#4bc0c0',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.35,
+          yAxisID: 'yTime',
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            afterBody(items) {
+              const index = items?.[0]?.dataIndex ?? -1;
+              const week = weekBuckets[index];
+              if (!week) return [];
+              return [
+                `Sessões: ${week.sessions}`,
+                `Repetições: ${week.reps}`,
+                `Distância: ${week.distance.toFixed(2)} km`,
+                `Tempo: ${week.time.toFixed(1)} min`,
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Sessões',
+          },
+        },
+        yReps: {
+          beginAtZero: true,
+          display: false,
+        },
+        yDistance: {
+          beginAtZero: true,
+          display: false,
+        },
+        yTime: {
+          beginAtZero: true,
+          display: false,
+        },
+      },
+    },
+  });
+}
+
+function updateWorkoutEvolutionChart() {
+  const ctx = document.getElementById('workout-evolution-chart');
+  const select = document.getElementById('workout-evolution-select');
+  if (!ctx || !select) return;
+
+  if (ctx.chart) {
+    ctx.chart.destroy();
+  }
+
+  const selectedWorkoutId = select.value;
+  if (!selectedWorkoutId) {
+    return;
+  }
+
+  const periodKeys = new Set(getStatsChartPeriodDateKeys(getSelectedStatsChartPeriodDays()));
+  const entries = (appData.completedWorkouts || [])
+    .filter((entry) => {
+      const eventKey = getEventDateKey(entry);
+      return (
+        String(entry.workoutId) === String(selectedWorkoutId) &&
+        !entry.failed &&
+        !entry.skipped &&
+        periodKeys.has(eventKey)
+      );
+    })
+    .sort((a, b) => {
+      const aKey = getEventDateKey(a);
+      const bKey = getEventDateKey(b);
+      return aKey.localeCompare(bKey);
+    });
+
+  const workout = (appData.workouts || []).find(
+    (item) => String(item.id) === String(selectedWorkoutId)
+  );
+  const referenceMetric = entries[0] ? getWorkoutEntryMetric(entries[0]) : null;
+  const primaryLabel = referenceMetric?.primaryLabel || 'Volume';
+
+  ctx.chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: entries.map((entry) => formatShortDate(getEventDateKey(entry))),
+      datasets: [
+        {
+          label: primaryLabel,
+          data: entries.map((entry) => getWorkoutEntryMetric(entry).primaryValue),
+          borderColor: CATEGORY_COLORS.workout.border,
+          backgroundColor: CATEGORY_COLORS.workout.soft,
+          tension: 0.35,
+          fill: false,
+        },
+        ...(referenceMetric?.extraSeries || []).map((series, index) => ({
+          label: series.label,
+          data: entries.map((entry) => {
+            const metric = getWorkoutEntryMetric(entry);
+            return metric.extraSeries[index]?.value || 0;
+          }),
+          borderColor: index === 0 ? '#36a2eb' : '#ff9f40',
+          backgroundColor: index === 0 ? 'rgba(54, 162, 235, 0.2)' : 'rgba(255, 159, 64, 0.2)',
+          tension: 0.35,
+          fill: false,
+          borderDash: index === 0 ? [6, 4] : [],
+        })),
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: workout ? `${workout.emoji || '💪'} ${workout.name}` : 'Treino selecionado',
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: primaryLabel,
           },
         },
       },

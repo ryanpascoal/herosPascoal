@@ -1031,6 +1031,7 @@
                   <div class="form-group">
                     <label for="stats-chart-period">Período</label>
                     <select id="stats-chart-period">
+                      <option value="1">Hoje</option>
                       <option value="7">Últimos 7 dias</option>
                       <option value="30">Últimos 30 dias</option>
                       <option value="90">Últimos 90 dias</option>
@@ -1066,6 +1067,18 @@
                   <div class="chart-box">
                     <h4>XP por Fonte</h4>
                     <canvas id="xp-source-chart" width="400" height="200"></canvas>
+                  </div>
+                  <div class="chart-box">
+                    <h4>Volume de Treino por Semana</h4>
+                    <canvas id="workout-volume-chart" width="400" height="200"></canvas>
+                  </div>
+                  <div class="chart-box">
+                    <h4>Evolução por Exercício</h4>
+                    <div class="form-group">
+                      <label for="workout-evolution-select">Treino</label>
+                      <select id="workout-evolution-select"></select>
+                    </div>
+                    <canvas id="workout-evolution-chart" width="400" height="200"></canvas>
                   </div>
                 </div>
               </div>

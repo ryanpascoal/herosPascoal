@@ -211,7 +211,7 @@ function updateCompletedWorks() {
                 <p>${eventDateLabel}: ${formatDate(eventDateValue)}</p>
                 <p>${rewardText}</p>
                 ${classLine}
-                ${work.reason ? `<p class="mission-reason">Motivo: ${work.reason}</p>` : ''}
+                ${work.reason && !work.failed ? `<p class="mission-reason">Motivo: ${work.reason}</p>` : ''}
                 ${work.feedback ? `<p class="mission-feedback">Feedback: ${work.feedback}</p>` : ''}
             </div>
         `;
@@ -595,7 +595,7 @@ function updateCompletedMissions() {
             <div class="mission-details">
                 <p>${eventDateLabel}: ${formatDate(eventDateValue)}</p>
                 <p>${rewardText}</p>
-                ${mission.reason ? `<p class="mission-reason">Motivo: ${mission.reason}</p>` : ''}
+                ${mission.reason && !mission.failed ? `<p class="mission-reason">Motivo: ${mission.reason}</p>` : ''}
                 ${mission.feedback ? `<p class="mission-feedback">Feedback: ${mission.feedback}</p>` : ''}
             </div>
         `;
@@ -845,6 +845,9 @@ function updateStatistics() {
   // Atualizar dias produtivos
   updateProductiveDays();
   updateAdvancedStatistics();
+  if (typeof isTabActive === 'function' && isTabActive('estatisticas')) {
+    updateCharts();
+  }
 }
 
 function updateAdvancedStatistics() {

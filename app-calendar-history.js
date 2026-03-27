@@ -674,10 +674,15 @@ function updateWorkoutHistory() {
   });
   recent.forEach((entry) => {
     const card = document.createElement('div');
-    card.className =
-      `history-card ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : ''}`.trim();
+    card.className = `mission-card history-card compact-history ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : 'completed'}`.trim();
 
     const details = [];
+    const statusText = entry.failed ? 'FALHOU' : entry.skipped ? 'PULADO' : 'CONCLUIDO';
+    const statusClass = entry.failed
+      ? 'failed-status'
+      : entry.skipped
+        ? 'skipped-status'
+        : 'completed-status';
     if (entry.failed) {
       details.push(`<p>Falhou em: ${formatDate(entry.failedDate || entry.date)}</p>`);
     } else if (entry.skipped) {
@@ -737,7 +742,7 @@ function updateWorkoutHistory() {
     ) {
       details.push(`<p>Tempo: ${entry.time} min</p>`);
     }
-    if (entry.reason) {
+    if (entry.reason && !entry.failed) {
       details.push(`<p class="mission-reason">Motivo: ${entry.reason}</p>`);
     }
     if (entry.feedback) {
@@ -745,16 +750,17 @@ function updateWorkoutHistory() {
     }
 
     card.innerHTML = `
-            <div class="history-header">
-                <div class="history-title">
-                    <span class="history-emoji">${entry.emoji || '💪'}</span>
+            <div class="mission-header">
+                <div class="mission-name">
+                    <span class="mission-emoji">${entry.emoji || '💪'}</span>
                     <span>${entry.name}</span>
                 </div>
-                <span class="history-status ${entry.failed ? 'failed-status' : entry.skipped ? 'skipped-status' : 'completed-status'}">
-                    ${entry.failed ? 'FALHOU' : entry.skipped ? 'PULADO' : 'CONCLUIDO'}
+                <span class="mission-status ${statusClass}">
+                    ${statusText}
                 </span>
+                <span class="workout-type compact-history-type">${getWorkoutTypeName(entry.type)}</span>
             </div>
-            <div class="history-details">
+            <div class="mission-details compact-history-details">
                 ${details.join('')}
             </div>
         `;
@@ -779,10 +785,15 @@ function updateStudyHistory() {
   const recent = allEntries.slice(-30).reverse();
   recent.forEach((entry) => {
     const card = document.createElement('div');
-    card.className =
-      `history-card ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : ''}`.trim();
+    card.className = `mission-card history-card compact-history ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : 'completed'}`.trim();
 
     const details = [];
+    const statusText = entry.failed ? 'FALHOU' : entry.skipped ? 'PULADO' : 'CONCLUIDO';
+    const statusClass = entry.failed
+      ? 'failed-status'
+      : entry.skipped
+        ? 'skipped-status'
+        : 'completed-status';
     if (entry.failed) {
       details.push(`<p>Falhou em: ${formatDate(entry.failedDate || entry.date)}</p>`);
     } else if (entry.skipped) {
@@ -794,7 +805,7 @@ function updateStudyHistory() {
     if (!entry.failed && !entry.skipped) {
       details.push(`<p>Aplicado: ${entry.applied ? 'Sim' : 'Não'}</p>`);
     }
-    if (entry.reason) {
+    if (entry.reason && !entry.failed) {
       details.push(`<p class="mission-reason">Motivo: ${entry.reason}</p>`);
     }
     if (entry.feedback) {
@@ -802,16 +813,17 @@ function updateStudyHistory() {
     }
 
     card.innerHTML = `
-            <div class="history-header">
-                <div class="history-title">
-                    <span class="history-emoji">${entry.emoji || '📚'}</span>
+            <div class="mission-header">
+                <div class="mission-name">
+                    <span class="mission-emoji">${entry.emoji || '📚'}</span>
                     <span>${entry.name}</span>
                 </div>
-                <span class="history-status ${entry.failed ? 'failed-status' : entry.skipped ? 'skipped-status' : 'completed-status'}">
-                    ${entry.failed ? 'FALHOU' : entry.skipped ? 'PULADO' : 'CONCLUIDO'}
+                <span class="mission-status ${statusClass}">
+                    ${statusText}
                 </span>
+                <span class="study-type compact-history-type">${entry.type === 'logico' ? 'Lógico' : 'Criativo'}</span>
             </div>
-            <div class="history-details">
+            <div class="mission-details compact-history-details">
                 ${details.join('')}
             </div>
         `;
