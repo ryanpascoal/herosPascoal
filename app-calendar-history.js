@@ -1312,18 +1312,34 @@ function handleGameOverIfNeeded(options = {}) {
       const maxLives = Math.max(1, appData.hero.maxLives || 10);
       appData.hero.lives = Math.min(3, maxLives);
       appData.hero.gameOverCounted = false;
+      saveToLocalStorage();
+      updateUI({ mode: 'activity' });
       return;
     }
 
+    const coinsWereReset = appData.hero.coins === 0;
+    appData.hero.coins = 0;
+
     const modal = document.getElementById('item-modal');
-    if (modal?.dataset.gameOverShown === 'true') return;
-    if (appData.hero.gameOverCounted === true) return;
+    if (modal?.dataset.gameOverShown === 'true') {
+      if (!coinsWereReset) {
+        saveToLocalStorage();
+        updateUI({ mode: 'activity' });
+      }
+      return;
+    }
+    if (appData.hero.gameOverCounted === true) {
+      if (!coinsWereReset) {
+        saveToLocalStorage();
+        updateUI({ mode: 'activity' });
+      }
+      return;
+    }
     if (!appData.statistics) appData.statistics = {};
     appData.statistics.deaths = (appData.statistics.deaths || 0) + 1;
     if (!appData.statistics.deathDates) appData.statistics.deathDates = [];
     appData.statistics.deathDates.push(getLocalDateString());
     appData.hero.gameOverCounted = true;
-    appData.hero.coins = 0;
     const deathsEl = document.getElementById('stat-deaths');
     if (deathsEl) {
       deathsEl.textContent = appData.statistics.deaths;
@@ -1334,6 +1350,7 @@ function handleGameOverIfNeeded(options = {}) {
       'Vidas chegaram a 0. Moedas zeradas e modal de restauração exibido; XP será zerado ao confirmar.'
     );
     saveToLocalStorage();
+    updateUI({ mode: 'activity' });
     if (modal) {
       showGameOverModal();
     }

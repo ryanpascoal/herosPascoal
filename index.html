@@ -57,11 +57,15 @@
             <i class="fas fa-briefcase"></i>
             <span>Trabalho</span>
           </li>
-          <li class="nav-item" data-tab="preparacao" data-mobile="primary">
+          <li class="nav-item" data-tab="arena" data-mobile="primary">
             <i class="fas fa-dumbbell"></i>
-            <span>Preparação</span>
+            <span>Arena</span>
           </li>
-          <li class="nav-item" data-tab="calendarios" data-mobile="primary">
+          <li class="nav-item" data-tab="biblioteca" data-mobile="primary">
+            <i class="fas fa-book-open"></i>
+            <span>Biblioteca</span>
+          </li>
+          <li class="nav-item" data-tab="calendarios" data-mobile="extra">
             <i class="fas fa-calendar-alt"></i>
             <span>Calendários</span>
           </li>
@@ -89,6 +93,9 @@
       </nav>
 
       <div class="mobile-more-menu" id="mobile-more-menu">
+        <button class="mobile-more-item" data-tab="calendarios">
+          <i class="fas fa-calendar-alt"></i> Calendários
+        </button>
         <button class="mobile-more-item" data-tab="gestao">
           <i class="fas fa-wallet"></i> Gestão
         </button>
@@ -576,21 +583,14 @@
           </div>
         </section>
 
-        <!-- Aba Preparação -->
-        <section id="preparacao" class="tab-content">
+        <!-- Aba Arena -->
+        <section id="arena" class="tab-content">
           <div class="page-header">
-            <h2><i class="fas fa-dumbbell"></i> Preparação</h2>
+            <h2><i class="fas fa-dumbbell"></i> Arena</h2>
           </div>
 
           <div class="preparation-sections">
-            <!-- Abas principais: Arena e Biblioteca -->
-            <div class="main-prep-nav">
-              <button class="main-prep-btn active" data-main-tab="arena">🏟️ Arena</button>
-              <button class="main-prep-btn" data-main-tab="biblioteca">📚 Biblioteca</button>
-            </div>
-
-            <!-- Arena -->
-            <div class="preparation-section main-prep-tab active" id="arena-panel">
+            <div class="preparation-section arena-section">
               <h3><i class="fas fa-helmet-battle"></i> Arena</h3>
 
               <div class="sub-nav">
@@ -680,9 +680,17 @@
                 </div>
               </div>
             </div>
+          </div>
+        </section>
 
-            <!-- Biblioteca -->
-            <div class="preparation-section main-prep-tab" id="biblioteca-panel">
+        <!-- Aba Biblioteca -->
+        <section id="biblioteca" class="tab-content">
+          <div class="page-header">
+            <h2><i class="fas fa-book-open"></i> Biblioteca</h2>
+          </div>
+
+          <div class="preparation-sections">
+            <div class="preparation-section biblioteca-section">
               <h3><i class="fas fa-book-open"></i> Biblioteca</h3>
 
               <div class="sub-nav">

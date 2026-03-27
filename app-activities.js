@@ -44,6 +44,8 @@ function updateDailyWorks() {
     if (work.completed || work.failed) return false;
 
     if (work.type === 'diaria') {
+      const alreadyLogged = wasItemLoggedForDate(work, appData.completedWorks, todayStr);
+      if (alreadyLogged) return false;
       if (work.availableDate) return work.availableDate <= todayStr;
       if (work.dateAdded) return work.dateAdded <= todayStr;
       return true;
@@ -425,6 +427,8 @@ function updateDailyMissions() {
 
     // Para missões diárias: verificar se estão disponíveis HOJE
     if (mission.type === 'diaria') {
+      const alreadyLogged = wasItemLoggedForDate(mission, appData.completedMissions, todayStr);
+      if (alreadyLogged) return false;
       // Se tiver availableDate, verificar se é hoje ou antes
       if (mission.availableDate) {
         return mission.availableDate <= todayStr;

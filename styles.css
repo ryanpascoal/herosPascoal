@@ -1559,55 +1559,10 @@ body.light-theme .calendar-day.death-day {
     color: #FFB74D;
 }
 
-/* Preparação: Arena vs Biblioteca */
+/* Arena e Biblioteca */
 .preparation-sections {
     display: grid;
     gap: 0;
-}
-
-/* Navegação principal entre Arena e Biblioteca */
-.main-prep-nav {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-
-.main-prep-btn {
-    flex: 1;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    background: rgba(255,255,255,0.05);
-    color: var(--gray-color);
-    border: 1px solid rgba(255,255,255,0.08);
-}
-
-.main-prep-btn:hover {
-    background: rgba(255,255,255,0.1);
-    color: var(--light-color);
-}
-
-.main-prep-btn.active {
-    background: linear-gradient(135deg, rgba(138, 92, 255, 0.25), rgba(16, 242, 255, 0.15));
-    color: white;
-    border-color: rgba(138, 92, 255, 0.4);
-    box-shadow: 0 0 15px rgba(138, 92, 255, 0.2);
-}
-
-/* Painéis das abas principais (Arena e Biblioteca) */
-.main-prep-tab {
-    display: none;
-}
-
-.main-prep-tab.active {
-    display: block;
-    animation: fadeIn 0.3s ease;
 }
 
 .preparation-section {
@@ -1625,23 +1580,23 @@ body.light-theme .calendar-day.death-day {
     margin-bottom: 15px;
 }
 
-/* Arena (1ª seção) */
-.preparation-section:nth-of-type(1) {
+/* Arena */
+.preparation-section.arena-section {
     border-color: rgba(255, 107, 107, 0.35);
     background: linear-gradient(135deg, rgba(255, 107, 107, 0.10), rgba(16, 21, 35, 0.95));
 }
 
-.preparation-section:nth-of-type(1) h3 i {
+.preparation-section.arena-section h3 i {
     color: #ff6b6b;
 }
 
-/* Biblioteca (2ª seção) */
-.preparation-section:nth-of-type(2) {
+/* Biblioteca */
+.preparation-section.biblioteca-section {
     border-color: rgba(33, 150, 243, 0.35);
     background: linear-gradient(135deg, rgba(16, 242, 255, 0.10), rgba(16, 21, 35, 0.95));
 }
 
-.preparation-section:nth-of-type(2) h3 i {
+.preparation-section.biblioteca-section h3 i {
     color: #2196F3;
 }
 

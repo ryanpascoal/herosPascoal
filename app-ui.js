@@ -95,24 +95,6 @@ function initEvents() {
     });
   });
 
-  // Abas principais: Arena e Biblioteca (Preparação)
-  document.querySelectorAll('.main-prep-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const mainTab = this.getAttribute('data-main-tab');
-      if (!mainTab) return;
-
-      // Atualizar botões ativos
-      document.querySelectorAll('.main-prep-btn').forEach((b) => b.classList.remove('active'));
-      this.classList.add('active');
-
-      // Atualizar painéis visíveis
-      document
-        .querySelectorAll('.main-prep-tab')
-        .forEach((panel) => panel.classList.remove('active'));
-      document.getElementById(`${mainTab}-panel`)?.classList.add('active');
-    });
-  });
-
   document.querySelectorAll('.sub-nav-btn').forEach((btn) => {
     btn.addEventListener('click', function () {
       const subtab = this.getAttribute('data-subtab');
