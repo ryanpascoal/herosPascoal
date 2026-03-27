@@ -1859,6 +1859,26 @@ body.light-theme .calendar-day.death-day {
     margin-left: auto;
 }
 
+.study-inline-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.applied-checkbox.compact {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.74rem;
+    color: var(--gray-color);
+    white-space: nowrap;
+}
+
+.applied-checkbox.compact input {
+    margin: 0;
+}
+
 .due-badge {
     display: inline-block;
     padding: 2px 8px;

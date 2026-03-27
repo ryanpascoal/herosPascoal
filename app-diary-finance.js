@@ -1121,14 +1121,14 @@ function updateDailyStudies() {
                     <span class="study-emoji">${study.emoji}</span>
                     <span>${study.name}</span>
                 </div>
-                <span class="study-type ${study.type}">${study.type === 'logico' ? 'Lógico' : 'Criativo'}</span>
-            </div>
-            <div class="study-details">
-                <label class="applied-checkbox">
+                <div class="study-inline-meta">
+                <label class="applied-checkbox compact">
                     <input type="checkbox" class="apply-study-checkbox" data-id="${studyDay.id}" 
                            ${studyDay.applied ? 'checked' : ''}>
-                    Aplicado (conhecimento usado na prática)
+                    Aplicado
                 </label>
+                <span class="study-type ${study.type}">${study.type === 'logico' ? 'Lógico' : 'Criativo'}</span>
+                </div>
             </div>
             <div class="study-actions">
                 <button class="complete-study-btn" data-id="${studyDay.id}">
