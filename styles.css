@@ -1779,6 +1779,65 @@ body.light-theme .calendar-day.death-day {
     white-space: nowrap;
 }
 
+.history-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-top: 8px;
+}
+
+.history-pagination-summary {
+    font-size: 0.78rem;
+    color: var(--gray-color);
+}
+
+.history-pagination-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.history-pagination-btn {
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    color: var(--light-color);
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.history-pagination-btn:hover {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(255,255,255,0.22);
+}
+
+.history-pagination-btn:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.history-pagination-btn.active {
+    background: rgba(16, 242, 255, 0.16);
+    border-color: rgba(16, 242, 255, 0.3);
+    color: #A7F6FF;
+}
+
+.history-pagination-btn.secondary {
+    color: var(--gray-color);
+}
+
+.history-pagination-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    color: var(--gray-color);
+    font-size: 0.78rem;
+    padding: 0 2px;
+}
+
 .trend-up {
     color: #2ecc71;
     font-weight: 600;
@@ -2892,6 +2951,76 @@ tr:hover {
     font-size: 0.8rem;
     color: var(--success-color);
     font-weight: 500;
+}
+
+.books-toolbar {
+    margin-bottom: 16px;
+}
+
+.books-search-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--light-color);
+    color: var(--dark-color);
+}
+
+.books-history-section {
+    margin-top: 24px;
+}
+
+.book-card {
+    gap: 12px;
+}
+
+.book-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 6px;
+}
+
+.book-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.book-status-badge.wishlist {
+    background: rgba(255, 193, 7, 0.14);
+    color: #8a6200;
+}
+
+.book-status-badge.reading {
+    background: rgba(33, 150, 243, 0.14);
+    color: #0f5d9c;
+}
+
+.book-status-badge.completed {
+    background: rgba(76, 175, 80, 0.14);
+    color: #2f7d32;
+}
+
+.book-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.book-status-select {
+    min-width: 124px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--light-color);
+    color: var(--dark-color);
 }
 
 /* Estilos para Estatísticas detalhadas */

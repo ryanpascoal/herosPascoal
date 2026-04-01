@@ -637,16 +637,8 @@ function parseLocalDateString(dateStr) {
 function updateWorkoutHistory() {
   const completedContainer = document.getElementById('completed-workouts');
   if (!completedContainer) return;
-
-  completedContainer.innerHTML = '';
   const allEntries = appData.completedWorkouts;
-
-  if (allEntries.length === 0) {
-    completedContainer.innerHTML = '<p class="empty-message">Nenhum histórico de treino ainda.</p>';
-    return;
-  }
-
-  const recent = allEntries.slice(-30).reverse();
+  const recent = allEntries.slice().reverse();
   const prevTotalsByEntryId = new Map();
   const lastTotalsByWorkoutId = new Map();
   const prevDistancesByEntryId = new Map();
@@ -672,7 +664,10 @@ function updateWorkoutHistory() {
       }
     }
   });
-  recent.forEach((entry) => {
+  globalThis.renderPaginatedHistory?.(
+    completedContainer,
+    recent,
+    (entry) => {
     const card = document.createElement('div');
     card.className = `mission-card history-card compact-history ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : 'completed'}`.trim();
 
@@ -764,26 +759,23 @@ function updateWorkoutHistory() {
                 ${details.join('')}
             </div>
         `;
-
-    completedContainer.appendChild(card);
-  });
+      return card;
+    },
+    'Nenhum histórico de treino ainda.',
+    updateWorkoutHistory
+  );
 }
 
 // Atualizar histórico de estudos (concluídos e falhas)
 function updateStudyHistory() {
   const completedContainer = document.getElementById('completed-studies');
   if (!completedContainer) return;
-
-  completedContainer.innerHTML = '';
   const allEntries = appData.completedStudies;
-
-  if (allEntries.length === 0) {
-    completedContainer.innerHTML = '<p class="empty-message">Nenhum histórico de estudo ainda.</p>';
-    return;
-  }
-
-  const recent = allEntries.slice(-30).reverse();
-  recent.forEach((entry) => {
+  const recent = allEntries.slice().reverse();
+  globalThis.renderPaginatedHistory?.(
+    completedContainer,
+    recent,
+    (entry) => {
     const card = document.createElement('div');
     card.className = `mission-card history-card compact-history ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : 'completed'}`.trim();
 
@@ -827,9 +819,11 @@ function updateStudyHistory() {
                 ${details.join('')}
             </div>
         `;
-
-    completedContainer.appendChild(card);
-  });
+      return card;
+    },
+    'Nenhum histórico de estudo ainda.',
+    updateStudyHistory
+  );
 }
 
 // Inicializar seletores de atributos
@@ -1049,6 +1043,13 @@ function showBookModal() {
         <div class="form-group">
             <label for="book-emoji">Emoji (opcional)</label>
             <input type="text" id="book-emoji" placeholder="📖">
+        </div>
+        <div class="form-group">
+            <label for="book-status">Status</label>
+            <select id="book-status">
+                <option value="quero-ler">Quero ler</option>
+                <option value="lendo">Lendo</option>
+            </select>
         </div>
         <input type="hidden" id="modal-item-category" value="book">
         <button type="submit" class="submit-btn">Salvar</button>
@@ -1270,34 +1271,19 @@ function showGameOverModal() {
   modalTitle.textContent = 'Game Over';
   form.innerHTML = `
         <div class="form-group">
-            <p>Suas vidas chegaram a 0. Ao restaurar, 3 vidas voltam e todo o XP é zerado (níveis mantidos).</p>
+            <p>Suas vidas chegaram a 0. O game over foi aplicado automaticamente: 3 vidas foram restauradas e moedas e XP foram zerados, mantendo os níveis.</p>
         </div>
-        <button type="button" id="gameover-restore-btn" class="submit-btn">Restaurar 3 vidas</button>
+        <button type="button" id="gameover-continue-btn" class="submit-btn">Continuar</button>
     `;
 
-  form.querySelector('#gameover-restore-btn')?.addEventListener('click', function () {
-    // Garantir que maxLives seja pelo menos 1
-    const maxLives = Math.max(
-      1,
-      Number.isFinite(appData.hero.maxLives) ? appData.hero.maxLives : 10
-    );
-    appData.hero.maxLives = maxLives;
-    // Restaurar para 3 vidas (ou maxLives se for menor)
-    appData.hero.lives = Math.min(3, maxLives);
-    appData.hero.gameOverCounted = false;
-    // Marcar que o usuário restaurou hoje (previne loop de game over)
-    appData.hero.lastRestoreDate = getLocalDateString();
-    resetAllXpKeepLevels();
-    addHeroLog(
-      'system',
-      'Restaurar vida',
-      'Vidas restauradas para 3 e todo o XP foi zerado (níveis mantidos).'
-    );
+  form.querySelector('#gameover-continue-btn')?.addEventListener('click', function () {
+    if (appData.hero) {
+      appData.hero.pendingGameOverNotice = false;
+    }
     modal.dataset.locked = 'false';
     modal.dataset.gameOverShown = 'false';
     closeModal();
     saveToLocalStorage();
-    updateUI();
   });
 
   modal.classList.add('active');
@@ -1323,41 +1309,19 @@ function handleGameOverIfNeeded(options = {}) {
   // Se lives <= 0, verificar se já tratamos isso
   if (appData.hero.lives <= 0) {
     const todayStr = getLocalDateString();
-
-    // Se o usuário restaurou hoje, não mostrar game over novamente
-    if (appData.hero.lastRestoreDate === todayStr) {
-      // Garantir que as vidas foram restauradas
-      const maxLives = Math.max(1, appData.hero.maxLives || 10);
-      appData.hero.lives = Math.min(3, maxLives);
-      appData.hero.gameOverCounted = false;
-      saveToLocalStorage();
-      updateUI({ mode: 'activity' });
-      return;
-    }
-
-    const coinsWereReset = appData.hero.coins === 0;
+    const maxLives = Math.max(1, appData.hero.maxLives || 10);
+    appData.hero.maxLives = maxLives;
     appData.hero.coins = 0;
-
     const modal = document.getElementById('item-modal');
-    if (modal?.dataset.gameOverShown === 'true') {
-      if (!coinsWereReset) {
-        saveToLocalStorage();
-        updateUI({ mode: 'activity' });
-      }
-      return;
-    }
-    if (appData.hero.gameOverCounted === true) {
-      if (!coinsWereReset) {
-        saveToLocalStorage();
-        updateUI({ mode: 'activity' });
-      }
-      return;
-    }
+
     if (!appData.statistics) appData.statistics = {};
     appData.statistics.deaths = (appData.statistics.deaths || 0) + 1;
     if (!appData.statistics.deathDates) appData.statistics.deathDates = [];
-    appData.statistics.deathDates.push(getLocalDateString());
-    appData.hero.gameOverCounted = true;
+    appData.statistics.deathDates.push(todayStr);
+    resetAllXpKeepLevels();
+    appData.hero.lives = Math.min(3, maxLives);
+    appData.hero.gameOverCounted = false;
+    appData.hero.lastRestoreDate = todayStr;
     const deathsEl = document.getElementById('stat-deaths');
     if (deathsEl) {
       deathsEl.textContent = appData.statistics.deaths;
@@ -1365,11 +1329,11 @@ function handleGameOverIfNeeded(options = {}) {
     addHeroLog(
       'system',
       'Game Over',
-      'Vidas chegaram a 0. Moedas zeradas e modal de restauração exibido; XP será zerado ao confirmar.'
+      'Vidas chegaram a 0. 3 vidas foram restauradas automaticamente e moedas e XP foram zerados (níveis mantidos).'
     );
     saveToLocalStorage();
     updateUI({ mode: 'activity' });
-    if (modal) {
+    if (modal?.dataset.gameOverShown !== 'true') {
       showGameOverModal();
     }
   }

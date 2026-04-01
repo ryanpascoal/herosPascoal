@@ -128,6 +128,13 @@ function startApp() {
 
   // 1. Primeiro: carregar dados salvos
   loadFromLocalStorage();
+  if (typeof globalThis.rebuildProductiveDaysFromHistory === 'function') {
+    globalThis.rebuildProductiveDaysFromHistory();
+  }
+  const recoveredGameOverOnLoad = recoverInvalidLivesStateOnLoad();
+  if (recoveredGameOverOnLoad && typeof saveToLocalStorage === 'function') {
+    saveToLocalStorage();
+  }
   normalizeActivityDays();
   const canRunCriticalResets =
     typeof window.shouldRunCriticalResets === 'function' ? window.shouldRunCriticalResets() : true;
@@ -160,6 +167,9 @@ function startApp() {
     updateDiaryEntries();
   });
   updateUI();
+  if (appData.hero?.pendingGameOverNotice === true && typeof globalThis.showGameOverModal === 'function') {
+    globalThis.showGameOverModal();
+  }
   updateMidnightCountdown();
   setInterval(updateMidnightCountdown, 1000);
   updateCurrentDate();
@@ -617,6 +627,112 @@ function ensureDataIntegrity() {
   normalizeClassIds();
 }
 
+function resetAllXpKeepLevelsForRecovery() {
+  appData.hero.xp = 0;
+
+  if (Array.isArray(appData.attributes)) {
+    appData.attributes.forEach((attr) => {
+      attr.xp = 0;
+    });
+  }
+
+  if (Array.isArray(appData.classes)) {
+    appData.classes.forEach((cls) => {
+      cls.xp = 0;
+    });
+  }
+
+  if (Array.isArray(appData.workouts)) {
+    appData.workouts.forEach((workout) => {
+      workout.xp = 0;
+    });
+  }
+
+  if (Array.isArray(appData.studies)) {
+    appData.studies.forEach((study) => {
+      study.xp = 0;
+    });
+  }
+}
+
+function recoverInvalidLivesStateOnLoad() {
+  if (!appData.hero || !Number.isFinite(appData.hero.lives) || appData.hero.lives > 0) {
+    return false;
+  }
+
+  const todayStr = getLocalDateString();
+  const maxLives = Math.max(
+    1,
+    Number.isFinite(appData.hero.maxLives) ? appData.hero.maxLives : 10
+  );
+
+  appData.hero.maxLives = maxLives;
+  appData.hero.coins = 0;
+  resetAllXpKeepLevelsForRecovery();
+  appData.hero.lives = Math.min(3, maxLives);
+  appData.hero.gameOverCounted = false;
+  appData.hero.lastRestoreDate = todayStr;
+  appData.hero.pendingGameOverNotice = true;
+
+  if (!appData.statistics || typeof appData.statistics !== 'object') {
+    appData.statistics = {};
+  }
+  appData.statistics.deaths = (appData.statistics.deaths || 0) + 1;
+  if (!Array.isArray(appData.statistics.deathDates)) {
+    appData.statistics.deathDates = [];
+  }
+  appData.statistics.deathDates.push(todayStr);
+
+  addHeroLog(
+    'system',
+    'Game Over recuperado no carregamento',
+    'O save tinha 0 vidas. O app restaurou 3 vidas automaticamente e zerou moedas e XP, mantendo os níveis.'
+  );
+
+  return true;
+}
+
+const LOCAL_CACHE_HISTORY_LIMIT = 240;
+const LOCAL_CACHE_HERO_LOG_LIMIT = 120;
+
+function getRecentItemsForLocalCache(list, limit = LOCAL_CACHE_HISTORY_LIMIT) {
+  if (!Array.isArray(list)) return [];
+  if (!Number.isFinite(limit) || limit <= 0) return list.slice();
+  return list.length > limit ? list.slice(-limit) : list.slice();
+}
+
+function buildLocalCachePayload() {
+  const payload = JSON.parse(JSON.stringify(appData));
+
+  payload.completedMissions = getRecentItemsForLocalCache(payload.completedMissions);
+  payload.completedWorks = getRecentItemsForLocalCache(payload.completedWorks);
+  payload.completedWorkouts = getRecentItemsForLocalCache(payload.completedWorkouts);
+  payload.completedStudies = getRecentItemsForLocalCache(payload.completedStudies);
+  payload.heroLogs = getRecentItemsForLocalCache(payload.heroLogs, LOCAL_CACHE_HERO_LOG_LIMIT);
+
+  payload.localCacheMeta = {
+    cachedAt: new Date().toISOString(),
+    historyWindow: LOCAL_CACHE_HISTORY_LIMIT,
+    heroLogsWindow: LOCAL_CACHE_HERO_LOG_LIMIT,
+    totalCounts: {
+      completedMissions: Array.isArray(appData.completedMissions) ? appData.completedMissions.length : 0,
+      completedWorks: Array.isArray(appData.completedWorks) ? appData.completedWorks.length : 0,
+      completedWorkouts: Array.isArray(appData.completedWorkouts) ? appData.completedWorkouts.length : 0,
+      completedStudies: Array.isArray(appData.completedStudies) ? appData.completedStudies.length : 0,
+      heroLogs: Array.isArray(appData.heroLogs) ? appData.heroLogs.length : 0,
+    },
+    cachedCounts: {
+      completedMissions: payload.completedMissions.length,
+      completedWorks: payload.completedWorks.length,
+      completedWorkouts: payload.completedWorkouts.length,
+      completedStudies: payload.completedStudies.length,
+      heroLogs: payload.heroLogs.length,
+    },
+  };
+
+  return payload;
+}
+
 // Função para mesclar dados
 function mergeData(target, source) {
   for (const key in source) {
@@ -1067,6 +1183,23 @@ function applyActivityPenalties(config) {
     }
   });
 
+  const missedCounts = {
+    missionsMissed: 0,
+    worksMissed: 0,
+    workoutsMissed: 0,
+    studiesMissed: 0,
+  };
+  if (statsKey === 'missionsFailed') missedCounts.missionsMissed = incompleteItems.length;
+  if (statsKey === 'worksFailed') missedCounts.worksMissed = incompleteItems.length;
+  if (statsKey === 'workoutsFailed') missedCounts.workoutsMissed = incompleteItems.length;
+  if (statsKey === 'studiesFailed') missedCounts.studiesMissed = incompleteItems.length;
+  if (typeof globalThis.updateProductiveDay === 'function') {
+    globalThis.updateProductiveDay(0, 0, 0, 0, 0, {
+      date: targetDateStr,
+      ...missedCounts,
+    });
+  }
+
   let livesLost = 0;
   let shieldUsed = false;
   incompleteItems.forEach(() => {
@@ -1174,6 +1307,7 @@ Object.assign(globalThis, {
   normalizeActivityDays,
   normalizeClassIds,
   ensureDataIntegrity,
+  buildLocalCachePayload,
   mergeData,
   checkDailyReset,
   checkWeeklyReset,

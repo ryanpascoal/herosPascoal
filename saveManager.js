@@ -32,7 +32,9 @@ function ensureDataVersion() {
 // Serialização segura com versão
 function serializeAppData() {
   ensureDataVersion();
-  return JSON.stringify(appData);
+  const payload =
+    typeof buildLocalCachePayload === 'function' ? buildLocalCachePayload() : appData;
+  return JSON.stringify(payload);
 }
 
 // Wrapper com error recovery

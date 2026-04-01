@@ -284,6 +284,10 @@ async function saveDiaryEntry() {
     addAttributeXP(7, 1); // Inteligência
     addAttributeXP(12, 1); // Conhecimento
     appData.hero.coins += 1;
+    updateProductiveDay(0, 0, 0, diaryXpGained, 0, {
+      date: todayStr,
+      xpDiary: diaryXpGained,
+    });
   }
 
   // Limpar formulário
@@ -832,6 +836,13 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       });
       added++;
     });
+    if (added > 0 && typeof updateProductiveDay === 'function') {
+      updateProductiveDay(0, 0, 0, 0, 0, {
+        date: targetDateStr,
+        missionsMissed: entryType === 'mission' ? added : 0,
+        worksMissed: entryType === 'work' ? added : 0,
+      });
+    }
     return added;
   };
 
@@ -970,6 +981,12 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         });
       }
     });
+    if (missedDailyMissions.length > 0 && typeof updateProductiveDay === 'function') {
+      updateProductiveDay(0, 0, 0, 0, 0, {
+        date: targetDateStr,
+        missionsMissed: missedDailyMissions.length,
+      });
+    }
     // Remover missões diárias falhadas da lista ativa
     if (missedDailyMissions.length > 0) {
       const idsToRemove = new Set(missedDailyMissions.map((m) => m.id));
@@ -1030,6 +1047,12 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         });
       }
     });
+    if (missedDailyWorks.length > 0 && typeof updateProductiveDay === 'function') {
+      updateProductiveDay(0, 0, 0, 0, 0, {
+        date: targetDateStr,
+        worksMissed: missedDailyWorks.length,
+      });
+    }
     // Remover trabalhos diários falhados da lista ativa
     if (missedDailyWorks.length > 0) {
       const idsToRemove = new Set(missedDailyWorks.map((w) => w.id));
@@ -1176,6 +1199,12 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         });
       }
     });
+    if (failedWorkouts.length > 0 && typeof updateProductiveDay === 'function') {
+      updateProductiveDay(0, 0, 0, 0, 0, {
+        date: targetDateStr,
+        workoutsMissed: failedWorkouts.length,
+      });
+    }
     failedStudies.forEach((item) => {
       item.failed = true;
       // Also add to completedStudies history
@@ -1201,6 +1230,12 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         });
       }
     });
+    if (failedStudies.length > 0 && typeof updateProductiveDay === 'function') {
+      updateProductiveDay(0, 0, 0, 0, 0, {
+        date: targetDateStr,
+        studiesMissed: failedStudies.length,
+      });
+    }
 
     // Build failure message
     let failMessage = 'Você perdeu vidas por não completar atividades: ';

@@ -10,6 +10,112 @@ function updateWorks() {
   updateWorksList();
 }
 
+const HISTORY_PAGE_SIZE = 20;
+const historyPaginationState = globalThis.historyPaginationState || {};
+globalThis.historyPaginationState = historyPaginationState;
+
+function renderPaginatedHistory(container, items, renderItem, emptyMessage, rerender) {
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (!Array.isArray(items) || items.length === 0) {
+    container.innerHTML = `<p class="empty-message">${emptyMessage}</p>`;
+    return;
+  }
+
+  const stateKey = container.id || 'history';
+  const totalPages = Math.max(1, Math.ceil(items.length / HISTORY_PAGE_SIZE));
+  const currentPage = Math.min(
+    Math.max(1, historyPaginationState[stateKey] || 1),
+    totalPages
+  );
+  historyPaginationState[stateKey] = currentPage;
+  const startIndex = (currentPage - 1) * HISTORY_PAGE_SIZE;
+  const endIndex = Math.min(startIndex + HISTORY_PAGE_SIZE, items.length);
+
+  items.slice(startIndex, endIndex).forEach((item) => {
+    const node = renderItem(item);
+    if (node) container.appendChild(node);
+  });
+
+  if (items.length <= HISTORY_PAGE_SIZE) return;
+
+  const footer = document.createElement('div');
+  footer.className = 'history-pagination';
+
+  const summary = document.createElement('span');
+  summary.className = 'history-pagination-summary';
+  summary.textContent = `Página ${currentPage} de ${totalPages}`;
+  footer.appendChild(summary);
+
+  const actions = document.createElement('div');
+  actions.className = 'history-pagination-actions';
+
+  const prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
+  prevBtn.className = 'history-pagination-btn secondary';
+  prevBtn.textContent = 'Anterior';
+  prevBtn.disabled = currentPage === 1;
+  prevBtn.addEventListener('click', () => {
+    if (currentPage > 1) {
+      historyPaginationState[stateKey] = currentPage - 1;
+      rerender();
+    }
+  });
+  actions.appendChild(prevBtn);
+
+  const pageNumbers = [];
+  if (totalPages <= 7) {
+    for (let page = 1; page <= totalPages; page++) pageNumbers.push(page);
+  } else {
+    pageNumbers.push(1);
+    if (currentPage > 3) pageNumbers.push('...');
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+    for (let page = start; page <= end; page++) pageNumbers.push(page);
+    if (currentPage < totalPages - 2) pageNumbers.push('...');
+    pageNumbers.push(totalPages);
+  }
+
+  pageNumbers.forEach((page) => {
+    if (page === '...') {
+      const ellipsis = document.createElement('span');
+      ellipsis.className = 'history-pagination-ellipsis';
+      ellipsis.textContent = '...';
+      actions.appendChild(ellipsis);
+      return;
+    }
+
+    const pageBtn = document.createElement('button');
+    pageBtn.type = 'button';
+    pageBtn.className = `history-pagination-btn ${page === currentPage ? 'active' : 'secondary'}`.trim();
+    pageBtn.textContent = String(page);
+    pageBtn.disabled = page === currentPage;
+    pageBtn.addEventListener('click', () => {
+      historyPaginationState[stateKey] = page;
+      rerender();
+    });
+    actions.appendChild(pageBtn);
+  });
+
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = 'history-pagination-btn secondary';
+  nextBtn.textContent = 'Próxima';
+  nextBtn.disabled = currentPage === totalPages;
+  nextBtn.addEventListener('click', () => {
+    if (currentPage < totalPages) {
+      historyPaginationState[stateKey] = currentPage + 1;
+      rerender();
+    }
+  });
+  actions.appendChild(nextBtn);
+
+  footer.appendChild(actions);
+  container.appendChild(footer);
+}
+
 function wasItemLoggedForDate(item, completedList, dateStr) {
   const key = item?.originalId || item?.id;
   if (!key) return false;
@@ -168,15 +274,11 @@ function updateCompletedWorks() {
   const container = document.getElementById('completed-works');
   if (!container) return;
 
-  container.innerHTML = '';
-
-  if (appData.completedWorks.length === 0) {
-    container.innerHTML = '<p class="empty-message">Nenhum trabalho concluído ainda.</p>';
-    return;
-  }
-
-  const recentWorks = appData.completedWorks.slice(-30).reverse();
-  recentWorks.forEach((work) => {
+  const recentWorks = appData.completedWorks.slice().reverse();
+  renderPaginatedHistory(
+    container,
+    recentWorks,
+    (work) => {
     const card = document.createElement('div');
     card.className = `mission-card ${work.failed ? 'failed' : work.skipped ? 'skipped' : 'completed'}`;
 
@@ -215,9 +317,11 @@ function updateCompletedWorks() {
                 ${work.feedback ? `<p class="mission-feedback">Feedback: ${work.feedback}</p>` : ''}
             </div>
         `;
-
-    container.appendChild(card);
-  });
+      return card;
+    },
+    'Nenhum trabalho concluído ainda.',
+    updateCompletedWorks
+  );
 }
 
 function checkOverdueWorks(options = {}) {
@@ -550,17 +654,11 @@ function updateCompletedMissions() {
   const container = document.getElementById('completed-missions');
   if (!container) return;
 
-  container.innerHTML = '';
-
-  if (appData.completedMissions.length === 0) {
-    container.innerHTML = '<p class="empty-message">Nenhuma missão concluída ainda.</p>';
-    return;
-  }
-
-  // Mostrar apenas as últimas 30 missões (concluídas ou falhadas)
-  const recentMissions = appData.completedMissions.slice(-30).reverse();
-
-  recentMissions.forEach((mission) => {
+  const recentMissions = appData.completedMissions.slice().reverse();
+  renderPaginatedHistory(
+    container,
+    recentMissions,
+    (mission) => {
     const missionCard = document.createElement('div');
     missionCard.className = `mission-card ${mission.failed ? 'failed' : mission.skipped ? 'skipped' : 'completed'}`;
 
@@ -599,9 +697,11 @@ function updateCompletedMissions() {
                 ${mission.feedback ? `<p class="mission-feedback">Feedback: ${mission.feedback}</p>` : ''}
             </div>
         `;
-
-    container.appendChild(missionCard);
-  });
+      return missionCard;
+    },
+    'Nenhuma missão concluída ainda.',
+    updateCompletedMissions
+  );
 }
 
 // Verificar missões atrasadas diariamente (função ajustada)
@@ -932,22 +1032,6 @@ function getMonthTotals(monthKey) {
   Object.keys(source).forEach((dateKey) => {
     if (dateKey && dateKey.slice(0, 7) === monthKey) keys.add(dateKey);
   });
-  (appData.completedMissions || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (key && key.slice(0, 7) === monthKey) keys.add(key);
-  });
-  (appData.completedWorks || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (key && key.slice(0, 7) === monthKey) keys.add(key);
-  });
-  (appData.completedWorkouts || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (key && key.slice(0, 7) === monthKey) keys.add(key);
-  });
-  (appData.completedStudies || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (key && key.slice(0, 7) === monthKey) keys.add(key);
-  });
   return getTotalsFromDateKeys(keys);
 }
 
@@ -1023,35 +1107,15 @@ function getTotalsFromDateKeys(keys) {
   const productiveSource = appData.statistics.productiveDays || {};
   safeKeys.forEach((key) => {
     const data = productiveSource[key] || {};
+    totals.missions += Number(data.missions || 0);
+    totals.missionsMissed += Number(data.missionsMissed || 0);
+    totals.works += Number(data.works || 0);
+    totals.worksMissed += Number(data.worksMissed || 0);
+    totals.workouts += Number(data.workouts || 0);
+    totals.workoutsMissed += Number(data.workoutsMissed || 0);
+    totals.studies += Number(data.studies || 0);
+    totals.studiesMissed += Number(data.studiesMissed || 0);
     totals.totalXP += Number(data.totalXP || 0);
-  });
-
-  (appData.completedMissions || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!safeKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.missionsMissed += 1;
-    else totals.missions += 1;
-  });
-
-  (appData.completedWorks || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!safeKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.worksMissed += 1;
-    else totals.works += 1;
-  });
-
-  (appData.completedWorkouts || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!safeKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.workoutsMissed += 1;
-    else totals.workouts += 1;
-  });
-
-  (appData.completedStudies || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!safeKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.studiesMissed += 1;
-    else totals.studies += 1;
   });
 
   return totals;
@@ -1213,24 +1277,21 @@ function updateRecords() {
 
   // Novos records agregados
   const dayStats = {};
-  const ensureDayStats = (dateKey) => {
-    if (!dateKey) return null;
-    if (!dayStats[dateKey]) {
-      dayStats[dateKey] = { done: 0, missed: 0 };
-    }
-    return dayStats[dateKey];
-  };
-  const addEventToDayStats = (entry) => {
-    const key = getEventDateKey(entry);
-    const stats = ensureDayStats(key);
-    if (!stats) return;
-    if (entry.failed || entry.skipped) stats.missed += 1;
-    else stats.done += 1;
-  };
-  (appData.completedMissions || []).forEach(addEventToDayStats);
-  (appData.completedWorks || []).forEach(addEventToDayStats);
-  (appData.completedWorkouts || []).forEach(addEventToDayStats);
-  (appData.completedStudies || []).forEach(addEventToDayStats);
+  Object.entries(appData.statistics.productiveDays || {}).forEach(([dateKey, data]) => {
+    if (!dateKey) return;
+    dayStats[dateKey] = {
+      done:
+        Number(data?.missions || 0) +
+        Number(data?.works || 0) +
+        Number(data?.workouts || 0) +
+        Number(data?.studies || 0),
+      missed:
+        Number(data?.missionsMissed || 0) +
+        Number(data?.worksMissed || 0) +
+        Number(data?.workoutsMissed || 0) +
+        Number(data?.studiesMissed || 0),
+    };
+  });
 
   const sortedDates = Object.keys(dayStats).sort();
   const toDate = (key) => new Date(`${key}T00:00:00`);
@@ -1433,6 +1494,7 @@ Object.assign(globalThis, {
   getPeriodDateKeys,
   getEventDateKey,
   getTotalsFromDateKeys,
+  renderPaginatedHistory,
   formatRate,
   getGoalStatusClass,
   syncStatisticsGoalsInputs,

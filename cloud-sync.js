@@ -84,7 +84,11 @@
 
   function persistLocalCache() {
     try {
-      localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify(deepClone(appData)));
+      const payload =
+        typeof buildLocalCachePayload === 'function'
+          ? buildLocalCachePayload()
+          : deepClone(appData);
+      localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify(payload));
     } catch (err) {
       console.warn('Falha ao persistir cache local:', err);
     }

@@ -125,12 +125,14 @@ function handleNewBook() {
   const name = document.getElementById('book-name').value;
   const author = document.getElementById('book-author').value;
   const emoji = document.getElementById('book-emoji').value;
+  const status = document.getElementById('book-status')?.value || 'quero-ler';
 
   const newBook = {
     id: createUniqueId(appData.books),
     name,
     author: author || '',
     emoji: emoji || '📖',
+    status,
     completed: false,
     dateAdded: getLocalDateString(),
   };
@@ -273,7 +275,7 @@ function handleWorkoutCompletion() {
   appData.statistics.workoutsDone = (appData.statistics.workoutsDone || 0) + 1;
 
   // Atualizar dia produtivo
-  updateProductiveDay(1, 0, 0, xpGained);
+  updateProductiveDay(1, 0, 0, xpGained, 0, { xpWorkout: xpGained });
 
   addHeroLog('workout', `Treino concluído: ${workout.name}`, `+${xpGained} XP, +1 moeda`);
 
@@ -396,7 +398,7 @@ function completeStudy(studyDayId, feedbackText = '') {
   appData.statistics.studiesDone = (appData.statistics.studiesDone || 0) + 1;
 
   // Atualizar dia produtivo
-  updateProductiveDay(0, 0, 1, xpGained);
+  updateProductiveDay(0, 0, 1, xpGained, 0, { xpStudy: xpGained });
 
   addHeroLog(
     'study',
@@ -418,8 +420,10 @@ function completeStudy(studyDayId, feedbackText = '') {
 function completeBook(bookId) {
   const book = appData.books.find((b) => b.id === bookId);
   if (!book) return;
+  if (book.completed || book.status === 'concluido') return;
 
   book.completed = true;
+  book.status = 'concluido';
   book.dateCompleted = getLocalDateString();
 
   // Adicionar XP
@@ -429,6 +433,7 @@ function completeBook(bookId) {
   // Atualizar estatísticas
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.booksRead = (appData.statistics.booksRead || 0) + 1;
+  updateProductiveDay(0, 0, 0, 20, 0, { xpBook: 20 });
 
   addHeroLog('book', `Livro concluído: ${book.name}`, '+20 XP');
 
@@ -774,7 +779,7 @@ function completeMission(missionId, feedbackText = '') {
   // Atualizar estatísticas
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.missionsDone = (appData.statistics.missionsDone || 0) + 1;
-  updateProductiveDay(0, 1, 0, xpGained);
+  updateProductiveDay(0, 1, 0, xpGained, 0, { xpMission: xpGained });
 
   addHeroLog(
     'mission',
@@ -855,7 +860,7 @@ function completeWork(workId, feedbackText = '') {
   appData.hero.coins += coinsGained;
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.worksDone = (appData.statistics.worksDone || 0) + 1;
-  updateProductiveDay(0, 0, 0, xpGained, 1);
+  updateProductiveDay(0, 0, 0, xpGained, 1, { xpWork: xpGained });
 
   addHeroLog(
     'mission',
@@ -1225,30 +1230,145 @@ function cleanupOldDailyWorks() {
   });
 }
 
-// Atualizar dia produtivo
-function updateProductiveDay(workouts = 0, missions = 0, studies = 0, xp = 0, works = 0) {
-  const today = getLocalDateString();
+function ensureProductiveDaySnapshot(data = {}) {
+  return {
+    workouts: Number(data.workouts || 0),
+    missions: Number(data.missions || 0),
+    works: Number(data.works || 0),
+    studies: Number(data.studies || 0),
+    workoutsMissed: Number(data.workoutsMissed || 0),
+    missionsMissed: Number(data.missionsMissed || 0),
+    worksMissed: Number(data.worksMissed || 0),
+    studiesMissed: Number(data.studiesMissed || 0),
+    xpMission: Number(data.xpMission || 0),
+    xpWork: Number(data.xpWork || 0),
+    xpWorkout: Number(data.xpWorkout || 0),
+    xpStudy: Number(data.xpStudy || 0),
+    xpBook: Number(data.xpBook || 0),
+    xpDiary: Number(data.xpDiary || 0),
+    totalXP: Number(data.totalXP || 0),
+  };
+}
+
+function ensureProductiveDayEntry(dateKey = getLocalDateString()) {
+  const safeDateKey = dateKey || getLocalDateString();
 
   if (!appData.statistics) appData.statistics = {};
   if (!appData.statistics.productiveDays) {
     appData.statistics.productiveDays = {};
   }
 
-  if (!appData.statistics.productiveDays[today]) {
-    appData.statistics.productiveDays[today] = {
-      workouts: 0,
-      missions: 0,
-      works: 0,
-      studies: 0,
-      totalXP: 0,
-    };
-  }
+  appData.statistics.productiveDays[safeDateKey] = ensureProductiveDaySnapshot(
+    appData.statistics.productiveDays[safeDateKey]
+  );
 
-  appData.statistics.productiveDays[today].workouts += workouts;
-  appData.statistics.productiveDays[today].missions += missions;
-  appData.statistics.productiveDays[today].works += works;
-  appData.statistics.productiveDays[today].studies += studies;
-  appData.statistics.productiveDays[today].totalXP += xp;
+  return appData.statistics.productiveDays[safeDateKey];
+}
+
+// Atualizar dia produtivo
+function updateProductiveDay(workouts = 0, missions = 0, studies = 0, xp = 0, works = 0, options = {}) {
+  const productiveDay = ensureProductiveDayEntry(options.date || getLocalDateString());
+
+  productiveDay.workouts += Number(workouts || 0);
+  productiveDay.missions += Number(missions || 0);
+  productiveDay.works += Number(works || 0);
+  productiveDay.studies += Number(studies || 0);
+  productiveDay.workoutsMissed += Number(options.workoutsMissed || 0);
+  productiveDay.missionsMissed += Number(options.missionsMissed || 0);
+  productiveDay.worksMissed += Number(options.worksMissed || 0);
+  productiveDay.studiesMissed += Number(options.studiesMissed || 0);
+  productiveDay.xpMission += Number(options.xpMission || 0);
+  productiveDay.xpWork += Number(options.xpWork || 0);
+  productiveDay.xpWorkout += Number(options.xpWorkout || 0);
+  productiveDay.xpStudy += Number(options.xpStudy || 0);
+  productiveDay.xpBook += Number(options.xpBook || 0);
+  productiveDay.xpDiary += Number(options.xpDiary || 0);
+  productiveDay.totalXP += Number(xp || 0);
+}
+
+function rebuildProductiveDaysFromHistory() {
+  if (!appData.statistics) appData.statistics = {};
+
+  const rebuilt = {};
+  const previousProductiveDays = appData.statistics.productiveDays || {};
+
+  Object.entries(previousProductiveDays).forEach(([dateKey, data]) => {
+    if (!dateKey) return;
+    rebuilt[dateKey] = ensureProductiveDaySnapshot({
+      totalXP: data?.totalXP || 0,
+      xpMission: data?.xpMission || 0,
+      xpWork: data?.xpWork || 0,
+      xpWorkout: data?.xpWorkout || 0,
+      xpStudy: data?.xpStudy || 0,
+      xpBook: data?.xpBook || 0,
+      xpDiary: data?.xpDiary || 0,
+    });
+  });
+
+  const registerEntry = (entry, counts) => {
+    const dateKey =
+      entry?.completedDate || entry?.failedDate || entry?.skippedDate || entry?.date || '';
+    if (!dateKey) return;
+    const day = rebuilt[dateKey] || ensureProductiveDaySnapshot();
+    day.workouts += Number(counts.workouts || 0);
+    day.missions += Number(counts.missions || 0);
+    day.works += Number(counts.works || 0);
+    day.studies += Number(counts.studies || 0);
+    day.workoutsMissed += Number(counts.workoutsMissed || 0);
+    day.missionsMissed += Number(counts.missionsMissed || 0);
+    day.worksMissed += Number(counts.worksMissed || 0);
+    day.studiesMissed += Number(counts.studiesMissed || 0);
+    day.xpMission += Number(counts.xpMission || 0);
+    day.xpWork += Number(counts.xpWork || 0);
+    day.xpWorkout += Number(counts.xpWorkout || 0);
+    day.xpStudy += Number(counts.xpStudy || 0);
+    day.xpBook += Number(counts.xpBook || 0);
+    day.xpDiary += Number(counts.xpDiary || 0);
+    rebuilt[dateKey] = day;
+  };
+
+  (appData.completedMissions || []).forEach((entry) => {
+    registerEntry(
+      entry,
+      entry.failed || entry.skipped
+        ? { missionsMissed: 1 }
+        : { missions: 1, xpMission: entry.type === 'epica' ? 20 : 1 }
+    );
+  });
+  (appData.completedWorks || []).forEach((entry) => {
+    registerEntry(
+      entry,
+      entry.failed || entry.skipped ? { worksMissed: 1 } : { works: 1, xpWork: entry.type === 'epica' ? 20 : 1 }
+    );
+  });
+  (appData.completedWorkouts || []).forEach((entry) => {
+    registerEntry(
+      entry,
+      entry.failed || entry.skipped ? { workoutsMissed: 1 } : { workouts: 1, xpWorkout: 3 }
+    );
+  });
+  (appData.completedStudies || []).forEach((entry) => {
+    registerEntry(
+      entry,
+      entry.failed || entry.skipped
+        ? { studiesMissed: 1 }
+        : { studies: 1, xpStudy: entry.applied ? 3 : 1 }
+    );
+  });
+  (appData.books || []).forEach((book) => {
+    if (!book?.completed || !book?.dateCompleted) return;
+    registerEntry(book, { xpBook: 20 });
+  });
+  const diaryEntries = diaryDbAvailable ? diaryCache || [] : appData.diaryEntries || [];
+  (diaryEntries || []).forEach((entry) => {
+    if (!entry?.date) return;
+    registerEntry(
+      { completedDate: getLocalDateString(new Date(entry.date)) },
+      { xpDiary: Number(entry.xpGained || 0) }
+    );
+  });
+
+  appData.statistics.productiveDays = rebuilt;
 }
 
 // Comprar item (atualizado para verificar nível)
@@ -1518,7 +1638,9 @@ Object.assign(globalThis, {
   recreateWeeklyWorkForNextWeek,
   recreateDailyWorksForToday,
   cleanupOldDailyWorks,
+  ensureProductiveDayEntry,
   updateProductiveDay,
+  rebuildProductiveDaysFromHistory,
   buyItem,
   useItem,
   addXP,

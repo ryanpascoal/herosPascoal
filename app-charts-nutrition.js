@@ -204,26 +204,14 @@ function updateActivitiesChart() {
 
   const periodDays = getSelectedStatsChartPeriodDays();
   const periodKeys = new Set(getStatsChartPeriodDateKeys(periodDays));
-  const missionsDone = (appData.completedMissions || []).reduce((count, entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || entry.failed || entry.skipped) return count;
-    return count + 1;
-  }, 0);
-  const worksDone = (appData.completedWorks || []).reduce((count, entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || entry.failed || entry.skipped) return count;
-    return count + 1;
-  }, 0);
-  const workoutsDone = (appData.completedWorkouts || []).reduce((count, entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || entry.failed || entry.skipped) return count;
-    return count + 1;
-  }, 0);
-  const studiesDone = (appData.completedStudies || []).reduce((count, entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || entry.failed || entry.skipped) return count;
-    return count + 1;
-  }, 0);
+  const periodTotals =
+    typeof globalThis.getTotalsFromDateKeys === 'function'
+      ? globalThis.getTotalsFromDateKeys(periodKeys)
+      : null;
+  const missionsDone = Number(periodTotals?.missions || 0);
+  const worksDone = Number(periodTotals?.works || 0);
+  const workoutsDone = Number(periodTotals?.workouts || 0);
+  const studiesDone = Number(periodTotals?.studies || 0);
   const booksRead = (appData.books || []).reduce((count, book) => {
     if (!book?.completed || !book?.dateCompleted) return count;
     return periodKeys.has(book.dateCompleted) ? count + 1 : count;
@@ -424,26 +412,14 @@ function updateFailuresChart() {
 
   const periodDays = getSelectedStatsChartPeriodDays();
   const periodKeys = new Set(getStatsChartPeriodDateKeys(periodDays));
-  const missionsMissed = (appData.completedMissions || []).reduce((count, entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || !(entry.failed || entry.skipped)) return count;
-    return count + 1;
-  }, 0);
-  const worksMissed = (appData.completedWorks || []).reduce((count, entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || !(entry.failed || entry.skipped)) return count;
-    return count + 1;
-  }, 0);
-  const workoutsMissed = (appData.completedWorkouts || []).reduce((count, entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || !(entry.failed || entry.skipped)) return count;
-    return count + 1;
-  }, 0);
-  const studiesMissed = (appData.completedStudies || []).reduce((count, entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || !(entry.failed || entry.skipped)) return count;
-    return count + 1;
-  }, 0);
+  const periodTotals =
+    typeof globalThis.getTotalsFromDateKeys === 'function'
+      ? globalThis.getTotalsFromDateKeys(periodKeys)
+      : null;
+  const missionsMissed = Number(periodTotals?.missionsMissed || 0);
+  const worksMissed = Number(periodTotals?.worksMissed || 0);
+  const workoutsMissed = Number(periodTotals?.workoutsMissed || 0);
+  const studiesMissed = Number(periodTotals?.studiesMissed || 0);
 
   ctx.chart = new Chart(ctx, {
     type: 'bar',
@@ -495,38 +471,28 @@ function updateCompletedVsFailedChart() {
   const periodDays = getSelectedStatsChartPeriodDays();
   const periodKeys = new Set(getStatsChartPeriodDateKeys(periodDays));
   const categories = ['Missões', 'Trabalhos', 'Treinos', 'Estudos'];
-
+  const periodTotals =
+    typeof globalThis.getTotalsFromDateKeys === 'function'
+      ? globalThis.getTotalsFromDateKeys(periodKeys)
+      : null;
   const totals = {
-    mission: { done: 0, missed: 0 },
-    work: { done: 0, missed: 0 },
-    workout: { done: 0, missed: 0 },
-    study: { done: 0, missed: 0 },
+    mission: {
+      done: Number(periodTotals?.missions || 0),
+      missed: Number(periodTotals?.missionsMissed || 0),
+    },
+    work: {
+      done: Number(periodTotals?.works || 0),
+      missed: Number(periodTotals?.worksMissed || 0),
+    },
+    workout: {
+      done: Number(periodTotals?.workouts || 0),
+      missed: Number(periodTotals?.workoutsMissed || 0),
+    },
+    study: {
+      done: Number(periodTotals?.studies || 0),
+      missed: Number(periodTotals?.studiesMissed || 0),
+    },
   };
-
-  (appData.completedMissions || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.mission.missed += 1;
-    else totals.mission.done += 1;
-  });
-  (appData.completedWorks || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.work.missed += 1;
-    else totals.work.done += 1;
-  });
-  (appData.completedWorkouts || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.workout.missed += 1;
-    else totals.workout.done += 1;
-  });
-  (appData.completedStudies || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.study.missed += 1;
-    else totals.study.done += 1;
-  });
 
   ctx.chart = new Chart(ctx, {
     type: 'bar',
@@ -596,38 +562,28 @@ function updateAdherenceRateChart() {
   const periodDays = getSelectedStatsChartPeriodDays();
   const periodKeys = new Set(getStatsChartPeriodDateKeys(periodDays));
   const categories = ['Missões', 'Trabalhos', 'Treinos', 'Estudos'];
-
+  const periodTotals =
+    typeof globalThis.getTotalsFromDateKeys === 'function'
+      ? globalThis.getTotalsFromDateKeys(periodKeys)
+      : null;
   const totals = {
-    mission: { done: 0, missed: 0 },
-    work: { done: 0, missed: 0 },
-    workout: { done: 0, missed: 0 },
-    study: { done: 0, missed: 0 },
+    mission: {
+      done: Number(periodTotals?.missions || 0),
+      missed: Number(periodTotals?.missionsMissed || 0),
+    },
+    work: {
+      done: Number(periodTotals?.works || 0),
+      missed: Number(periodTotals?.worksMissed || 0),
+    },
+    workout: {
+      done: Number(periodTotals?.workouts || 0),
+      missed: Number(periodTotals?.workoutsMissed || 0),
+    },
+    study: {
+      done: Number(periodTotals?.studies || 0),
+      missed: Number(periodTotals?.studiesMissed || 0),
+    },
   };
-
-  (appData.completedMissions || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.mission.missed += 1;
-    else totals.mission.done += 1;
-  });
-  (appData.completedWorks || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.work.missed += 1;
-    else totals.work.done += 1;
-  });
-  (appData.completedWorkouts || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.workout.missed += 1;
-    else totals.workout.done += 1;
-  });
-  (appData.completedStudies || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key)) return;
-    if (entry.failed || entry.skipped) totals.study.missed += 1;
-    else totals.study.done += 1;
-  });
 
   const toRate = (done, missed) => {
     const planned = done + missed;
@@ -692,7 +648,7 @@ function updateXpBySourceChart() {
 
   const periodDays = getSelectedStatsChartPeriodDays();
   const periodKeys = new Set(getStatsChartPeriodDateKeys(periodDays));
-
+  const productiveDays = appData.statistics?.productiveDays || {};
   let missionXP = 0;
   let workXP = 0;
   let workoutXP = 0;
@@ -700,38 +656,14 @@ function updateXpBySourceChart() {
   let bookXP = 0;
   let diaryXP = 0;
 
-  (appData.completedMissions || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || entry.failed || entry.skipped) return;
-    missionXP += entry.type === 'epica' ? 20 : 1;
-  });
-  (appData.completedWorks || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || entry.failed || entry.skipped) return;
-    workXP += entry.type === 'epica' ? 20 : 1;
-  });
-  (appData.completedWorkouts || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || entry.failed || entry.skipped) return;
-    workoutXP += 3;
-  });
-  (appData.completedStudies || []).forEach((entry) => {
-    const key = getEventDateKey(entry);
-    if (!periodKeys.has(key) || entry.failed || entry.skipped) return;
-    studyXP += entry.applied ? 3 : 1;
-  });
-  (appData.books || []).forEach((book) => {
-    if (!book?.completed || !book?.dateCompleted) return;
-    if (periodKeys.has(book.dateCompleted)) {
-      bookXP += 20;
-    }
-  });
-  const diaryEntries = diaryDbAvailable ? diaryCache : appData.diaryEntries || [];
-  (diaryEntries || []).forEach((entry) => {
-    if (!entry?.date) return;
-    const key = getLocalDateString(new Date(entry.date));
-    if (!periodKeys.has(key)) return;
-    diaryXP += Number(entry.xpGained || 0);
+  periodKeys.forEach((key) => {
+    const day = productiveDays[key] || {};
+    missionXP += Number(day.xpMission || 0);
+    workXP += Number(day.xpWork || 0);
+    workoutXP += Number(day.xpWorkout || 0);
+    studyXP += Number(day.xpStudy || 0);
+    bookXP += Number(day.xpBook || 0);
+    diaryXP += Number(day.xpDiary || 0);
   });
 
   ctx.chart = new Chart(ctx, {
