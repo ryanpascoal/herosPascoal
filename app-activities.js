@@ -62,14 +62,18 @@ function getUnifiedTodayActivities() {
     (appData.dailyWorkouts || [])
       .filter((entry) => entry && entry.date === todayStr && !entry.completed && !entry.skipped)
       .forEach((entry) => {
-        const workout = (appData.workouts || []).find((item) => String(item.id) === String(entry.workoutId));
+        const workout = (appData.workouts || []).find(
+          (item) => String(item.id) === String(entry.workoutId)
+        );
         if (workout) items.push({ category: 'workout', item: workout, dailyEntry: entry });
       });
 
     (appData.dailyStudies || [])
       .filter((entry) => entry && entry.date === todayStr && !entry.completed && !entry.skipped)
       .forEach((entry) => {
-        const study = (appData.studies || []).find((item) => String(item.id) === String(entry.studyId));
+        const study = (appData.studies || []).find(
+          (item) => String(item.id) === String(entry.studyId)
+        );
         if (study) items.push({ category: 'study', item: study, dailyEntry: entry });
       });
   }
@@ -80,8 +84,10 @@ function getUnifiedTodayActivities() {
   });
 
   return items.sort((a, b) => {
-    if (a.category === 'work' && a.item.urgent && !(b.category === 'work' && b.item.urgent)) return -1;
-    if (b.category === 'work' && b.item.urgent && !(a.category === 'work' && a.item.urgent)) return 1;
+    if (a.category === 'work' && a.item.urgent && !(b.category === 'work' && b.item.urgent))
+      return -1;
+    if (b.category === 'work' && b.item.urgent && !(a.category === 'work' && a.item.urgent))
+      return 1;
     return String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR');
   });
 }
@@ -131,11 +137,11 @@ function renderUnifiedTodayActivities() {
         ? getWorkoutTypeName(item.type)
         : category === 'study'
           ? item.type === 'logico'
-            ? 'L�gico'
+            ? 'Lógico'
             : 'Criativo'
           : category === 'book'
             ? 'Leitura'
-          : getMissionTypeName(item.type);
+            : getMissionTypeName(item.type);
     const dueValue =
       category === 'mission' || category === 'work'
         ? item.type === 'epica'
@@ -150,7 +156,8 @@ function renderUnifiedTodayActivities() {
         : '';
     const subtitleParts = [];
     if (dueBadge) subtitleParts.push(dueBadge);
-    if (category === 'work' && item.classId) subtitleParts.push(`Classe: ${escapeHtml(getClassNameById(item.classId))}`);
+    if (category === 'work' && item.classId)
+      subtitleParts.push(`Classe: ${escapeHtml(getClassNameById(item.classId))}`);
     if ((category === 'mission' || category === 'work') && isRoutineType(item.type)) {
       subtitleParts.push(`Dias: ${escapeHtml(getDaysNames(getRoutineDays(item)))}`);
     }
@@ -226,21 +233,21 @@ function renderUnifiedActivitiesHistory() {
       const categoryMeta = getActivityCategoryMeta(category);
       const card = document.createElement('div');
       card.className = `mission-card ${item.failed ? 'failed' : item.skipped ? 'skipped' : 'completed'}`;
-      const statusText = item.failed ? 'FALHOU' : item.skipped ? 'PULADO' : 'CONCLU�DO';
+      const statusText = item.failed ? 'FALHOU' : item.skipped ? 'PULADO' : 'CONCLUÍDO';
       const statusClass = item.failed
         ? 'failed-status'
         : item.skipped
           ? 'skipped-status'
           : 'completed-status';
-        const typeLabel =
-          category === 'workout'
-            ? getWorkoutTypeName(item.type)
-            : category === 'study'
-              ? item.type === 'logico'
-                ? 'L�gico'
-                : 'Criativo'
-              : category === 'book'
-                ? getBookActivityStatusLabel(item)
+      const typeLabel =
+        category === 'workout'
+          ? getWorkoutTypeName(item.type)
+          : category === 'study'
+            ? item.type === 'logico'
+              ? 'Lógico'
+              : 'Criativo'
+            : category === 'book'
+              ? getBookActivityStatusLabel(item)
               : getMissionTypeName(item.type);
       const eventDate = getEventDateKey(item);
       card.innerHTML = `
@@ -262,7 +269,7 @@ function renderUnifiedActivitiesHistory() {
       `;
       return card;
     },
-    'Nenhuma atividade conclu�da ainda.',
+    'Nenhuma atividade concluída ainda.',
     renderUnifiedActivitiesHistory
   );
 }
@@ -284,11 +291,11 @@ function renderUnifiedActivitiesList() {
         ? getWorkoutTypeName(item.type)
         : category === 'study'
           ? item.type === 'logico'
-            ? 'L�gico'
+            ? 'Lógico'
             : 'Criativo'
           : category === 'book'
             ? getBookActivityStatusLabel(item)
-          : getMissionTypeName(item.type);
+            : getMissionTypeName(item.type);
     const card = document.createElement('div');
     card.className = 'item-card';
     card.innerHTML = `
@@ -296,7 +303,7 @@ function renderUnifiedActivitiesList() {
         <span class="item-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
         <div>
           <div class="item-name">${escapeHtml(item.name || 'Atividade')}</div>
-          <div class="item-type">${categoryMeta.label} � ${secondary}</div>
+          <div class="item-type">${categoryMeta.label} - ${secondary}</div>
           ${category === 'book' && item.author ? `<div class="item-author">${escapeHtml(item.author)}</div>` : ''}
         </div>
       </div>
@@ -352,7 +359,7 @@ function renderPaginatedHistory(container, items, renderItem, emptyMessage, rere
 
   const summary = document.createElement('span');
   summary.className = 'history-pagination-summary';
-  summary.textContent = `P�gina ${currentPage} de ${totalPages}`;
+  summary.textContent = `Página ${currentPage} de ${totalPages}`;
   footer.appendChild(summary);
 
   const actions = document.createElement('div');
@@ -409,7 +416,7 @@ function renderPaginatedHistory(container, items, renderItem, emptyMessage, rere
   const nextBtn = document.createElement('button');
   nextBtn.type = 'button';
   nextBtn.className = 'history-pagination-btn secondary';
-  nextBtn.textContent = 'Pr�xima';
+  nextBtn.textContent = 'Próxima';
   nextBtn.disabled = currentPage === totalPages;
   nextBtn.addEventListener('click', () => {
     if (currentPage < totalPages) {
@@ -439,15 +446,15 @@ function wasItemLoggedForDate(item, completedList, dateStr) {
 function checkOverdueWorks(options = {}) {
   const skipWeekly = options.skipWeekly === true;
 
-  // Se for verifica��o inicial e lives <= 3, pode ser que o usu�rio acabou de restaurar
-  // Neste caso, pular falhas autom�ticas para evitar loop de game over
+  // Se for verificação inicial e lives <= 3, pode ser que o usuário acabou de restaurar
+  // Neste caso, pular falhas automáticas para evitar loop de game over
   if (options.isInitialCheck && appData.hero.lives <= 3 && appData.hero.gameOverCounted === false) {
-    // Verificar se h� flag de "recentemente restaurado"
+    // Verificar se há flag de "recentemente restaurado"
     const lastRestore = appData.hero.lastRestoreDate;
     if (lastRestore) {
       const today = getLocalDateString();
       if (lastRestore === today) {
-        console.log('Verifica��o inicial: pulando falhas autom�ticas (usu�rio restaurou hoje)');
+        console.log('Verificação inicial: pulando falhas automáticas (usuário restaurou hoje)');
         return;
       }
     }
@@ -471,11 +478,11 @@ function checkOverdueWorks(options = {}) {
       }
     }
 
-    // �picas
+    // Épicas
     if (work.type === 'epica' && work.deadline) {
       const deadlineStr = getLocalDateString(parseLocalDateString(work.deadline));
       if (deadlineStr < todayStr) {
-        overdueToFail.push({ id: work.id, reason: 'Falha no dia seguinte ao prazo (�pica)' });
+        overdueToFail.push({ id: work.id, reason: 'Falha no dia seguinte ao prazo (Épica)' });
       }
     }
 
@@ -500,7 +507,7 @@ function checkOverdueWorks(options = {}) {
         if (!alreadyLoggedYesterday && !alreadyFailedForMissedDate) {
           overdueToFail.push({
             id: work.id,
-            reason: 'Rotina n�o conclu�da no dia programado',
+            reason: 'Rotina não concluída no dia programado',
             missedDate: yesterdayStr,
           });
         }
@@ -524,15 +531,15 @@ function checkOverdueWorks(options = {}) {
 function checkOverdueMissions(options = {}) {
   const skipWeekly = options.skipWeekly === true;
 
-  // Se for verifica��o inicial e lives <= 3, pode ser que o usu�rio acabou de restaurar
-  // Neste caso, pular falhas autom�ticas para evitar loop de game over
+  // Se for verificação inicial e lives <= 3, pode ser que o usuário acabou de restaurar
+  // Neste caso, pular falhas automáticas para evitar loop de game over
   if (options.isInitialCheck && appData.hero.lives <= 3 && appData.hero.gameOverCounted === false) {
-    // Verificar se h� flag de "recentemente restaurado"
+    // Verificar se há flag de "recentemente restaurado"
     const lastRestore = appData.hero.lastRestoreDate;
     if (lastRestore) {
       const today = getLocalDateString();
       if (lastRestore === today) {
-        console.log('Verifica��o inicial: pulando falhas autom�ticas (usu�rio restaurou hoje)');
+        console.log('Verificação inicial: pulando falhas automáticas (usuário restaurou hoje)');
         return;
       }
     }
@@ -556,11 +563,11 @@ function checkOverdueMissions(options = {}) {
       }
     }
 
-    // �picas
+    // Épicas
     if (mission.type === 'epica' && mission.deadline) {
       const deadlineStr = getLocalDateString(parseLocalDateString(mission.deadline));
       if (deadlineStr < todayStr) {
-        overdueToFail.push({ id: mission.id, reason: 'Falha no dia seguinte ao prazo (�pica)' });
+        overdueToFail.push({ id: mission.id, reason: 'Falha no dia seguinte ao prazo (Épica)' });
       }
     }
 
@@ -585,7 +592,7 @@ function checkOverdueMissions(options = {}) {
         if (!alreadyLoggedYesterday && !alreadyFailedForMissedDate) {
           overdueToFail.push({
             id: mission.id,
-            reason: 'Rotina n�o conclu�da no dia programado',
+            reason: 'Rotina não concluída no dia programado',
             missedDate: yesterdayStr,
           });
         }
@@ -595,7 +602,7 @@ function checkOverdueMissions(options = {}) {
 
   if (overdueToFail.length > 0) {
     console.log(
-      `Auto-falhando ${overdueToFail.length} miss�es por atraso:`,
+      `Auto-falhando ${overdueToFail.length} missões por atraso:`,
       overdueToFail.map((i) => i.reason)
     );
     overdueToFail.forEach((item) =>
@@ -606,7 +613,7 @@ function checkOverdueMissions(options = {}) {
   recreateDailyMissionsForToday();
 }
 
-// Atualizar lista de miss�es cadastradas`r`n// Atualizar streaks display
+// Atualizar lista de missões cadastradas`r`n// Atualizar streaks display
 function updateStreaksDisplay() {
   updateMaxStreaks();
   const generalEl = document.getElementById('streak-general');
@@ -643,7 +650,7 @@ function updateMaxStreaks() {
   );
 }
 
-// Atualizar estat�sticas
+// Atualizar estatísticas
 function updateStatistics() {
   const statWorkoutsDone = document.getElementById('stat-workouts-done');
   if (statWorkoutsDone) statWorkoutsDone.textContent = appData.statistics.workoutsDone || 0;
@@ -695,8 +702,8 @@ function updateAdvancedStatistics() {
   const weeklyPrevious = getPeriodTotals(7, 7);
   if (weeklyCompareEl) {
     weeklyCompareEl.innerHTML = `
-            <p>Miss�es: ${weeklyCurrent.missions} (${formatTrendHtml(weeklyCurrent.missions, weeklyPrevious.missions)})</p>
-            <p>Falhas/Ignoradas Miss�es: ${weeklyCurrent.missionsMissed} (${formatTrendHtml(weeklyCurrent.missionsMissed, weeklyPrevious.missionsMissed, true)})</p>
+            <p>Missões: ${weeklyCurrent.missions} (${formatTrendHtml(weeklyCurrent.missions, weeklyPrevious.missions)})</p>
+            <p>Falhas/Ignoradas Missões: ${weeklyCurrent.missionsMissed} (${formatTrendHtml(weeklyCurrent.missionsMissed, weeklyPrevious.missionsMissed, true)})</p>
             <p>Trabalhos: ${weeklyCurrent.works} (${formatTrendHtml(weeklyCurrent.works, weeklyPrevious.works)})</p>
             <p>Falhas/Ignorados Trabalhos: ${weeklyCurrent.worksMissed} (${formatTrendHtml(weeklyCurrent.worksMissed, weeklyPrevious.worksMissed, true)})</p>
             <p>Treinos: ${weeklyCurrent.workouts} (${formatTrendHtml(weeklyCurrent.workouts, weeklyPrevious.workouts)})</p>
@@ -711,8 +718,8 @@ function updateAdvancedStatistics() {
   const monthPrevious = getMonthTotals(getPreviousMonthKey(getLocalDateString().slice(0, 7)));
   if (monthlyCompareEl) {
     monthlyCompareEl.innerHTML = `
-            <p>Miss�es: ${monthCurrent.missions} (${formatTrendHtml(monthCurrent.missions, monthPrevious.missions)})</p>
-            <p>Falhas/Ignoradas Miss�es: ${monthCurrent.missionsMissed} (${formatTrendHtml(monthCurrent.missionsMissed, monthPrevious.missionsMissed, true)})</p>
+            <p>Missões: ${monthCurrent.missions} (${formatTrendHtml(monthCurrent.missions, monthPrevious.missions)})</p>
+            <p>Falhas/Ignoradas Missões: ${monthCurrent.missionsMissed} (${formatTrendHtml(monthCurrent.missionsMissed, monthPrevious.missionsMissed, true)})</p>
             <p>Trabalhos: ${monthCurrent.works} (${formatTrendHtml(monthCurrent.works, monthPrevious.works)})</p>
             <p>Falhas/Ignorados Trabalhos: ${monthCurrent.worksMissed} (${formatTrendHtml(monthCurrent.worksMissed, monthPrevious.worksMissed, true)})</p>
             <p>Treinos: ${monthCurrent.workouts} (${formatTrendHtml(monthCurrent.workouts, monthPrevious.workouts)})</p>
@@ -733,14 +740,14 @@ function updateAdvancedStatistics() {
   const monthStudiesPlanned = monthCurrent.studies + monthCurrent.studiesMissed;
   if (adherenceEl) {
     adherenceEl.innerHTML = `
-            <p>7 dias - Miss�es: ${formatRate(weeklyCurrent.missions, weekMissionsPlanned)}</p>
+            <p>7 dias - Missões: ${formatRate(weeklyCurrent.missions, weekMissionsPlanned)}</p>
             <p>7 dias - Trabalhos: ${formatRate(weeklyCurrent.works, weekWorksPlanned)}</p>
             <p>7 dias - Treinos: ${formatRate(weeklyCurrent.workouts, weekWorkoutsPlanned)}</p>
             <p>7 dias - Estudos: ${formatRate(weeklyCurrent.studies, weekStudiesPlanned)}</p>
-            <p>M�s - Miss�es: ${formatRate(monthCurrent.missions, monthMissionsPlanned)}</p>
-            <p>M�s - Trabalhos: ${formatRate(monthCurrent.works, monthWorksPlanned)}</p>
-            <p>M�s - Treinos: ${formatRate(monthCurrent.workouts, monthWorkoutsPlanned)}</p>
-            <p>M�s - Estudos: ${formatRate(monthCurrent.studies, monthStudiesPlanned)}</p>
+            <p>Mês - Missões: ${formatRate(monthCurrent.missions, monthMissionsPlanned)}</p>
+            <p>Mês - Trabalhos: ${formatRate(monthCurrent.works, monthWorksPlanned)}</p>
+            <p>Mês - Treinos: ${formatRate(monthCurrent.workouts, monthWorkoutsPlanned)}</p>
+            <p>Mês - Estudos: ${formatRate(monthCurrent.studies, monthStudiesPlanned)}</p>
         `;
   }
 
@@ -748,7 +755,7 @@ function updateAdvancedStatistics() {
   if (goalsStatusEl) {
     const goals = appData.statisticsGoals || { missions: 60, workouts: 20, studies: 20, works: 30 };
     goalsStatusEl.innerHTML = `
-            <p class="${getGoalStatusClass(weeklyCurrent.missions, goals.missions)}">Miss�es: ${weeklyCurrent.missions}/${goals.missions}</p>
+            <p class="${getGoalStatusClass(weeklyCurrent.missions, goals.missions)}">Missões: ${weeklyCurrent.missions}/${goals.missions}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.works, goals.works)}">Trabalhos: ${weeklyCurrent.works}/${goals.works}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.workouts, goals.workouts)}">Treinos: ${weeklyCurrent.workouts}/${goals.workouts}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.studies, goals.studies)}">Estudos: ${weeklyCurrent.studies}/${goals.studies}</p>
@@ -899,7 +906,7 @@ function saveStatisticsGoals() {
     !Number.isFinite(studies) ||
     studies <= 0
   ) {
-    showFeedback('Informe metas v�lidas (n�meros maiores que zero).', 'warn');
+    showFeedback('Informe metas válidas (números maiores que zero).', 'warn');
     return;
   }
   appData.statisticsGoals = { missions, works, workouts, studies };
@@ -954,7 +961,7 @@ function updateRecords() {
       let recordText = '';
 
       if (workout.type === 'repeticao' && workout.stats.bestReps > 0) {
-        recordText = `${workout.emoji} ${workout.name}: ${workout.stats.bestReps} repeti��es`;
+        recordText = `${workout.emoji} ${workout.name}: ${workout.stats.bestReps} repetições`;
       } else if (workout.type === 'distancia' && workout.stats.bestDistance > 0) {
         recordText = `${workout.emoji} ${workout.name}: ${workout.stats.bestDistance.toFixed(2)} km`;
       } else if (
@@ -975,12 +982,12 @@ function updateRecords() {
 
   const productiveDaysRecords = Object.values(appData.statistics.productiveDays || {});
 
-  // Records de miss�es
+  // Records de missões
   const maxMissionsPerDay = Math.max(0, ...productiveDaysRecords.map((r) => r.missions || 0));
   if (maxMissionsPerDay > 0) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `?? M�ximo de miss�es em um dia: ${maxMissionsPerDay}`;
+    recordItem.textContent = `?? Máximo de missões em um dia: ${maxMissionsPerDay}`;
     container.appendChild(recordItem);
   }
 
@@ -989,7 +996,7 @@ function updateRecords() {
   if (maxStudiesPerDay > 0) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `?? M�ximo de estudos em um dia: ${maxStudiesPerDay}`;
+    recordItem.textContent = `?? Máximo de estudos em um dia: ${maxStudiesPerDay}`;
     container.appendChild(recordItem);
   }
 
@@ -998,7 +1005,7 @@ function updateRecords() {
   if (maxWorkoutsPerDay > 0) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `?? M�ximo de treinos em um dia: ${maxWorkoutsPerDay}`;
+    recordItem.textContent = `?? Máximo de treinos em um dia: ${maxWorkoutsPerDay}`;
     container.appendChild(recordItem);
   }
 
@@ -1006,7 +1013,7 @@ function updateRecords() {
   if (maxWorksPerDay > 0) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `?? M�ximo de trabalhos em um dia: ${maxWorksPerDay}`;
+    recordItem.textContent = `?? Máximo de trabalhos em um dia: ${maxWorksPerDay}`;
     container.appendChild(recordItem);
   }
 
@@ -1062,7 +1069,7 @@ function updateRecords() {
   if (bestNoFailStreak > 0) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `??? Maior sequ�ncia sem falhas: ${bestNoFailStreak} dias`;
+    recordItem.textContent = `??? Maior sequência sem falhas: ${bestNoFailStreak} dias`;
     container.appendChild(recordItem);
   }
 
@@ -1115,7 +1122,7 @@ function updateRecords() {
     start.setDate(start.getDate() - 6);
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `?? Melhor semana: ${bestWeekDone} conclu�das (${formatDate(getLocalDateString(start))} a ${formatDate(bestWeekEnd)})`;
+    recordItem.textContent = `?? Melhor semana: ${bestWeekDone} concluídas (${formatDate(getLocalDateString(start))} a ${formatDate(bestWeekEnd)})`;
     container.appendChild(recordItem);
   }
   if (bestWeekAdherenceEnd) {
@@ -1123,7 +1130,7 @@ function updateRecords() {
     start.setDate(start.getDate() - 6);
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `? Maior ader�ncia semanal: ${bestWeekAdherence.toFixed(1).replace('.', ',')}% (${formatDate(getLocalDateString(start))} a ${formatDate(bestWeekAdherenceEnd)})`;
+    recordItem.textContent = `? Maior aderência semanal: ${bestWeekAdherence.toFixed(1).replace('.', ',')}% (${formatDate(getLocalDateString(start))} a ${formatDate(bestWeekAdherenceEnd)})`;
     container.appendChild(recordItem);
   }
 
@@ -1150,7 +1157,7 @@ function updateRecords() {
     });
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `??? Melhor m�s (XP): ${bestMonthXp} em ${label}`;
+    recordItem.textContent = `??? Melhor mês (XP): ${bestMonthXp} em ${label}`;
     container.appendChild(recordItem);
   }
 
@@ -1164,7 +1171,7 @@ function updateRecords() {
   if (appData.statistics.maxStreakPhysical) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `?? Maior streak f�sico: ${appData.statistics.maxStreakPhysical} dias`;
+    recordItem.textContent = `?? Maior streak físico: ${appData.statistics.maxStreakPhysical} dias`;
     container.appendChild(recordItem);
   }
   if (appData.statistics.maxStreakMental) {
@@ -1203,7 +1210,7 @@ function updateProductiveDays() {
   });
 }
 
-// Atualizar di�rio
+// Atualizar diário
 
 // __appActivitiesBridge: exposes activity APIs for legacy scripts during module migration
 Object.assign(globalThis, {

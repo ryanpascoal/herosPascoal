@@ -335,7 +335,7 @@
           <div class="sub-nav">
             <button class="sub-nav-btn active" data-subtab="atividades-hoje">Hoje</button>
             <button class="sub-nav-btn" data-subtab="atividades-historico">Histórico</button>
-            <button class="sub-nav-btn" data-subtab="atividades-livros">Livros</button>
+
             <button class="sub-nav-btn" data-subtab="atividades-gerenciar">Gerenciar</button>
           </div>
 
@@ -346,33 +346,6 @@
 
             <div id="atividades-historico" class="sub-tab">
               <div class="missions-list history-list" id="completed-activities"></div>
-            </div>
-
-            <div id="atividades-livros" class="sub-tab">
-              <div class="books-section">
-                <h3>Biblioteca</h3>
-                <div class="books-toolbar">
-                  <input
-                    type="search"
-                    id="books-search"
-                    class="books-search-input"
-                    placeholder="Buscar por nome, autor ou status"
-                  />
-                </div>
-                <div class="items-list" id="books-list">
-                  <!-- Livros serão carregados aqui -->
-                </div>
-                <br />
-                <button class="add-btn" id="add-book-btn">
-                  <i class="fas fa-plus"></i> Adicionar Livro
-                </button>
-              </div>
-              <div class="books-section books-history-section">
-                <h3>Histórico de Livros Concluídos</h3>
-                <div class="items-list history-list" id="books-history-list">
-                  <!-- Histórico de livros concluídos -->
-                </div>
-              </div>
             </div>
 
             <div id="atividades-gerenciar" class="sub-tab">
@@ -390,9 +363,16 @@
                     </select>
                   </div>
 
+                  <input type="hidden" id="activity-edit-id" />
+
                   <div class="form-group">
                     <label for="activity-name">Nome</label>
-                    <input type="text" id="activity-name" placeholder="Ex: Ir à academia" required />
+                    <input
+                      type="text"
+                      id="activity-name"
+                      placeholder="Ex: Ir à academia"
+                      required
+                    />
                   </div>
 
                   <div class="form-group">
@@ -409,7 +389,11 @@
                     </select>
                   </div>
 
-                  <div class="form-group" id="activity-workout-type-container" style="display: none">
+                  <div
+                    class="form-group"
+                    id="activity-workout-type-container"
+                    style="display: none"
+                  >
                     <label for="activity-workout-type">Tipo de Treino</label>
                     <select id="activity-workout-type">
                       <option value="repeticao">Repetição</option>
@@ -478,7 +462,11 @@
                     </select>
                   </div>
 
-                  <div class="form-group checkbox-group" id="activity-urgent-container" style="display: none">
+                  <div
+                    class="form-group checkbox-group"
+                    id="activity-urgent-container"
+                    style="display: none"
+                  >
                     <label class="checkbox-label">
                       <input type="checkbox" id="activity-urgent" />
                       <span>🚀 Trabalho Urgente</span>

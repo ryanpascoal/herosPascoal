@@ -47,17 +47,6 @@ function bindManyById(eventName, handlersById) {
   Object.entries(handlersById).forEach(([id, handler]) => bindById(id, eventName, handler));
 }
 
-function openBookActivityForm() {
-  const activitiesSection = document.getElementById('atividades');
-  if (!activitiesSection) return;
-  switchTab('atividades');
-  switchSubTab('atividades-gerenciar', activitiesSection);
-  const categorySelect = document.getElementById('activity-category');
-  if (categorySelect) categorySelect.value = 'book';
-  if (typeof updateActivityForm === 'function') updateActivityForm();
-  document.getElementById('activity-name')?.focus();
-}
-
 function initSelectAllDays(containerSelector) {
   const container = document.querySelector(containerSelector);
   if (!container) return;
@@ -166,19 +155,11 @@ function initEvents() {
   bindManyById('click', {
     'hydration-add-btn': addHydrationGlass,
     'hydration-remove-btn': removeHydrationGlass,
-    'add-book-btn': () => openBookActivityForm(),
     'save-stats-goals-btn': saveStatisticsGoals,
     'reset-foods-btn': resetNutritionFoods,
     'reset-btn': resetProgress,
     'export-btn': exportData,
     'import-btn': importData,
-  });
-  bindById('input', 'books-search', () => {
-    if (globalThis.historyPaginationState) {
-      globalThis.historyPaginationState['books-list'] = 1;
-      globalThis.historyPaginationState['books-history-list'] = 1;
-    }
-    updateBooks();
   });
   bindManyById('submit', {
     'activity-form': handleActivitySubmit,
@@ -491,21 +472,6 @@ function initEvents() {
       else if (category === 'work') deleteWork(id);
       else if (category === 'workout') deleteWorkout(id);
       else if (category === 'study') deleteStudy(id);
-      else if (category === 'book') deleteBook(id);
-      return;
-    }
-
-    const bookBtn = e.target.closest('.complete-book-btn');
-    if (bookBtn) {
-      const bookId = parseInt(bookBtn.getAttribute('data-id'));
-      completeBook(bookId);
-      return;
-    }
-
-    const deleteBookBtn = e.target.closest('.delete-book-btn');
-    if (deleteBookBtn) {
-      const bookId = parseInt(deleteBookBtn.getAttribute('data-id'));
-      deleteBook(bookId);
       return;
     }
 
@@ -517,14 +483,6 @@ function initEvents() {
         studyDay.applied = applyCheckbox.checked;
         saveToLocalStorage();
       }
-    }
-  });
-
-  document.addEventListener('change', function (e) {
-    const statusSelect = e.target.closest('.book-status-select');
-    if (statusSelect) {
-      const bookId = parseInt(statusSelect.getAttribute('data-id'), 10);
-      setBookStatus(bookId, statusSelect.value);
     }
   });
 }
@@ -610,9 +568,6 @@ function updateUI(options = {}) {
 
     // Atualizar logs do herói
     generateHeroLogs();
-
-    // Atualizar livros
-    updateBooks();
   }
 
   if (shouldUpdateShop) {
@@ -872,144 +827,6 @@ function updateStudiesDisplay() {
 
     container.appendChild(studyCard);
   });
-}
-
-function normalizeBook(book) {
-  if (!book || typeof book !== 'object') return null;
-  const isCompleted = book.completed === true || book.status === 'concluido';
-  book.completed = isCompleted;
-  book.status = isCompleted ? 'concluido' : book.status || 'quero-ler';
-  return book;
-}
-
-function getBookStatusMeta(status) {
-  switch (status) {
-    case 'lendo':
-      return { label: 'Lendo', className: 'reading' };
-    case 'concluido':
-      return { label: 'Concluído', className: 'completed' };
-    case 'quero-ler':
-    default:
-      return { label: 'Quero ler', className: 'wishlist' };
-  }
-}
-
-async function deleteBook(bookId) {
-  const confirmed = await askConfirmation('Tem certeza que deseja excluir este livro?', {
-    title: 'Excluir livro',
-    confirmText: 'Excluir',
-  });
-  if (!confirmed) return;
-
-  const index = appData.books.findIndex((book) => Number(book.id) === Number(bookId));
-  if (index === -1) return;
-
-  appData.books.splice(index, 1);
-  updateUI({ mode: 'activity' });
-  showFeedback('Livro excluído com sucesso!', 'success');
-}
-
-function setBookStatus(bookId, status) {
-  const book = appData.books.find((item) => Number(item.id) === Number(bookId));
-  if (!book) return;
-  normalizeBook(book);
-  if (book.status === 'concluido') return;
-  if (!['quero-ler', 'lendo'].includes(status)) return;
-
-  book.status = status;
-  updateUI({ mode: 'activity' });
-  showFeedback(`Status do livro atualizado para "${getBookStatusMeta(status).label}".`, 'success');
-}
-
-function createBookCard(book, options = {}) {
-  const { isHistory = false } = options;
-  const safeEmoji = escapeHtml(book.emoji || '📖');
-  const safeName = escapeHtml(book.name || 'Livro');
-  const safeAuthor = escapeHtml(book.author || '');
-  const statusMeta = getBookStatusMeta(book.status);
-  const bookCard = document.createElement('div');
-  bookCard.className = `item-card book-card ${book.completed ? 'completed' : ''}`;
-  bookCard.innerHTML = `
-          <div class="item-info">
-              <span class="item-emoji">${safeEmoji}</span>
-              <div>
-                  <div class="item-name">${safeName}</div>
-                  ${safeAuthor ? `<div class="item-author">${safeAuthor}</div>` : ''}
-                  <div class="book-status-row">
-                    <span class="book-status-badge ${statusMeta.className}">${statusMeta.label}</span>
-                    ${book.completed ? `<span class="item-completed">Concluído em: ${formatDate(book.dateCompleted)}</span>` : ''}
-                  </div>
-              </div>
-          </div>
-          <div class="item-actions book-actions">
-              ${
-                !isHistory
-                  ? `
-              <select class="book-status-select" data-id="${book.id}" aria-label="Status do livro">
-                <option value="quero-ler" ${book.status === 'quero-ler' ? 'selected' : ''}>Quero ler</option>
-                <option value="lendo" ${book.status === 'lendo' ? 'selected' : ''}>Lendo</option>
-              </select>
-              <button class="action-btn complete-book-btn" data-id="${book.id}">Concluir</button>
-              `
-                  : ''
-              }
-              <button class="action-btn delete-btn delete-book-btn" data-id="${book.id}"><i class="fas fa-trash"></i></button>
-          </div>
-      `;
-  return bookCard;
-}
-
-// Atualizar livros
-function updateBooks() {
-  const activeContainer = document.getElementById('books-list');
-  const historyContainer = document.getElementById('books-history-list');
-  if (!activeContainer || !historyContainer) return;
-
-  const query = (document.getElementById('books-search')?.value || '').trim().toLowerCase();
-  const searchableStatus = {
-    'quero-ler': 'quero ler',
-    lendo: 'lendo',
-    concluido: 'concluido',
-  };
-
-  const normalizedBooks = (appData.books || [])
-    .map((book) => normalizeBook(book))
-    .filter((book) => {
-      if (!query) return true;
-      const haystack = [book.name || '', book.author || '', searchableStatus[book.status] || '']
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(query);
-    });
-
-  const activeBooks = normalizedBooks
-    .filter((book) => book.status !== 'concluido')
-    .sort((a, b) => {
-      const rank = { lendo: 0, 'quero-ler': 1 };
-      const byStatus = (rank[a.status] ?? 9) - (rank[b.status] ?? 9);
-      if (byStatus !== 0) return byStatus;
-      return String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR');
-    });
-
-  const completedBooks = normalizedBooks
-    .filter((book) => book.status === 'concluido')
-    .sort((a, b) => String(b.dateCompleted || '').localeCompare(String(a.dateCompleted || '')));
-
-  renderPaginatedHistory(
-    activeContainer,
-    activeBooks,
-    (book) => createBookCard(book),
-    query ? 'Nenhum livro encontrado na biblioteca.' : 'Nenhum livro pendente na biblioteca.',
-    updateBooks
-  );
-
-  renderPaginatedHistory(
-    historyContainer,
-    completedBooks,
-    (book) => createBookCard(book, { isHistory: true }),
-    query ? 'Nenhum livro concluído encontrado.' : 'Nenhum livro concluído ainda.',
-    updateBooks
-  );
 }
 
 // Atualizar visualização de treinos (VERSÃO ÚNICA)
@@ -1771,7 +1588,6 @@ Object.assign(globalThis, {
   initUI,
   bindById,
   bindManyById,
-  openBookActivityForm,
   initEvents,
   updateUI,
   updateIntegratedHearts,
@@ -1782,9 +1598,6 @@ Object.assign(globalThis, {
   updateWorkClassOptions,
   getWorkoutStats,
   updateStudiesDisplay,
-  updateBooks,
-  deleteBook,
-  setBookStatus,
   updateWorkoutsDisplay,
   updateShop,
   updateInventory,

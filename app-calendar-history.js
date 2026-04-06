@@ -427,7 +427,13 @@ function getCalendarItemsForDate(dateStr) {
     if (!typeInfo) return;
 
     if (isRoutineType(mission.type) && getRoutineDays(mission).includes(dayOfWeek)) {
-      items.push({ ...typeInfo, ...mission, entryKind: 'mission', actionId: mission.id, status: 'pending' });
+      items.push({
+        ...typeInfo,
+        ...mission,
+        entryKind: 'mission',
+        actionId: mission.id,
+        status: 'pending',
+      });
     }
 
     if (mission.type === 'eventual' && mission.date) {
@@ -1154,44 +1160,6 @@ function showItemModal(itemType, existingItem = null) {
   modal.classList.add('active');
 }
 
-// Mostrar modal para adicionar/editar livro
-function showBookModal(existingBook = null) {
-  const modal = document.getElementById('item-modal');
-  const modalTitle = document.getElementById('modal-title');
-  const form = document.getElementById('item-form');
-
-  if (!modal || !modalTitle || !form) return;
-
-  const isEditing = !!existingBook;
-  modalTitle.textContent = isEditing ? 'Editar Livro' : 'Adicionar Novo Livro';
-  form.innerHTML = `
-        <div class="form-group">
-            <label for="book-name">Nome do Livro</label>
-            <input type="text" id="book-name" value="${existingBook?.name || ''}" required>
-        </div>
-        <div class="form-group">
-            <label for="book-author">Autor (opcional)</label>
-            <input type="text" id="book-author" value="${existingBook?.author || ''}">
-        </div>
-        <div class="form-group">
-            <label for="book-emoji">Emoji (opcional)</label>
-            <input type="text" id="book-emoji" placeholder="📖" value="${existingBook?.emoji || ''}">
-        </div>
-        <div class="form-group">
-            <label for="book-status">Status</label>
-            <select id="book-status">
-                <option value="quero-ler" ${existingBook?.status === 'quero-ler' ? 'selected' : ''}>Quero ler</option>
-                <option value="lendo" ${existingBook?.status === 'lendo' ? 'selected' : ''}>Lendo</option>
-            </select>
-        </div>
-        <input type="hidden" id="modal-item-category" value="${isEditing ? 'edit-book' : 'book'}">
-        ${isEditing ? `<input type="hidden" id="modal-item-id" value="${existingBook.id}">` : ''}
-        <button type="submit" class="submit-btn">Salvar</button>
-    `;
-
-  modal.classList.add('active');
-}
-
 // Mostrar modal para conclusão de treino
 function showWorkoutCompletionModal(workoutDayId) {
   const modal = document.getElementById('item-modal');
@@ -1503,7 +1471,6 @@ Object.assign(globalThis, {
   switchTab,
   switchSubTab,
   showItemModal,
-  showBookModal,
   showWorkoutCompletionModal,
   showStudyCompletionModal,
   showMissionCompletionModal,

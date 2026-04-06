@@ -587,7 +587,14 @@ function handleActivitySubmit(e) {
     return;
   }
 
-  if ((category === 'mission' || category === 'work' || category === 'workout' || category === 'study') && selectedDays.length === 0 && (category === 'workout' || category === 'study' || scheduleType === 'rotina')) {
+  if (
+    (category === 'mission' ||
+      category === 'work' ||
+      category === 'workout' ||
+      category === 'study') &&
+    selectedDays.length === 0 &&
+    (category === 'workout' || category === 'study' || scheduleType === 'rotina')
+  ) {
     showFeedback('Selecione pelo menos um dia da semana.', 'warn');
     return;
   }
@@ -649,9 +656,22 @@ function handleActivitySubmit(e) {
   } else if (category === 'book') {
     const author = document.getElementById('activity-book-author')?.value?.trim() || '';
     const status = document.getElementById('activity-book-status')?.value || 'quero-ler';
-    appData.books.push(createBookPayload(name, emoji, status, author));
+    const editIdInput = document.getElementById('activity-edit-id');
+    const editId = editIdInput ? parseInt(editIdInput.value, 10) : null;
+    if (editId) {
+      const book = appData.books.find((b) => b.id === editId);
+      if (book) {
+        book.name = name;
+        book.author = author;
+        book.emoji = emoji || '📖';
+      }
+    } else {
+      appData.books.push(createBookPayload(name, emoji, status, author));
+    }
   }
 
+  const editIdInput = document.getElementById('activity-edit-id');
+  if (editIdInput) editIdInput.value = '';
   e.target.reset();
   updateActivityForm();
   updateUI({ mode: 'activity' });
@@ -1251,11 +1271,7 @@ async function useItem(itemId) {
         `O Presente Misterioso sorteou "${rewardedItem.name}" para o seu inventário!`,
         'success'
       );
-      addHeroLog(
-        'item',
-        'Presente Misterioso usado',
-        `Item sorteado: ${rewardedItem.name}`
-      );
+      addHeroLog('item', 'Presente Misterioso usado', `Item sorteado: ${rewardedItem.name}`);
       break;
     }
 

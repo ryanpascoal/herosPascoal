@@ -611,7 +611,22 @@ function deleteStudy(id) {
 function editBook(id) {
   const book = appData.books.find((item) => Number(item.id) === Number(id));
   if (!book) return;
-  showBookModal(book);
+  const activitiesSection = document.getElementById('atividades');
+  if (!activitiesSection) return;
+  switchTab('atividades');
+  switchSubTab('atividades-gerenciar', activitiesSection);
+  const categorySelect = document.getElementById('activity-category');
+  if (categorySelect) categorySelect.value = 'book';
+  const editIdInput = document.getElementById('activity-edit-id');
+  const nameInput = document.getElementById('activity-name');
+  const authorInput = document.getElementById('activity-book-author');
+  const emojiInput = document.getElementById('activity-emoji');
+  if (editIdInput) editIdInput.value = book.id;
+  if (nameInput) nameInput.value = book.name || '';
+  if (authorInput) authorInput.value = book.author || '';
+  if (emojiInput) emojiInput.value = book.emoji || '📖';
+  if (typeof updateActivityForm === 'function') updateActivityForm();
+  nameInput?.focus();
 }
 
 function editMission(id) {
