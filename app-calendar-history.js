@@ -970,35 +970,25 @@ function updateStudyHistory() {
 
 // Inicializar seletores de atributos
 function initAttributesSelectors() {
-  // Seletor para missões
-  const missionAttributesContainer = document.getElementById('mission-attributes');
-  if (missionAttributesContainer) {
-    missionAttributesContainer.innerHTML = '';
+  [
+    { containerId: 'mission-attributes', prefix: 'mission' },
+    { containerId: 'work-attributes', prefix: 'work' },
+    { containerId: 'activity-attributes', prefix: 'activity' },
+  ].forEach(({ containerId, prefix }) => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
 
     appData.attributes.forEach((attr) => {
       const checkbox = document.createElement('div');
       checkbox.className = 'attribute-checkbox';
       checkbox.innerHTML = `
-                <input type="checkbox" id="mission-attr-${attr.id}" value="${attr.id}">
-                <label for="mission-attr-${attr.id}">${attr.emoji} ${attr.name}</label>
+                <input type="checkbox" id="${prefix}-attr-${attr.id}" value="${attr.id}">
+                <label for="${prefix}-attr-${attr.id}">${attr.emoji} ${attr.name}</label>
             `;
-      missionAttributesContainer.appendChild(checkbox);
+      container.appendChild(checkbox);
     });
-  }
-
-  const workAttributesContainer = document.getElementById('work-attributes');
-  if (workAttributesContainer) {
-    workAttributesContainer.innerHTML = '';
-    appData.attributes.forEach((attr) => {
-      const checkbox = document.createElement('div');
-      checkbox.className = 'attribute-checkbox';
-      checkbox.innerHTML = `
-                <input type="checkbox" id="work-attr-${attr.id}" value="${attr.id}">
-                <label for="work-attr-${attr.id}">${attr.emoji} ${attr.name}</label>
-            `;
-      workAttributesContainer.appendChild(checkbox);
-    });
-  }
+  });
 }
 
 function initClassSelectors() {

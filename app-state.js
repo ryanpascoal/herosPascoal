@@ -2,7 +2,7 @@
 const appData = {
   hero: {
     name: 'Ryan Pascoal',
-    primaryClassId: 1,
+    primaryClassId: null,
     level: 1,
     xp: 0,
     maxXp: 100,
@@ -69,6 +69,15 @@ const appData = {
       level: 0,
       description: 'Permite pular 1 atividade sem penalidade',
       effect: 'skip',
+    },
+    {
+      id: 5,
+      name: 'Presente Misterioso',
+      emoji: '🎁',
+      cost: 20,
+      level: 0,
+      description: 'Ao usar, sorteia 1 item cadastrado por você na loja',
+      effect: 'mystery-gift',
     },
   ],
   inventory: [],

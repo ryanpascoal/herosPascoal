@@ -1,4 +1,4 @@
-function updateFinanceSummary() {
+﻿function updateFinanceSummary() {
   const incomeEl = document.getElementById('finance-income');
   const expenseEl = document.getElementById('finance-expense');
   const balanceEl = document.getElementById('finance-balance');
@@ -667,121 +667,6 @@ async function deleteFinanceRecurring(recurringId) {
   );
   updateUI({ mode: 'finance' });
 }
-
-// Atualizar treinos do dia
-function updateDailyWorkouts() {
-  const container = document.getElementById('daily-workouts');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  const today = getLocalDateString();
-
-  if (isRestDay(today)) {
-    container.innerHTML = '<p class="empty-message">Dia de descanso! Aproveite.</p>';
-    return;
-  }
-
-  const dailyWorkoutsSource = Array.isArray(appData.dailyWorkouts) ? appData.dailyWorkouts : [];
-  const workoutsSource = Array.isArray(appData.workouts) ? appData.workouts : [];
-  const dailyWorkouts = dailyWorkoutsSource.filter(
-    (dw) => dw && dw.date === today && !dw.completed && !dw.skipped
-  );
-  const sameId = (a, b) => String(a) === String(b);
-
-  if (dailyWorkouts.length === 0) {
-    container.innerHTML =
-      '<p class="empty-message">Nenhum treino para hoje. Aproveite o descanso!</p>';
-    return;
-  }
-  const skipCount = getSkipItemCount();
-
-  let renderedCount = 0;
-  dailyWorkouts.forEach((workoutDay) => {
-    const workout = workoutsSource.find((w) => sameId(w?.id, workoutDay.workoutId));
-    if (!workout) return;
-    renderedCount++;
-
-    const workoutCard = document.createElement('div');
-    workoutCard.className = 'workout-card with-side-actions';
-
-    let inputFields = '';
-    if (workout.type === 'repeticao') {
-      inputFields = `
-                <div class="series-inputs">
-                    <h4>Séries:</h4>
-                    ${[1, 2, 3]
-                      .map(
-                        (i) => `
-                        <div class="series-input">
-                            <label>Série ${i}:</label>
-                            <input type="number" min="0" class="series-input-field" data-series="${i}" 
-                                   value="${workoutDay.series[i - 1] || ''}" placeholder="Repetições">
-                        </div>
-                    `
-                      )
-                      .join('')}
-                </div>
-            `;
-    } else if (workout.type === 'distancia') {
-      inputFields = `
-                <div class="distance-input">
-                    <label>Distância (km):</label>
-                    <input type="number" min="0" step="0.1" class="distance-input-field" 
-                           value="${workoutDay.distance || ''}">
-                </div>
-                <div class="time-input">
-                    <label>Tempo (minutos):</label>
-                    <input type="number" min="0" step="0.1" class="time-input-field"
-                           value="${workoutDay.time || ''}">
-                </div>
-            `;
-    } else if (workout.type === 'maior-tempo' || workout.type === 'menor-tempo') {
-      inputFields = `
-                <div class="time-input">
-                    <label>Tempo (minutos):</label>
-                    <input type="number" min="0" step="0.1" class="time-input-field" 
-                           value="${workoutDay.time || ''}">
-                </div>
-            `;
-    }
-
-    workoutCard.innerHTML = `
-            <div class="workout-header">
-                <div class="workout-name">
-                    <span class="workout-emoji">${workout.emoji}</span>
-                    <span>${workout.name}</span>
-                </div>
-                <span class="workout-type ${workout.type}">${getWorkoutTypeName(workout.type)}</span>
-            </div>
-            <div class="workout-details">
-                ${inputFields}
-            </div>
-            <div class="workout-actions">
-                <button class="complete-workout-btn" data-id="${workoutDay.id}">
-                    <i class="fas fa-check"></i> Concluir Treino
-                </button>
-                ${
-                  skipCount > 0
-                    ? `
-                <button class="skip-btn skip-workout-btn" data-id="${workoutDay.id}">
-                    <i class="fas fa-forward"></i> Pular (x${skipCount})
-                </button>
-                `
-                    : ''
-                }
-            </div>
-        `;
-
-    container.appendChild(workoutCard);
-  });
-
-  if (renderedCount === 0) {
-    container.innerHTML =
-      '<p class="empty-message">Nenhum treino para hoje. Aproveite o descanso!</p>';
-  }
-}
-
 function createUniqueId(...lists) {
   const existingIds = new Set();
   lists.forEach((list) => {
@@ -860,84 +745,7 @@ function createStudyPayload(name, emoji, type, days) {
     },
   };
 }
-
-// Atualizar estudos do dia
-function updateDailyStudies() {
-  const container = document.getElementById('daily-studies');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  const today = getLocalDateString();
-
-  if (isRestDay(today)) {
-    container.innerHTML = '<p class="empty-message">Dia de descanso! Aproveite.</p>';
-    return;
-  }
-
-  const dailyStudiesSource = Array.isArray(appData.dailyStudies) ? appData.dailyStudies : [];
-  const studiesSource = Array.isArray(appData.studies) ? appData.studies : [];
-  const dailyStudies = dailyStudiesSource.filter(
-    (ds) => ds && ds.date === today && !ds.completed && !ds.skipped
-  );
-  const sameId = (a, b) => String(a) === String(b);
-
-  if (dailyStudies.length === 0) {
-    container.innerHTML = '<p class="empty-message">Nenhum estudo para hoje.</p>';
-    return;
-  }
-  const skipCount = getSkipItemCount();
-
-  let renderedCount = 0;
-  dailyStudies.forEach((studyDay) => {
-    const study = studiesSource.find((s) => sameId(s?.id, studyDay.studyId));
-    if (!study) return;
-    renderedCount++;
-
-    const studyCard = document.createElement('div');
-    studyCard.className = 'study-card with-side-actions';
-
-    studyCard.innerHTML = `
-            <div class="study-header">
-                <div class="study-name">
-                    <span class="study-emoji">${study.emoji}</span>
-                    <span>${study.name}</span>
-                </div>
-                <div class="study-inline-meta">
-                <label class="applied-checkbox compact">
-                    <input type="checkbox" class="apply-study-checkbox" data-id="${studyDay.id}" 
-                           ${studyDay.applied ? 'checked' : ''}>
-                    Aplicado
-                </label>
-                <span class="study-type ${study.type}">${study.type === 'logico' ? 'Lógico' : 'Criativo'}</span>
-                </div>
-            </div>
-            <div class="study-actions">
-                <button class="complete-study-btn" data-id="${studyDay.id}">
-                    <i class="fas fa-check"></i> Concluir Estudo
-                </button>
-                ${
-                  skipCount > 0
-                    ? `
-                <button class="skip-btn skip-study-btn" data-id="${studyDay.id}">
-                    <i class="fas fa-forward"></i> Pular (x${skipCount})
-                </button>
-                `
-                    : ''
-                }
-            </div>
-        `;
-
-    container.appendChild(studyCard);
-  });
-
-  if (renderedCount === 0) {
-    container.innerHTML = '<p class="empty-message">Nenhum estudo para hoje.</p>';
-  }
-}
-
-// Renderizar calendário de missões (diárias, semanais, eventuais e épicas)
-
+// Renderizar calendário de missões
 // __appDiaryFinanceBridge: exposes diary/finance APIs for legacy scripts during module migration
 Object.assign(globalThis, {
   updateFinanceSummary,
@@ -961,11 +769,9 @@ Object.assign(globalThis, {
   deleteFinanceBudget,
   handleFinanceRecurringSubmit,
   deleteFinanceRecurring,
-  updateDailyWorkouts,
   createUniqueId,
   normalizeEntityIds,
   getCheckedDays,
   createWorkoutPayload,
   createStudyPayload,
-  updateDailyStudies,
 });

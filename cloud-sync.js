@@ -176,20 +176,20 @@
 
     if (indicator) {
       // Mapear mensagens para ÃƒÂ­cones e cores
-      let icon = '??';
+      let icon = '[~]';
       let bgColor = 'rgba(255,255,255,0.05)';
       let textColor = 'var(--gray-color)';
 
       if (kind === 'ok') {
-        icon = '?';
+        icon = '[OK]';
         bgColor = 'rgba(32, 217, 128, 0.2)';
         textColor = '#20D980';
       } else if (kind === 'err') {
-        icon = '?';
+        icon = '[ERRO]';
         bgColor = 'rgba(255, 77, 109, 0.2)';
         textColor = '#FF4D6D';
       } else if (message && message.toLowerCase().includes('sincronizando')) {
-        icon = '??';
+        icon = '[...]';
         bgColor = 'rgba(16, 242, 255, 0.2)';
         textColor = '#10F2FF';
       }
@@ -222,7 +222,7 @@
       '<button id="cloud-register-btn" type="button">Criar conta</button>' +
       '<button id="cloud-logout-btn" type="button">Sair</button>' +
       '<button id="cloud-sync-now-btn" type="button">Sincronizar Agora</button>' +
-      '<span id="cloud-user-label">NÃƒÂ£o autenticado</span>' +
+      '<span id="cloud-user-label">Nao autenticado</span>' +
       '<span id="cloud-sync-status" class="warn">Modo local</span>';
     document.body.appendChild(panel);
   }
@@ -239,7 +239,7 @@
   async function pushCloud(force) {
     if (!cloudReady || !currentUser) return;
     if (syncBlockedByConflict) {
-      setSyncStatus('SincronizaÃƒÂ§ÃƒÂ£o pausada por conflito', 'warn');
+      setSyncStatus('Sincronizacao pausada por conflito', 'warn');
       return;
     }
     if (saveInFlight) {
@@ -316,9 +316,9 @@
       const diffHours = Math.floor(diffMs / 3600000);
 
       let timeAgo;
-      if (diffMins < 1) timeAgo = 'HÃƒÂ¡ poucos segundos';
-      else if (diffMins < 60) timeAgo = `HÃƒÂ¡ ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
-      else if (diffHours < 24) timeAgo = `HÃƒÂ¡ ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+      if (diffMins < 1) timeAgo = 'Ha poucos segundos';
+      else if (diffMins < 60) timeAgo = 'Ha ' + diffMins + ' minuto' + (diffMins > 1 ? 's' : '');
+      else if (diffHours < 24) timeAgo = 'Ha ' + diffHours + ' hora' + (diffHours > 1 ? 's' : '');
       else timeAgo = remoteDate.toLocaleDateString('pt-BR');
 
       // Mostrar notificaÃƒÂ§ÃƒÂ£o
@@ -333,11 +333,11 @@
     notification.className = 'notification-banner info';
     notification.innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px; padding: 12px;">
-                <span style="font-size: 1.5rem;">??</span>
+                <span style="font-size: 1.5rem;">[!]</span>
                 <div style="flex: 1;">
                     <strong>Dados modificados em outro dispositivo</strong>
                     <p style="margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9;">
-                        ÃƒÅ¡ltima alteraÃƒÂ§ÃƒÂ£o na nuvem: ${timeAgo}
+                        Ultima alteracao na nuvem: ${timeAgo}
                     </p>
                 </div>
                 <button onclick="this.parentElement.parentElement.remove()" style="
@@ -410,10 +410,10 @@
 
   async function askConflictKeepLocal() {
     const message =
-      'Conflito detectado: dados mudaram em outro dispositivo enquanto havia alteraÃƒÂ§ÃƒÂµes locais. Deseja manter a versÃƒÂ£o LOCAL e sobrescrever a nuvem?';
+      'Conflito detectado: dados mudaram em outro dispositivo enquanto havia alteracoes locais. Deseja manter a versao LOCAL e sobrescrever a nuvem?';
     if (typeof askConfirmation === 'function') {
       return await askConfirmation(message, {
-        title: 'Conflito de sincronizaÃƒÂ§ÃƒÂ£o',
+        title: 'Conflito de sincronizacao',
         confirmText: 'Manter local',
         cancelText: 'Usar nuvem',
       });
@@ -436,7 +436,7 @@
       await pushCloud(true);
     } else {
       applyRemoteState(remote, {
-        statusMessage: 'Conflito resolvido: versÃƒÂ£o da nuvem aplicada',
+        statusMessage: 'Conflito resolvido: versao da nuvem aplicada',
         statusKind: 'ok',
       });
       syncBlockedByConflict = false;
@@ -503,7 +503,7 @@
       },
       function (err) {
         console.error('Erro no listener em tempo real:', err);
-        setSyncStatus('Falha na sincronizaÃƒÂ§ÃƒÂ£o em tempo real', 'err');
+        setSyncStatus('Falha na sincronizacao em tempo real', 'err');
       }
     );
     realtimeEnabled = true;
@@ -551,7 +551,7 @@
       if (syncBlockedByConflict) {
         hasUnsyncedLocalChanges = true;
         persistLocalCache();
-        setSyncStatus('SincronizaÃƒÂ§ÃƒÂ£o pausada atÃƒÂ© resolver conflito', 'warn');
+        setSyncStatus('Sincronizacao pausada por conflito', 'warn');
         return;
       }
       hasUnsyncedLocalChanges = true;
@@ -620,11 +620,11 @@
 
     window.resetProgress = async function () {
       if (
-        !confirm('Tem certeza que deseja resetar todo o progresso? Isso nÃƒÂ£o pode ser desfeito.')
+        !confirm('Tem certeza que deseja resetar todo o progresso? Isso nao pode ser desfeito.')
       )
         return;
       const confirmationText = prompt(
-        'Digite RESETAR para confirmar a exclusÃƒÂ£o total do progresso:'
+        'Digite RESETAR para confirmar a exclusao total do progresso:'
       );
       if (confirmationText !== 'RESETAR') {
         alert('Reset cancelado.');
@@ -697,7 +697,7 @@
 
     syncNowBtn.addEventListener('click', async function () {
       if (!cloudReady || !currentUser) {
-        alert('FaÃƒÂ§a login para sincronizar.');
+        alert('Faca login para sincronizar.');
         return;
       }
       await pushCloud(true);
@@ -711,7 +711,7 @@
     }
 
     if (!window.firebase) {
-      setSyncStatus('SDK Firebase nÃƒÂ£o carregado', 'err');
+      setSyncStatus('SDK Firebase nao carregado', 'err');
       return;
     }
 
@@ -736,7 +736,7 @@
         conflictInProgress = false;
         pendingRemoteConflict = null;
         hasUnsyncedLocalChanges = false;
-        setUserLabel('NÃƒÂ£o autenticado');
+        setUserLabel('Nao autenticado');
         setSyncStatus('Modo local (sem login)', 'warn');
         return;
       }
@@ -789,3 +789,4 @@
 
   init();
 })();
+

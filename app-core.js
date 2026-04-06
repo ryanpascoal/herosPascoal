@@ -84,31 +84,10 @@ function loadFromLocalStorage() {
 
 function ensureCoreAttributes() {
   if (!Array.isArray(appData.attributes)) appData.attributes = [];
-  const hasRiqueza = appData.attributes.some((a) => a.id === 14);
-  if (!hasRiqueza) {
-    appData.attributes.push({
-      id: 14,
-      name: 'Riqueza',
-      emoji: '\uD83D\uDC8E',
-      xp: 0,
-      maxXp: 100,
-      level: 0,
-    });
-  }
 }
 
 function ensureClasses() {
   if (!Array.isArray(appData.classes)) appData.classes = [];
-  if (appData.classes.length === 0) {
-    appData.classes.push({
-      id: 1,
-      name: 'Classe',
-      emoji: '\uD83D\uDC8E',
-      xp: 0,
-      maxXp: 100,
-      level: 0,
-    });
-  }
   let nextId = 1;
   appData.classes.forEach((cls) => {
     if (!Number.isFinite(cls.id)) cls.id = nextId;
@@ -121,13 +100,13 @@ function ensureClasses() {
   });
   if (!appData.hero) appData.hero = {};
   if (!Number.isFinite(appData.hero.primaryClassId)) {
-    appData.hero.primaryClassId = appData.classes[0]?.id || null;
+    appData.hero.primaryClassId = null;
   }
   if (
     appData.hero.primaryClassId &&
     !appData.classes.some((c) => c.id === appData.hero.primaryClassId)
   ) {
-    appData.hero.primaryClassId = appData.classes[0]?.id || null;
+    appData.hero.primaryClassId = null;
   }
 }
 
@@ -216,18 +195,6 @@ function ensureCriticalDataShape() {
   if (!Array.isArray(appData.workOffDays)) appData.workOffDays = [];
   if (!Array.isArray(appData.shopItems)) appData.shopItems = [];
   if (!Array.isArray(appData.inventory)) appData.inventory = [];
-  const hasSkipItem = appData.shopItems.some((item) => item && item.effect === 'skip');
-  if (!hasSkipItem) {
-    appData.shopItems.push({
-      id: createUniqueId(appData.shopItems),
-      name: 'Pulo',
-      emoji: '\uD83D\uDCBC',
-      cost: SKIP_ACTIVITY_COST,
-      level: 0,
-      description: 'Permite pular 1 atividade sem penalidade',
-      effect: 'skip',
-    });
-  }
   normalizeEntityIds(appData.shopItems);
   if (!appData.statisticsGoals || typeof appData.statisticsGoals !== 'object') {
     appData.statisticsGoals = {};

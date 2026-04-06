@@ -1,26 +1,23 @@
 ﻿function initUI() {
   // Configurar a data atual
-  const currentDateElement = document.getElementById('current-date');
-  if (currentDateElement) {
-    const now = getGameNow();
-    currentDateElement.textContent = now.toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  }
-  const currentDateWorkElement = document.getElementById('current-date-work');
-  if (currentDateWorkElement) {
-    currentDateWorkElement.textContent =
-      currentDateElement?.textContent || getGameNow().toLocaleDateString('pt-BR');
+  const formattedNow = getGameNow().toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const currentDateActivitiesElement = document.getElementById('activities-current-date');
+  if (currentDateActivitiesElement) {
+    currentDateActivitiesElement.textContent = formattedNow;
   }
 
   // Inicializar os seletores de atributos
   initAttributesSelectors();
   initClassSelectors();
-  initSelectAllDays('#mission-days-container .days-selector');
-  initSelectAllDays('#work-days-container .days-selector');
+  initSelectAllDays('#activity-days-container .days-selector');
+  if (typeof updateActivityForm === 'function') {
+    updateActivityForm();
+  }
 
   // Inicializar opções do mês em Gestão
   populateFinanceMonthOptions();
@@ -173,11 +170,8 @@ function initEvents() {
     updateBooks();
   });
   bindManyById('submit', {
-    'mission-form': handleMissionSubmit,
+    'activity-form': handleActivitySubmit,
     'shop-item-form': handleShopItemSubmit,
-    'work-form': handleWorkSubmit,
-    'workout-form': handleWorkoutSubmit,
-    'study-form': handleStudySubmit,
     'class-form': handleClassSubmit,
     'finance-form': handleFinanceSubmit,
     'finance-budget-form': handleFinanceBudgetSubmit,
@@ -336,12 +330,11 @@ function initEvents() {
     if (e.target === this) closeModal();
   });
 
-  // Mudança no tipo de missão
-  document.getElementById('mission-type')?.addEventListener('change', function () {
-    updateMissionForm(this.value);
+  document.getElementById('activity-category')?.addEventListener('change', function () {
+    updateActivityForm();
   });
-  document.getElementById('work-type')?.addEventListener('change', function () {
-    updateWorkForm(this.value);
+  document.getElementById('activity-schedule-type')?.addEventListener('change', function () {
+    updateActivityForm();
   });
 
   // Botões de conclusão de treinos do dia
@@ -402,31 +395,83 @@ function initEvents() {
       return;
     }
 
-    const skipWorkoutBtn = e.target.closest('.skip-workout-btn');
-    if (skipWorkoutBtn) {
-      const workoutDayId = parseInt(skipWorkoutBtn.getAttribute('data-id'));
-      skipDailyWorkout(workoutDayId);
+    const unifiedCompleteMissionBtn = e.target.closest('.unified-complete-mission-btn');
+    if (unifiedCompleteMissionBtn) {
+      const missionId = parseInt(unifiedCompleteMissionBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(missionId)) completeMission(missionId);
       return;
     }
 
-    const workoutBtn = e.target.closest('.complete-workout-btn');
-    if (workoutBtn) {
-      const workoutDayId = parseInt(workoutBtn.getAttribute('data-id'));
-      showWorkoutCompletionModal(workoutDayId);
+    const unifiedSkipMissionBtn = e.target.closest('.unified-skip-mission-btn');
+    if (unifiedSkipMissionBtn) {
+      const missionId = parseInt(unifiedSkipMissionBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(missionId)) skipMission(missionId);
       return;
     }
 
-    const skipStudyBtn = e.target.closest('.skip-study-btn');
-    if (skipStudyBtn) {
-      const studyDayId = parseInt(skipStudyBtn.getAttribute('data-id'));
-      skipDailyStudy(studyDayId);
+    const unifiedCompleteWorkBtn = e.target.closest('.unified-complete-work-btn');
+    if (unifiedCompleteWorkBtn) {
+      const workId = parseInt(unifiedCompleteWorkBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(workId)) completeWork(workId);
       return;
     }
 
-    const studyBtn = e.target.closest('.complete-study-btn');
-    if (studyBtn) {
-      const studyDayId = parseInt(studyBtn.getAttribute('data-id'));
-      showStudyCompletionModal(studyDayId);
+    const unifiedSkipWorkBtn = e.target.closest('.unified-skip-work-btn');
+    if (unifiedSkipWorkBtn) {
+      const workId = parseInt(unifiedSkipWorkBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(workId)) skipWork(workId);
+      return;
+    }
+
+    const unifiedCompleteWorkoutBtn = e.target.closest('.unified-complete-workout-btn');
+    if (unifiedCompleteWorkoutBtn) {
+      const workoutDayId = parseInt(unifiedCompleteWorkoutBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(workoutDayId)) showWorkoutCompletionModal(workoutDayId);
+      return;
+    }
+
+    const unifiedSkipWorkoutBtn = e.target.closest('.unified-skip-workout-btn');
+    if (unifiedSkipWorkoutBtn) {
+      const workoutDayId = parseInt(unifiedSkipWorkoutBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(workoutDayId)) skipDailyWorkout(workoutDayId);
+      return;
+    }
+
+    const unifiedCompleteStudyBtn = e.target.closest('.unified-complete-study-btn');
+    if (unifiedCompleteStudyBtn) {
+      const studyDayId = parseInt(unifiedCompleteStudyBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(studyDayId)) showStudyCompletionModal(studyDayId);
+      return;
+    }
+
+    const unifiedSkipStudyBtn = e.target.closest('.unified-skip-study-btn');
+    if (unifiedSkipStudyBtn) {
+      const studyDayId = parseInt(unifiedSkipStudyBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(studyDayId)) skipDailyStudy(studyDayId);
+      return;
+    }
+
+    const unifiedEditActivityBtn = e.target.closest('.unified-edit-activity-btn');
+    if (unifiedEditActivityBtn) {
+      const category = unifiedEditActivityBtn.getAttribute('data-category');
+      const id = parseInt(unifiedEditActivityBtn.getAttribute('data-id'), 10);
+      if (!Number.isFinite(id)) return;
+      if (category === 'mission') editMission(id);
+      else if (category === 'work') editWork(id);
+      else if (category === 'workout') editWorkout(id);
+      else if (category === 'study') editStudy(id);
+      return;
+    }
+
+    const unifiedDeleteActivityBtn = e.target.closest('.unified-delete-activity-btn');
+    if (unifiedDeleteActivityBtn) {
+      const category = unifiedDeleteActivityBtn.getAttribute('data-category');
+      const id = parseInt(unifiedDeleteActivityBtn.getAttribute('data-id'), 10);
+      if (!Number.isFinite(id)) return;
+      if (category === 'mission') deleteMission(id);
+      else if (category === 'work') deleteWork(id);
+      else if (category === 'workout') deleteWorkout(id);
+      else if (category === 'study') deleteStudy(id);
       return;
     }
 
@@ -533,33 +578,18 @@ function updateUI(options = {}) {
     normalizeActivityDays();
     generateDailyActivities();
 
-    // Atualizar treinos (visualização)
+    // Atualizar cartões do perfil
     updateWorkoutsDisplay();
-    updateWorkouts();
-
-    // Atualizar estudos (visualização)
     updateStudiesDisplay();
-    updateStudies();
-
-    // Atualizar missões
-    updateMissions();
-    updateWorks();
+    if (typeof updateUnifiedActivities === 'function') {
+      updateUnifiedActivities();
+    }
 
     // Atualizar estatísticas
     updateStatistics();
 
     // Atualizar logs do herói
     generateHeroLogs();
-
-    // Atualizar treinos do dia
-    updateDailyWorkouts();
-
-    // Atualizar estudos do dia
-    updateDailyStudies();
-
-    // Atualizar históricos de treinos e estudos
-    updateWorkoutHistory();
-    updateStudyHistory();
 
     // Atualizar livros
     updateBooks();
@@ -727,71 +757,25 @@ function updateClassesList() {
 }
 
 function updateWorkClassOptions() {
-  const select = document.getElementById('work-class');
-  if (!select) return;
+  ['work-class', 'activity-class'].forEach((selectId) => {
+    const select = document.getElementById(selectId);
+    if (!select) return;
 
-  const currentValue = select.value;
-  select.innerHTML = '<option value="">Nenhuma</option>';
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">Nenhuma</option>';
 
-  if (Array.isArray(appData.classes)) {
-    appData.classes.forEach((cls) => {
-      const option = document.createElement('option');
-      option.value = String(cls.id);
-      option.textContent = `${cls.emoji || '💼'} ${cls.name}`;
-      select.appendChild(option);
-    });
-  }
+    if (Array.isArray(appData.classes)) {
+      appData.classes.forEach((cls) => {
+        const option = document.createElement('option');
+        option.value = String(cls.id);
+        option.textContent = `${cls.emoji || '💼'} ${cls.name}`;
+        select.appendChild(option);
+      });
+    }
 
-  if (currentValue) {
-    select.value = currentValue;
-  }
-}
-
-// Atualizar treinos
-function updateWorkouts() {
-  const container = document.getElementById('workouts-list');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  appData.workouts.forEach((workout) => {
-    const level = Number.isFinite(workout.level) ? workout.level : Math.floor(workout.xp / 100);
-    const percentage = workout.xp % 100;
-
-    const workoutCard = document.createElement('div');
-    workoutCard.className = 'item-card';
-    workoutCard.innerHTML = `
-            <div class="item-info">
-                <span class="item-emoji">${workout.emoji}</span>
-                <div>
-                    <div class="item-name">${workout.name}</div>
-                    <div class="item-level">Nível ${level} - ${percentage}%</div>
-                    <div class="item-type">Tipo: ${getWorkoutTypeName(workout.type)}</div>
-                    ${workout.stats ? `<div class="item-stats">Recorde: ${getWorkoutStats(workout)}</div>` : ''}
-                </div>
-            </div>
-            <div class="item-actions">
-                <button class="action-btn edit-btn" data-id="${workout.id}"><i class="fas fa-edit"></i></button>
-                <button class="action-btn delete-btn" data-id="${workout.id}"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
-
-    container.appendChild(workoutCard);
-  });
-
-  // Adicionar eventos aos botões
-  container.querySelectorAll('.edit-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'));
-      editWorkout(id);
-    });
-  });
-
-  container.querySelectorAll('.delete-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'));
-      deleteWorkout(id);
-    });
+    if (currentValue) {
+      select.value = currentValue;
+    }
   });
 }
 
@@ -867,54 +851,6 @@ function updateStudiesDisplay() {
         `;
 
     container.appendChild(studyCard);
-  });
-}
-
-// Atualizar estudos
-function updateStudies() {
-  const container = document.getElementById('studies-list');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  appData.studies.forEach((study) => {
-    const level = Number.isFinite(study.level) ? study.level : Math.floor(study.xp / 100);
-    const percentage = study.xp % 100;
-
-    const studyCard = document.createElement('div');
-    studyCard.className = 'item-card';
-    studyCard.innerHTML = `
-            <div class="item-info">
-                <span class="item-emoji">${study.emoji}</span>
-                <div>
-                    <div class="item-name">${study.name}</div>
-                    <div class="item-level">Nível ${level} - ${percentage}%</div>
-                    <div class="item-type">Tipo: ${study.type === 'logico' ? 'Lógico' : 'Criativo'}</div>
-                    ${study.stats ? `<div class="item-stats">Concluído: ${study.stats.completed || 0} vezes</div>` : ''}
-                </div>
-            </div>
-            <div class="item-actions">
-                <button class="action-btn edit-btn" data-id="${study.id}"><i class="fas fa-edit"></i></button>
-                <button class="action-btn delete-btn" data-id="${study.id}"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
-
-    container.appendChild(studyCard);
-  });
-
-  // Adicionar eventos aos botões
-  container.querySelectorAll('.edit-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'));
-      editStudy(id);
-    });
-  });
-
-  container.querySelectorAll('.delete-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'));
-      deleteStudy(id);
-    });
   });
 }
 
@@ -1823,10 +1759,8 @@ Object.assign(globalThis, {
   getClassNameById,
   updateClassesList,
   updateWorkClassOptions,
-  updateWorkouts,
   getWorkoutStats,
   updateStudiesDisplay,
-  updateStudies,
   updateBooks,
   deleteBook,
   setBookStatus,

@@ -468,165 +468,6 @@ function handleClassSubmit(e) {
   showFeedback('Classe cadastrada com sucesso!', 'success');
 }
 
-function handleMissionSubmit(e) {
-  e.preventDefault();
-
-  const name = document.getElementById('mission-name').value;
-  const emoji = document.getElementById('mission-emoji').value;
-  const type = document.getElementById('mission-type').value;
-
-  // Obter atributos selecionados
-  const attributeCheckboxes = document.querySelectorAll(
-    '#mission-attributes input[type="checkbox"]:checked'
-  );
-  const attributes = Array.from(attributeCheckboxes).map((cb) => parseInt(cb.value));
-
-  const newMission = {
-    id: createUniqueId(appData.missions, appData.completedMissions),
-    name,
-    emoji: emoji || '🎯',
-    type,
-    attributes,
-    completed: false,
-    dateAdded: getLocalDateString(),
-  };
-  if (type === 'rotina') {
-    newMission.originalId = newMission.id;
-  }
-
-  // Adicionar campos específicos por tipo
-  if (type === 'rotina') {
-    const dayCheckboxes = document.querySelectorAll(
-      '#mission-days-container input[type="checkbox"]:checked:not([data-select-all])'
-    );
-    const selectedDays = Array.from(dayCheckboxes).map((cb) => parseInt(cb.value, 10));
-    if (selectedDays.length === 0) {
-      showFeedback('Selecione pelo menos um dia da semana para a missão de rotina.', 'warn');
-      return;
-    }
-    newMission.days = selectedDays;
-  } else if (type === 'eventual') {
-    const date = document.getElementById('mission-date').value;
-    newMission.date = date || getLocalDateString();
-  } else if (type === 'epica') {
-    const deadline = document.getElementById('mission-deadline').value;
-    newMission.deadline = deadline;
-  }
-
-  appData.missions.push(newMission);
-
-  // Limpar formulário
-  e.target.reset();
-
-  // Atualizar UI
-  updateUI();
-
-  // Mostrar mensagem de sucesso
-  showFeedback('Missão cadastrada com sucesso!', 'success');
-}
-
-function handleWorkSubmit(e) {
-  e.preventDefault();
-
-  const name = document.getElementById('work-name').value;
-  const emoji = document.getElementById('work-emoji').value;
-  const type = document.getElementById('work-type').value;
-  const classIdRaw = document.getElementById('work-class')?.value;
-  const classId = classIdRaw ? parseInt(classIdRaw, 10) : null;
-
-  const attributeCheckboxes = document.querySelectorAll(
-    '#work-attributes input[type="checkbox"]:checked'
-  );
-  const attributes = Array.from(attributeCheckboxes).map((cb) => parseInt(cb.value, 10));
-  const isUrgent = document.getElementById('work-urgent')?.checked === true;
-
-  const newWork = {
-    id: createUniqueId(appData.works, appData.completedWorks),
-    name,
-    emoji: emoji || '💼',
-    type,
-    attributes,
-    classId: Number.isFinite(classId) ? classId : null,
-    completed: false,
-    urgent: isUrgent,
-    dateAdded: getLocalDateString(),
-  };
-  if (type === 'rotina') {
-    newWork.originalId = newWork.id;
-  }
-
-  if (type === 'rotina') {
-    const dayCheckboxes = document.querySelectorAll(
-      '#work-days-container input[type="checkbox"]:checked:not([data-select-all])'
-    );
-    const selectedDays = Array.from(dayCheckboxes).map((cb) => parseInt(cb.value, 10));
-    if (selectedDays.length === 0) {
-      showFeedback('Selecione pelo menos um dia da semana para o trabalho de rotina.', 'warn');
-      return;
-    }
-    newWork.days = selectedDays;
-  } else if (type === 'eventual') {
-    const date = document.getElementById('work-date').value;
-    newWork.date = date || getLocalDateString();
-  } else if (type === 'epica') {
-    const deadline = document.getElementById('work-deadline').value;
-    newWork.deadline = deadline;
-  }
-
-  appData.works.push(newWork);
-  e.target.reset();
-  updateUI();
-  showFeedback('Trabalho cadastrado com sucesso!', 'success');
-}
-
-// Manipular envio do formulário de treino
-function handleWorkoutSubmit(e) {
-  e.preventDefault();
-
-  const name = document.getElementById('workout-name').value;
-  const emoji = document.getElementById('workout-emoji').value;
-  const type = document.getElementById('workout-type').value;
-
-  // Obter dias selecionados
-  const days = getCheckedDays('#workout-form .days-selector input[type="checkbox"]:checked');
-  const newWorkout = createWorkoutPayload(name, emoji, type, days);
-
-  appData.workouts.push(newWorkout);
-
-  // Limpar formulário
-  e.target.reset();
-
-  // Atualizar UI
-  updateUI();
-
-  // Mostrar mensagem de sucesso
-  showFeedback('Treino cadastrado com sucesso!', 'success');
-}
-
-// Manipular envio do formulário de estudo
-function handleStudySubmit(e) {
-  e.preventDefault();
-
-  const name = document.getElementById('study-name').value;
-  const emoji = document.getElementById('study-emoji').value;
-  const type = document.getElementById('study-type').value;
-
-  // Obter dias selecionados
-  const days = getCheckedDays('#study-form .days-selector input[type="checkbox"]:checked');
-  const newStudy = createStudyPayload(name, emoji, type, days);
-
-  appData.studies.push(newStudy);
-
-  // Limpar formulário
-  e.target.reset();
-
-  // Atualizar UI
-  updateUI();
-
-  // Mostrar mensagem de sucesso
-  showFeedback('Estudo cadastrado com sucesso!', 'success');
-}
-
 function handleFinanceSubmit(e) {
   e.preventDefault();
 
@@ -653,64 +494,142 @@ function handleFinanceSubmit(e) {
   updateUI({ mode: 'finance' });
 }
 
+function updateActivityForm() {
+  const category = document.getElementById('activity-category')?.value || 'mission';
+  const scheduleType = document.getElementById('activity-schedule-type')?.value || 'rotina';
+
+  const scheduleContainer = document.getElementById('activity-schedule-container');
+  const workoutTypeContainer = document.getElementById('activity-workout-type-container');
+  const studyTypeContainer = document.getElementById('activity-study-type-container');
+  const daysContainer = document.getElementById('activity-days-container');
+  const dateContainer = document.getElementById('activity-date-container');
+  const deadlineContainer = document.getElementById('activity-deadline-container');
+  const attributesContainer = document.getElementById('activity-attributes-container');
+  const classContainer = document.getElementById('activity-class-container');
+  const urgentContainer = document.getElementById('activity-urgent-container');
+
+  if (!scheduleContainer) return;
+
+  const isMission = category === 'mission';
+  const isWork = category === 'work';
+  const isWorkout = category === 'workout';
+  const isStudy = category === 'study';
+  const supportsScheduleType = isMission || isWork;
+
+  scheduleContainer.style.display = supportsScheduleType ? 'block' : 'none';
+  workoutTypeContainer.style.display = isWorkout ? 'block' : 'none';
+  studyTypeContainer.style.display = isStudy ? 'block' : 'none';
+  attributesContainer.style.display = isMission || isWork ? 'block' : 'none';
+  classContainer.style.display = isWork ? 'block' : 'none';
+  urgentContainer.style.display = isWork ? 'block' : 'none';
+
+  daysContainer.style.display = 'none';
+  dateContainer.style.display = 'none';
+  deadlineContainer.style.display = 'none';
+
+  if (!supportsScheduleType || scheduleType === 'rotina') {
+    daysContainer.style.display = 'block';
+  } else if (scheduleType === 'eventual') {
+    dateContainer.style.display = 'block';
+    const dateInput = document.getElementById('activity-date');
+    if (dateInput && !dateInput.value) dateInput.value = getLocalDateString();
+  } else if (scheduleType === 'epica') {
+    deadlineContainer.style.display = 'block';
+    const deadlineInput = document.getElementById('activity-deadline');
+    if (deadlineInput && !deadlineInput.value) {
+      const nextWeek = new Date();
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      deadlineInput.value = getLocalDateString(nextWeek);
+    }
+  }
+}
+
+function handleActivitySubmit(e) {
+  e.preventDefault();
+
+  const category = document.getElementById('activity-category')?.value || 'mission';
+  const name = document.getElementById('activity-name')?.value?.trim();
+  const emoji = document.getElementById('activity-emoji')?.value?.trim();
+  const scheduleType = document.getElementById('activity-schedule-type')?.value || 'rotina';
+  const daySelector =
+    '#activity-days-container input[type="checkbox"]:checked:not([data-select-all])';
+  const selectedDays = Array.from(document.querySelectorAll(daySelector)).map((cb) =>
+    parseInt(cb.value, 10)
+  );
+
+  if (!name) {
+    showFeedback('Informe um nome válido para a atividade.', 'warn');
+    return;
+  }
+
+  if ((category === 'mission' || category === 'work' || category === 'workout' || category === 'study') && selectedDays.length === 0 && (category === 'workout' || category === 'study' || scheduleType === 'rotina')) {
+    showFeedback('Selecione pelo menos um dia da semana.', 'warn');
+    return;
+  }
+
+  if (category === 'mission') {
+    const attributes = Array.from(
+      document.querySelectorAll('#activity-attributes input[type="checkbox"]:checked')
+    ).map((cb) => parseInt(cb.value, 10));
+    const newMission = {
+      id: createUniqueId(appData.missions, appData.completedMissions),
+      name,
+      emoji: emoji || '🎯',
+      type: scheduleType,
+      attributes,
+      completed: false,
+      dateAdded: getLocalDateString(),
+    };
+    if (scheduleType === 'rotina') {
+      newMission.days = selectedDays;
+      newMission.originalId = newMission.id;
+    } else if (scheduleType === 'eventual') {
+      newMission.date = document.getElementById('activity-date')?.value || getLocalDateString();
+    } else {
+      newMission.deadline = document.getElementById('activity-deadline')?.value || '';
+    }
+    appData.missions.push(newMission);
+  } else if (category === 'work') {
+    const attributes = Array.from(
+      document.querySelectorAll('#activity-attributes input[type="checkbox"]:checked')
+    ).map((cb) => parseInt(cb.value, 10));
+    const classIdRaw = document.getElementById('activity-class')?.value;
+    const classId = classIdRaw ? parseInt(classIdRaw, 10) : null;
+    const newWork = {
+      id: createUniqueId(appData.works, appData.completedWorks),
+      name,
+      emoji: emoji || '💼',
+      type: scheduleType,
+      attributes,
+      classId: Number.isFinite(classId) ? classId : null,
+      completed: false,
+      urgent: document.getElementById('activity-urgent')?.checked === true,
+      dateAdded: getLocalDateString(),
+    };
+    if (scheduleType === 'rotina') {
+      newWork.days = selectedDays;
+      newWork.originalId = newWork.id;
+    } else if (scheduleType === 'eventual') {
+      newWork.date = document.getElementById('activity-date')?.value || getLocalDateString();
+    } else {
+      newWork.deadline = document.getElementById('activity-deadline')?.value || '';
+    }
+    appData.works.push(newWork);
+  } else if (category === 'workout') {
+    const workoutType = document.getElementById('activity-workout-type')?.value || 'repeticao';
+    appData.workouts.push(createWorkoutPayload(name, emoji, workoutType, selectedDays));
+  } else if (category === 'study') {
+    const studyType = document.getElementById('activity-study-type')?.value || 'logico';
+    appData.studies.push(createStudyPayload(name, emoji, studyType, selectedDays));
+  }
+
+  e.target.reset();
+  updateActivityForm();
+  updateUI({ mode: 'activity' });
+  showFeedback('Atividade cadastrada com sucesso!', 'success');
+}
+
 //Formulário de missão baseado no tipo
-function updateMissionForm(missionType) {
-  const daysContainer = document.getElementById('mission-days-container');
-  const dateContainer = document.getElementById('mission-date-container');
-  const deadlineContainer = document.getElementById('mission-deadline-container');
-
-  // Esconder todos os containers
-  daysContainer.style.display = 'none';
-  dateContainer.style.display = 'none';
-  deadlineContainer.style.display = 'none';
-
-  // Mostrar o container apropriado
-  switch (missionType) {
-    case 'rotina':
-      daysContainer.style.display = 'block';
-      break;
-    case 'eventual':
-      dateContainer.style.display = 'block';
-      // Usar a nova função para obter data local correta
-      document.getElementById('mission-date').value = getLocalDateString();
-      break;
-    case 'epica':
-      deadlineContainer.style.display = 'block';
-      // Definir prazo padrão para uma semana a partir de hoje
-      const nextWeek = new Date();
-      nextWeek.setDate(nextWeek.getDate() + 7);
-      document.getElementById('mission-deadline').value = getLocalDateString(nextWeek);
-      break;
-  }
-}
-
-function updateWorkForm(workType) {
-  const daysContainer = document.getElementById('work-days-container');
-  const dateContainer = document.getElementById('work-date-container');
-  const deadlineContainer = document.getElementById('work-deadline-container');
-  if (!daysContainer || !dateContainer || !deadlineContainer) return;
-
-  daysContainer.style.display = 'none';
-  dateContainer.style.display = 'none';
-  deadlineContainer.style.display = 'none';
-
-  switch (workType) {
-    case 'rotina':
-      daysContainer.style.display = 'block';
-      break;
-    case 'eventual':
-      dateContainer.style.display = 'block';
-      document.getElementById('work-date').value = getLocalDateString();
-      break;
-    case 'epica':
-      deadlineContainer.style.display = 'block';
-      const nextWeek = new Date();
-      nextWeek.setDate(nextWeek.getDate() + 7);
-      document.getElementById('work-deadline').value = getLocalDateString(nextWeek);
-      break;
-  }
-}
-
 // Completar uma missão (função corrigida - VERSÃO FINAL)
 function completeMission(missionId, feedbackText = '') {
   const missionIndex = appData.missions.findIndex((m) => m.id === missionId);
@@ -1224,6 +1143,10 @@ function buyItem(itemId) {
   addHeroLog('item', `Item comprado: ${item.name}`, `-${item.cost} moedas`);
 }
 
+function getMysteryGiftPool() {
+  return (appData.shopItems || []).filter((item) => item && item.effect === 'custom');
+}
+
 // Usar item do inventário (atualizado para remover apenas 1 unidade)
 async function useItem(itemId) {
   // Encontrar o primeiro item deste tipo no inventário
@@ -1273,6 +1196,39 @@ async function useItem(itemId) {
       appData.inventory.push({ id: itemId, purchaseDate: new Date().toISOString() });
       showFeedback('O item de pulo é usado ao clicar em "Pular" nas atividades.', 'info');
       break;
+
+    case 'mystery-gift': {
+      const rewardPool = getMysteryGiftPool();
+      if (rewardPool.length === 0) {
+        showFeedback(
+          'Cadastre pelo menos 1 item personalizado na loja para usar o Presente Misterioso.',
+          'warn'
+        );
+        appData.inventory.push({ id: itemId, purchaseDate: new Date().toISOString() });
+        break;
+      }
+
+      const rewardedItem = rewardPool[Math.floor(Math.random() * rewardPool.length)];
+      appData.inventory.push({
+        id: rewardedItem.id,
+        purchaseDate: new Date().toISOString(),
+        source: 'mystery-gift',
+      });
+      celebrateAction({
+        containerSelector: '#inventory-items',
+        message: `${rewardedItem.emoji || '🎁'} ${rewardedItem.name} sorteado!`,
+      });
+      showFeedback(
+        `O Presente Misterioso sorteou "${rewardedItem.name}" para o seu inventário!`,
+        'success'
+      );
+      addHeroLog(
+        'item',
+        'Presente Misterioso usado',
+        `Item sorteado: ${rewardedItem.name}`
+      );
+      break;
+    }
 
     case 'custom':
       showFeedback(`${item.name} usado! Recompensa: ${item.description}`, 'success');
@@ -1436,13 +1392,9 @@ Object.assign(globalThis, {
   completeStudy,
   completeBook,
   handleClassSubmit,
-  handleMissionSubmit,
-  handleWorkSubmit,
-  handleWorkoutSubmit,
-  handleStudySubmit,
+  handleActivitySubmit,
   handleFinanceSubmit,
-  updateMissionForm,
-  updateWorkForm,
+  updateActivityForm,
   completeMission,
   completeWork,
   recreateDailyMissionsForToday,
@@ -1453,6 +1405,7 @@ Object.assign(globalThis, {
   updateProductiveDay,
   rebuildProductiveDaysFromHistory,
   buyItem,
+  getMysteryGiftPool,
   useItem,
   addXP,
   addAttributeXP,

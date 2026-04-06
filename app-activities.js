@@ -1,13 +1,292 @@
-﻿function updateMissions() {
-  updateDailyMissions();
-  updateCompletedMissions();
-  updateMissionsList();
+﻿function getActivityCategoryMeta(category) {
+  switch (category) {
+    case 'mission':
+      return { label: 'Missão', emoji: '🎯', className: 'mission' };
+    case 'work':
+      return { label: 'Trabalho', emoji: '💼', className: 'work-kind' };
+    case 'workout':
+      return { label: 'Treino', emoji: '💪', className: 'workout' };
+    case 'study':
+      return { label: 'Estudo', emoji: '📚', className: 'study' };
+    default:
+      return { label: 'Atividade', emoji: '⭐', className: 'kind' };
+  }
 }
 
-function updateWorks() {
-  updateDailyWorks();
-  updateCompletedWorks();
-  updateWorksList();
+function getUnifiedTodayActivities() {
+  const today = getGameNow();
+  const todayStr = getLocalDateString(today);
+  const dayOfWeek = today.getDay();
+  const items = [];
+
+  (appData.missions || []).forEach((mission) => {
+    if (mission.completed || mission.failed) return;
+    let visible = false;
+    if (isRoutineType(mission.type)) {
+      visible =
+        getRoutineDays(mission).includes(dayOfWeek) &&
+        !wasItemLoggedForDate(mission, appData.completedMissions, todayStr);
+    } else if (mission.type === 'eventual' && mission.date) {
+      visible = getLocalDateString(parseLocalDateString(mission.date)) >= todayStr;
+    } else if (mission.type === 'epica' && mission.deadline) {
+      visible = getLocalDateString(parseLocalDateString(mission.deadline)) >= todayStr;
+    }
+    if (visible) items.push({ category: 'mission', item: mission });
+  });
+
+  if (!isWorkOffDay(todayStr)) {
+    (appData.works || []).forEach((work) => {
+      if (work.completed || work.failed) return;
+      let visible = false;
+      if (isRoutineType(work.type)) {
+        visible =
+          getRoutineDays(work).includes(dayOfWeek) &&
+          !wasItemLoggedForDate(work, appData.completedWorks, todayStr);
+      } else if (work.type === 'eventual' && work.date) {
+        visible = getLocalDateString(parseLocalDateString(work.date)) >= todayStr;
+      } else if (work.type === 'epica' && work.deadline) {
+        visible = getLocalDateString(parseLocalDateString(work.deadline)) >= todayStr;
+      }
+      if (visible) items.push({ category: 'work', item: work });
+    });
+  }
+
+  if (!isRestDay(todayStr)) {
+    (appData.dailyWorkouts || [])
+      .filter((entry) => entry && entry.date === todayStr && !entry.completed && !entry.skipped)
+      .forEach((entry) => {
+        const workout = (appData.workouts || []).find((item) => String(item.id) === String(entry.workoutId));
+        if (workout) items.push({ category: 'workout', item: workout, dailyEntry: entry });
+      });
+
+    (appData.dailyStudies || [])
+      .filter((entry) => entry && entry.date === todayStr && !entry.completed && !entry.skipped)
+      .forEach((entry) => {
+        const study = (appData.studies || []).find((item) => String(item.id) === String(entry.studyId));
+        if (study) items.push({ category: 'study', item: study, dailyEntry: entry });
+      });
+  }
+
+  return items.sort((a, b) => {
+    if (a.category === 'work' && a.item.urgent && !(b.category === 'work' && b.item.urgent)) return -1;
+    if (b.category === 'work' && b.item.urgent && !(a.category === 'work' && a.item.urgent)) return 1;
+    return String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR');
+  });
+}
+
+function getUnifiedHistoryActivities() {
+  return [
+    ...(appData.completedMissions || []).map((item) => ({ category: 'mission', item })),
+    ...(appData.completedWorks || []).map((item) => ({ category: 'work', item })),
+    ...(appData.completedWorkouts || []).map((item) => ({ category: 'workout', item })),
+    ...(appData.completedStudies || []).map((item) => ({ category: 'study', item })),
+  ].sort((a, b) => {
+    const dateA = getEventDateKey(a.item);
+    const dateB = getEventDateKey(b.item);
+    return String(dateB).localeCompare(String(dateA));
+  });
+}
+
+function getUnifiedManagedActivities() {
+  return [
+    ...(appData.missions || []).map((item) => ({ category: 'mission', item })),
+    ...(appData.works || []).map((item) => ({ category: 'work', item })),
+    ...(appData.workouts || []).map((item) => ({ category: 'workout', item })),
+    ...(appData.studies || []).map((item) => ({ category: 'study', item })),
+  ].sort((a, b) => String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR'));
+}
+
+function renderUnifiedTodayActivities() {
+  const container = document.getElementById('daily-activities');
+  if (!container) return;
+  const items = getUnifiedTodayActivities();
+  const skipCount = getSkipItemCount();
+
+  container.innerHTML = '';
+  if (items.length === 0) {
+    container.innerHTML = '<p class="empty-message">Nenhuma atividade para hoje.</p>';
+    return;
+  }
+
+  items.forEach(({ category, item, dailyEntry }) => {
+    const categoryMeta = getActivityCategoryMeta(category);
+    const scheduleLabel =
+      category === 'workout'
+        ? getWorkoutTypeName(item.type)
+        : category === 'study'
+          ? item.type === 'logico'
+            ? 'L�gico'
+            : 'Criativo'
+          : getMissionTypeName(item.type);
+    const dueValue =
+      category === 'mission' || category === 'work'
+        ? item.type === 'epica'
+          ? item.deadline
+          : item.type === 'eventual'
+            ? item.date
+            : ''
+        : '';
+    const dueBadge =
+      dueValue && (category === 'mission' || category === 'work')
+        ? getDueBadgeHtml(dueValue, getLocalDateString(), item.type)
+        : '';
+    const subtitleParts = [];
+    if (dueBadge) subtitleParts.push(dueBadge);
+    if (category === 'work' && item.classId) subtitleParts.push(`Classe: ${escapeHtml(getClassNameById(item.classId))}`);
+    if ((category === 'mission' || category === 'work') && isRoutineType(item.type)) {
+      subtitleParts.push(`Dias: ${escapeHtml(getDaysNames(getRoutineDays(item)))}`);
+    }
+    if (category === 'study' && dailyEntry) {
+      subtitleParts.push(
+        `<label class="applied-checkbox compact"><input type="checkbox" class="apply-study-checkbox" data-id="${dailyEntry.id}" ${dailyEntry.applied ? 'checked' : ''}> Aplicado</label>`
+      );
+    }
+
+    const actionId = dailyEntry ? dailyEntry.id : item.id;
+    const completeClass =
+      category === 'mission'
+        ? 'unified-complete-mission-btn'
+        : category === 'work'
+          ? 'unified-complete-work-btn'
+          : category === 'workout'
+            ? 'unified-complete-workout-btn'
+            : 'unified-complete-study-btn';
+    const skipClass =
+      category === 'mission'
+        ? 'unified-skip-mission-btn'
+        : category === 'work'
+          ? 'unified-skip-work-btn'
+          : category === 'workout'
+            ? 'unified-skip-workout-btn'
+            : 'unified-skip-study-btn';
+
+    const card = document.createElement('div');
+    card.className = 'mission-card with-side-actions';
+    card.innerHTML = `
+      <div class="mission-header">
+        <div class="mission-name">
+          <span class="mission-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
+          <span>${escapeHtml(item.name || 'Atividade')}</span>
+        </div>
+        <span class="mission-type ${categoryMeta.className}">${categoryMeta.label}</span>
+      </div>
+      <div class="mission-details">
+        <p>${scheduleLabel}</p>
+        ${subtitleParts.map((part) => `<p>${part}</p>`).join('')}
+      </div>
+      <div class="mission-actions">
+        <button class="complete-btn ${completeClass}" data-id="${actionId}">
+          <i class="fas fa-check"></i> ${category === 'workout' || category === 'study' ? 'Registrar' : 'Concluir'}
+        </button>
+        ${
+          skipCount > 0
+            ? `<button class="skip-btn ${skipClass}" data-id="${actionId}">
+                <i class="fas fa-forward"></i> Pular (x${skipCount})
+              </button>`
+            : ''
+        }
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function renderUnifiedActivitiesHistory() {
+  const container = document.getElementById('completed-activities');
+  if (!container) return;
+  const items = getUnifiedHistoryActivities();
+  renderPaginatedHistory(
+    container,
+    items,
+    ({ category, item }) => {
+      const categoryMeta = getActivityCategoryMeta(category);
+      const card = document.createElement('div');
+      card.className = `mission-card ${item.failed ? 'failed' : item.skipped ? 'skipped' : 'completed'}`;
+      const statusText = item.failed ? 'FALHOU' : item.skipped ? 'PULADO' : 'CONCLU�DO';
+      const statusClass = item.failed
+        ? 'failed-status'
+        : item.skipped
+          ? 'skipped-status'
+          : 'completed-status';
+      const typeLabel =
+        category === 'workout'
+          ? getWorkoutTypeName(item.type)
+          : category === 'study'
+            ? item.type === 'logico'
+              ? 'L�gico'
+              : 'Criativo'
+            : getMissionTypeName(item.type);
+      const eventDate = getEventDateKey(item);
+      card.innerHTML = `
+        <div class="mission-header">
+          <div class="mission-name">
+            <span class="mission-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
+            <span>${escapeHtml(item.name || 'Atividade')}</span>
+          </div>
+          <span class="mission-status ${statusClass}">${statusText}</span>
+          <span class="mission-type ${categoryMeta.className}">${categoryMeta.label}</span>
+        </div>
+        <div class="mission-details">
+          <p>Tipo: ${typeLabel}</p>
+          <p>Data: ${formatDate(eventDate)}</p>
+          ${item.reason ? `<p class="mission-reason">Motivo: ${escapeHtml(item.reason)}</p>` : ''}
+          ${item.feedback ? `<p class="mission-feedback">Feedback: ${escapeHtml(item.feedback)}</p>` : ''}
+        </div>
+      `;
+      return card;
+    },
+    'Nenhuma atividade conclu�da ainda.',
+    renderUnifiedActivitiesHistory
+  );
+}
+
+function renderUnifiedActivitiesList() {
+  const container = document.getElementById('activities-list');
+  if (!container) return;
+  const items = getUnifiedManagedActivities();
+  container.innerHTML = '';
+  if (items.length === 0) {
+    container.innerHTML = '<p class="empty-message">Nenhuma atividade cadastrada.</p>';
+    return;
+  }
+
+  items.forEach(({ category, item }) => {
+    const categoryMeta = getActivityCategoryMeta(category);
+    const secondary =
+      category === 'workout'
+        ? getWorkoutTypeName(item.type)
+        : category === 'study'
+          ? item.type === 'logico'
+            ? 'L�gico'
+            : 'Criativo'
+          : getMissionTypeName(item.type);
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.innerHTML = `
+      <div class="item-info">
+        <span class="item-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
+        <div>
+          <div class="item-name">${escapeHtml(item.name || 'Atividade')}</div>
+          <div class="item-type">${categoryMeta.label} � ${secondary}</div>
+        </div>
+      </div>
+      <div class="item-actions">
+        <button class="action-btn unified-edit-activity-btn" data-category="${category}" data-id="${item.id}">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="action-btn unified-delete-activity-btn" data-category="${category}" data-id="${item.id}">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function updateUnifiedActivities() {
+  renderUnifiedTodayActivities();
+  renderUnifiedActivitiesHistory();
+  renderUnifiedActivitiesList();
 }
 
 const HISTORY_PAGE_SIZE = 20;
@@ -43,7 +322,7 @@ function renderPaginatedHistory(container, items, renderItem, emptyMessage, rere
 
   const summary = document.createElement('span');
   summary.className = 'history-pagination-summary';
-  summary.textContent = `Página ${currentPage} de ${totalPages}`;
+  summary.textContent = `P�gina ${currentPage} de ${totalPages}`;
   footer.appendChild(summary);
 
   const actions = document.createElement('div');
@@ -100,7 +379,7 @@ function renderPaginatedHistory(container, items, renderItem, emptyMessage, rere
   const nextBtn = document.createElement('button');
   nextBtn.type = 'button';
   nextBtn.className = 'history-pagination-btn secondary';
-  nextBtn.textContent = 'Próxima';
+  nextBtn.textContent = 'Pr�xima';
   nextBtn.disabled = currentPage === totalPages;
   nextBtn.addEventListener('click', () => {
     if (currentPage < totalPages) {
@@ -127,208 +406,18 @@ function wasItemLoggedForDate(item, completedList, dateStr) {
     );
   });
 }
-
-function updateDailyWorks() {
-  const container = document.getElementById('daily-works');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  const today = getGameNow();
-  const dayOfWeek = today.getDay();
-  const todayStr = getLocalDateString();
-
-  if (isWorkOffDay(todayStr)) {
-    container.innerHTML =
-      '<p class="empty-message">Hoje esta marcado como folga. Sem trabalhos no dia.</p>';
-    return;
-  }
-
-  const dailyWorks = appData.works.filter((work) => {
-    if (work.completed || work.failed) return false;
-
-    if (isRoutineType(work.type)) {
-      const alreadyLogged = wasItemLoggedForDate(work, appData.completedWorks, todayStr);
-      return !alreadyLogged && getRoutineDays(work).includes(dayOfWeek);
-    }
-
-    if (work.type === 'eventual') {
-      if (!work.date) return false;
-      const workDateStr = getLocalDateString(parseLocalDateString(work.date));
-      return workDateStr >= todayStr;
-    }
-
-    if (work.type === 'epica') {
-      if (!work.deadline) return false;
-      const deadlineStr = getLocalDateString(parseLocalDateString(work.deadline));
-      return deadlineStr >= todayStr;
-    }
-
-    return false;
-  });
-
-  const getWorkDueDate = (work) => {
-    if (work.type === 'epica' && work.deadline)
-      return getLocalDateString(parseLocalDateString(work.deadline));
-    if (work.type === 'eventual' && work.date)
-      return getLocalDateString(parseLocalDateString(work.date));
-    if (isRoutineType(work.type)) return todayStr;
-    return '9999-12-31';
-  };
-
-  dailyWorks.sort((a, b) => {
-    // Urgentes primeiro
-    if (a.urgent && !b.urgent) return -1;
-    if (!a.urgent && b.urgent) return 1;
-    // Depois por data
-    return getWorkDueDate(a).localeCompare(getWorkDueDate(b));
-  });
-
-  if (dailyWorks.length === 0) {
-    container.innerHTML =
-      '<p class="empty-message">Nenhum trabalho para hoje. Adicione novos trabalhos na aba de gerenciamento.</p>';
-    return;
-  }
-  const skipCount = getSkipItemCount();
-
-  dailyWorks.forEach((work) => {
-    const card = document.createElement('div');
-    const urgentClass = work.urgent ? 'urgent' : '';
-    card.className = `mission-card with-side-actions ${urgentClass}`;
-
-    const attributesText = work.attributes
-      .map((attrId) => {
-        const attr = appData.attributes.find((a) => a.id === attrId);
-        return attr ? `${attr.emoji} ${attr.name}` : '';
-      })
-      .filter(Boolean)
-      .join(', ');
-    const className = work.classId ? getClassNameById(work.classId) : '';
-    const classLine = className ? `<p>Classe: ${className}</p>` : '';
-    const dueBadge = getDueBadgeHtml(getWorkDueDate(work), todayStr, work.type);
-
-    card.innerHTML = `
-            <div class="mission-header">
-                <div class="mission-name">
-                    <span class="mission-emoji">${work.emoji || '💼'}</span>
-                    <span>${work.name} ${work.urgent ? '<span class="urgent-badge">🚨 URGENTE</span>' : ''}</span>
-                </div>
-                <span class="mission-type ${work.type}">${getMissionTypeName(work.type)}</span>
-            </div>
-            <div class="mission-details">
-                ${dueBadge ? `<p>${dueBadge}</p>` : ''}
-                ${work.type === 'epica' ? `<p>Prazo: ${formatDate(work.deadline)}</p>` : ''}
-                ${work.type === 'eventual' ? `<p>Prazo: ${formatDate(work.date)}</p>` : ''}
-                ${isRoutineType(work.type) ? `<p>Dias: ${getDaysNames(getRoutineDays(work))}</p>` : ''}
-                ${classLine}
-            </div>
-            <div class="mission-attributes">
-                ${attributesText ? `<p>Atributos: ${attributesText}</p>` : ''}
-            </div>
-            <div class="mission-actions">
-                <button class="complete-btn complete-work-btn" data-id="${work.id}">
-                    <i class="fas fa-check"></i> Concluir
-                </button>
-                ${
-                  skipCount > 0
-                    ? `
-                <button class="skip-btn skip-work-btn" data-id="${work.id}">
-                    <i class="fas fa-forward"></i> Pular (x${skipCount})
-                </button>
-                `
-                    : ''
-                }
-            </div>
-        `;
-
-    container.appendChild(card);
-  });
-
-  container.querySelectorAll('.complete-work-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'), 10);
-      showWorkCompletionModal(id);
-    });
-  });
-
-  container.querySelectorAll('.skip-work-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'), 10);
-      skipWork(id);
-    });
-  });
-}
-
-function updateCompletedWorks() {
-  const container = document.getElementById('completed-works');
-  if (!container) return;
-
-  const recentWorks = appData.completedWorks.slice().reverse();
-  renderPaginatedHistory(
-    container,
-    recentWorks,
-    (work) => {
-      const card = document.createElement('div');
-      card.className = `mission-card ${work.failed ? 'failed' : work.skipped ? 'skipped' : 'completed'}`;
-
-      const statusText = work.failed ? 'FALHOU' : work.skipped ? 'PULADO' : 'CONCLUIDO';
-      const statusClass = work.failed
-        ? 'failed-status'
-        : work.skipped
-          ? 'skipped-status'
-          : 'completed-status';
-      const rewardText = work.failed
-        ? 'Penalidade: -1 vida'
-        : work.skipped
-          ? 'Custo: 1 item de pulo'
-          : work.type === 'epica'
-            ? 'Recompensa: 1 XP + 1 moeda'
-            : 'Recompensa: 1 XP + 1 moeda';
-      const eventDateLabel = work.failed
-        ? 'Falhou em'
-        : work.skipped
-          ? 'Pulado em'
-          : 'Concluido em';
-      const eventDateValue = work.completedDate || work.failedDate || work.skippedDate;
-      const className = work.classId ? getClassNameById(work.classId) : '';
-      const classLine = className ? `<p>Classe: ${className}</p>` : '';
-
-      card.innerHTML = `
-            <div class="mission-header">
-                <div class="mission-name">
-                    <span class="mission-emoji">${work.emoji || '💼'}</span>
-                    <span>${work.name}</span>
-                </div>
-                <span class="mission-status ${statusClass}">${statusText}</span>
-                <span class="mission-type ${work.type}">${getMissionTypeName(work.type)}</span>
-            </div>
-            <div class="mission-details">
-                <p>${eventDateLabel}: ${formatDate(eventDateValue)}</p>
-                <p>${rewardText}</p>
-                ${classLine}
-                ${work.reason && !work.failed ? `<p class="mission-reason">Motivo: ${work.reason}</p>` : ''}
-                ${work.feedback ? `<p class="mission-feedback">Feedback: ${work.feedback}</p>` : ''}
-            </div>
-        `;
-      return card;
-    },
-    'Nenhum trabalho concluído ainda.',
-    updateCompletedWorks
-  );
-}
-
 function checkOverdueWorks(options = {}) {
   const skipWeekly = options.skipWeekly === true;
 
-  // Se for verificação inicial e lives <= 3, pode ser que o usuário acabou de restaurar
-  // Neste caso, pular falhas automáticas para evitar loop de game over
+  // Se for verifica��o inicial e lives <= 3, pode ser que o usu�rio acabou de restaurar
+  // Neste caso, pular falhas autom�ticas para evitar loop de game over
   if (options.isInitialCheck && appData.hero.lives <= 3 && appData.hero.gameOverCounted === false) {
-    // Verificar se há flag de "recentemente restaurado"
+    // Verificar se h� flag de "recentemente restaurado"
     const lastRestore = appData.hero.lastRestoreDate;
     if (lastRestore) {
       const today = getLocalDateString();
       if (lastRestore === today) {
-        console.log('Verificação inicial: pulando falhas automáticas (usuário restaurou hoje)');
+        console.log('Verifica��o inicial: pulando falhas autom�ticas (usu�rio restaurou hoje)');
         return;
       }
     }
@@ -352,11 +441,11 @@ function checkOverdueWorks(options = {}) {
       }
     }
 
-    // Épicas
+    // �picas
     if (work.type === 'epica' && work.deadline) {
       const deadlineStr = getLocalDateString(parseLocalDateString(work.deadline));
       if (deadlineStr < todayStr) {
-        overdueToFail.push({ id: work.id, reason: 'Falha no dia seguinte ao prazo (épica)' });
+        overdueToFail.push({ id: work.id, reason: 'Falha no dia seguinte ao prazo (�pica)' });
       }
     }
 
@@ -381,7 +470,7 @@ function checkOverdueWorks(options = {}) {
         if (!alreadyLoggedYesterday && !alreadyFailedForMissedDate) {
           overdueToFail.push({
             id: work.id,
-            reason: 'Rotina não concluída no dia programado',
+            reason: 'Rotina n�o conclu�da no dia programado',
             missedDate: yesterdayStr,
           });
         }
@@ -401,290 +490,19 @@ function checkOverdueWorks(options = {}) {
 
   recreateDailyWorksForToday();
 }
-
-function updateWorksList() {
-  const container = document.getElementById('works-list');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  if (appData.works.length === 0) {
-    container.innerHTML = '<p class="empty-message">Nenhum trabalho cadastrado.</p>';
-    return;
-  }
-
-  // Ordenar: urgentes primeiro, depois por data
-  const sortedWorks = [...appData.works].sort((a, b) => {
-    if (a.urgent && !b.urgent) return -1;
-    if (!a.urgent && b.urgent) return 1;
-    return 0;
-  });
-
-  sortedWorks.forEach((work) => {
-    const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const isOverdue =
-      (work.type === 'epica' &&
-        work.deadline &&
-        parseLocalDateString(work.deadline) < startOfToday) ||
-      (work.type === 'eventual' && work.date && parseLocalDateString(work.date) < startOfToday);
-    const className = work.classId ? getClassNameById(work.classId) : '';
-    const classInfo = className
-      ? `<div class="item-type">Classe: ${escapeHtml(className)}</div>`
-      : '';
-    const safeWorkName = escapeHtml(work.name || 'Trabalho');
-    const safeWorkEmoji = escapeHtml(work.emoji || '💼');
-
-    let deadlineInfo = '';
-    if (work.type === 'epica' && work.deadline) {
-      const deadline = parseLocalDateString(work.deadline);
-      const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
-      deadlineInfo = `<div class="mission-deadline">Prazo: ${formatDate(work.deadline)} (${daysLeft} dias)</div>`;
-    } else if (work.type === 'eventual' && work.date) {
-      const deadline = parseLocalDateString(work.date);
-      const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
-      deadlineInfo = `<div class="mission-deadline">Prazo: ${formatDate(work.date)} (${daysLeft} dias)</div>`;
-    }
-
-    const card = document.createElement('div');
-    const urgentClass = work.urgent ? 'urgent' : '';
-    card.className = `item-card ${isOverdue ? 'overdue' : ''} ${urgentClass}`;
-    card.innerHTML = `
-            <div class="item-info">
-                <span class="item-emoji">${safeWorkEmoji}</span>
-                <div>
-                    <div class="item-name">${safeWorkName} ${work.urgent ? '<span class="urgent-badge">🚨 URGENTE</span>' : ''}</div>
-                    <div class="item-type">${getMissionTypeName(work.type)}</div>
-                    ${classInfo}
-                    ${deadlineInfo}
-                    ${isOverdue ? '<div class="overdue-warning">ATRASADO!</div>' : ''}
-                </div>
-            </div>
-            <div class="item-actions">
-                <button class="action-btn urgent-btn ${work.urgent ? 'active' : ''}" data-id="${work.id}" title="${work.urgent ? 'Remover urgência' : 'Marcar como urgente'}"><i class="fas fa-bell"></i></button>
-                <button class="action-btn edit-btn" data-id="${work.id}"><i class="fas fa-edit"></i></button>
-                <button class="action-btn delete-btn" data-id="${work.id}"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
-
-    container.appendChild(card);
-  });
-
-  container.querySelectorAll('.edit-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'), 10);
-      editWork(id);
-    });
-  });
-
-  container.querySelectorAll('.delete-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'), 10);
-      deleteWork(id);
-    });
-  });
-
-  // Toggle urgency
-  container.querySelectorAll('.urgent-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'), 10);
-      const work = appData.works.find((w) => w.id === id);
-      if (work) {
-        work.urgent = !work.urgent;
-        updateWorksList();
-        saveToLocalStorage();
-      }
-    });
-  });
-}
-
-// Atualizar missões do dia (função ajustada)
-function updateDailyMissions() {
-  const container = document.getElementById('daily-missions');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  const today = getGameNow();
-  const dayOfWeek = today.getDay();
-  const todayStr = getLocalDateString();
-
-  // Filtrar apenas missões não concluídas e relevantes para HOJE
-  const dailyMissions = appData.missions.filter((mission) => {
-    if (mission.completed || mission.failed) return false;
-
-    // Para missões diárias: verificar se estão disponíveis HOJE
-    if (isRoutineType(mission.type)) {
-      const alreadyLogged = wasItemLoggedForDate(mission, appData.completedMissions, todayStr);
-      return !alreadyLogged && getRoutineDays(mission).includes(dayOfWeek);
-    }
-
-    if (mission.type === 'eventual') {
-      if (!mission.date) return false;
-      const missionDateStr = getLocalDateString(parseLocalDateString(mission.date));
-      return missionDateStr >= todayStr;
-    }
-
-    if (mission.type === 'epica') {
-      if (!mission.deadline) return false;
-      const deadline = parseLocalDateString(mission.deadline);
-      const deadlineStr = getLocalDateString(deadline);
-      return deadlineStr >= todayStr;
-    }
-
-    return false;
-  });
-
-  const getMissionDueDate = (mission) => {
-    if (mission.type === 'epica' && mission.deadline)
-      return getLocalDateString(parseLocalDateString(mission.deadline));
-    if (mission.type === 'eventual' && mission.date)
-      return getLocalDateString(parseLocalDateString(mission.date));
-    if (isRoutineType(mission.type)) return todayStr;
-    return '9999-12-31';
-  };
-
-  dailyMissions.sort((a, b) => getMissionDueDate(a).localeCompare(getMissionDueDate(b)));
-
-  console.log(`Missões filtradas para hoje (${todayStr}): ${dailyMissions.length}`);
-
-  if (dailyMissions.length === 0) {
-    container.innerHTML =
-      '<p class="empty-message">Nenhuma missão para hoje. Adicione novas missões na aba de gerenciamento.</p>';
-    return;
-  }
-  const skipCount = getSkipItemCount();
-
-  dailyMissions.forEach((mission) => {
-    const missionCard = document.createElement('div');
-    missionCard.className = 'mission-card with-side-actions';
-
-    const attributesText = mission.attributes
-      .map((attrId) => {
-        const attr = appData.attributes.find((a) => a.id === attrId);
-        return attr ? `${attr.emoji} ${attr.name}` : '';
-      })
-      .filter((text) => text)
-      .join(', ');
-    const dueBadge = getDueBadgeHtml(getMissionDueDate(mission), todayStr, mission.type);
-    missionCard.innerHTML = `
-            <div class="mission-header">
-                <div class="mission-name">
-                    <span class="mission-emoji">${mission.emoji || '🎯'}</span>
-                    <span>${mission.name}</span>
-                </div>
-                <span class="mission-type ${mission.type}">${getMissionTypeName(mission.type)}</span>
-            </div>
-            <div class="mission-details">
-                ${dueBadge ? `<p>${dueBadge}</p>` : ''}
-                ${mission.type === 'epica' ? `<p>Prazo: ${formatDate(mission.deadline)}</p>` : ''}
-                ${mission.type === 'eventual' ? `<p>Prazo: ${formatDate(mission.date)}</p>` : ''}
-                ${isRoutineType(mission.type) ? `<p>Dias: ${getDaysNames(getRoutineDays(mission))}</p>` : ''}
-            </div>
-            <div class="mission-attributes">
-                ${attributesText ? `<p>Atributos: ${attributesText}</p>` : ''}
-            </div>
-            <div class="mission-actions">
-                <button class="complete-btn" data-id="${mission.id}">
-                    <i class="fas fa-check"></i> Concluir
-                </button>
-                ${
-                  skipCount > 0
-                    ? `
-                <button class="skip-btn skip-mission-btn" data-id="${mission.id}">
-                    <i class="fas fa-forward"></i> Pular (x${skipCount})
-                </button>
-                `
-                    : ''
-                }
-            </div>
-        `;
-
-    container.appendChild(missionCard);
-  });
-
-  // Adicionar eventos aos botões de conclusão
-  container.querySelectorAll('.complete-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'));
-      showMissionCompletionModal(id);
-    });
-  });
-  container.querySelectorAll('.skip-mission-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'));
-      skipMission(id);
-    });
-  });
-}
-
-function updateCompletedMissions() {
-  const container = document.getElementById('completed-missions');
-  if (!container) return;
-
-  const recentMissions = appData.completedMissions.slice().reverse();
-  renderPaginatedHistory(
-    container,
-    recentMissions,
-    (mission) => {
-      const missionCard = document.createElement('div');
-      missionCard.className = `mission-card ${mission.failed ? 'failed' : mission.skipped ? 'skipped' : 'completed'}`;
-
-      const statusText = mission.failed ? 'FALHOU' : mission.skipped ? 'PULADA' : 'CONCLUIDA';
-      const statusClass = mission.failed
-        ? 'failed-status'
-        : mission.skipped
-          ? 'skipped-status'
-          : 'completed-status';
-      const rewardText = mission.failed
-        ? 'Penalidade: -1 vida'
-        : mission.skipped
-          ? 'Custo: 1 item de pulo'
-          : mission.type === 'epica'
-            ? 'Recompensa: 20 XP + 10 moedas'
-            : 'Recompensa: 1 XP + 1 moeda';
-      const eventDateLabel = mission.failed
-        ? 'Falhou em'
-        : mission.skipped
-          ? 'Pulada em'
-          : 'Concluida em';
-      const eventDateValue = mission.completedDate || mission.failedDate || mission.skippedDate;
-      missionCard.innerHTML = `
-            <div class="mission-header">
-                <div class="mission-name">
-                    <span class="mission-emoji">${mission.emoji || '🎯'}</span>
-                    <span>${mission.name}</span>
-                </div>
-                <span class="mission-status ${statusClass}">${statusText}</span>
-                <span class="mission-type ${mission.type}">${getMissionTypeName(mission.type)}</span>
-            </div>
-            <div class="mission-details">
-                <p>${eventDateLabel}: ${formatDate(eventDateValue)}</p>
-                <p>${rewardText}</p>
-                ${mission.reason && !mission.failed ? `<p class="mission-reason">Motivo: ${mission.reason}</p>` : ''}
-                ${mission.feedback ? `<p class="mission-feedback">Feedback: ${mission.feedback}</p>` : ''}
-            </div>
-        `;
-      return missionCard;
-    },
-    'Nenhuma missão concluída ainda.',
-    updateCompletedMissions
-  );
-}
-
 // Verificar missões atrasadas diariamente (função ajustada)
 function checkOverdueMissions(options = {}) {
   const skipWeekly = options.skipWeekly === true;
 
-  // Se for verificação inicial e lives <= 3, pode ser que o usuário acabou de restaurar
-  // Neste caso, pular falhas automáticas para evitar loop de game over
+  // Se for verifica��o inicial e lives <= 3, pode ser que o usu�rio acabou de restaurar
+  // Neste caso, pular falhas autom�ticas para evitar loop de game over
   if (options.isInitialCheck && appData.hero.lives <= 3 && appData.hero.gameOverCounted === false) {
-    // Verificar se há flag de "recentemente restaurado"
+    // Verificar se h� flag de "recentemente restaurado"
     const lastRestore = appData.hero.lastRestoreDate;
     if (lastRestore) {
       const today = getLocalDateString();
       if (lastRestore === today) {
-        console.log('Verificação inicial: pulando falhas automáticas (usuário restaurou hoje)');
+        console.log('Verifica��o inicial: pulando falhas autom�ticas (usu�rio restaurou hoje)');
         return;
       }
     }
@@ -708,11 +526,11 @@ function checkOverdueMissions(options = {}) {
       }
     }
 
-    // Épicas
+    // �picas
     if (mission.type === 'epica' && mission.deadline) {
       const deadlineStr = getLocalDateString(parseLocalDateString(mission.deadline));
       if (deadlineStr < todayStr) {
-        overdueToFail.push({ id: mission.id, reason: 'Falha no dia seguinte ao prazo (épica)' });
+        overdueToFail.push({ id: mission.id, reason: 'Falha no dia seguinte ao prazo (�pica)' });
       }
     }
 
@@ -737,7 +555,7 @@ function checkOverdueMissions(options = {}) {
         if (!alreadyLoggedYesterday && !alreadyFailedForMissedDate) {
           overdueToFail.push({
             id: mission.id,
-            reason: 'Rotina não concluída no dia programado',
+            reason: 'Rotina n�o conclu�da no dia programado',
             missedDate: yesterdayStr,
           });
         }
@@ -747,7 +565,7 @@ function checkOverdueMissions(options = {}) {
 
   if (overdueToFail.length > 0) {
     console.log(
-      `Auto-falhando ${overdueToFail.length} missões por atraso:`,
+      `Auto-falhando ${overdueToFail.length} miss�es por atraso:`,
       overdueToFail.map((i) => i.reason)
     );
     overdueToFail.forEach((item) =>
@@ -758,79 +576,7 @@ function checkOverdueMissions(options = {}) {
   recreateDailyMissionsForToday();
 }
 
-// Atualizar lista de missões cadastradas
-function updateMissionsList() {
-  const container = document.getElementById('missions-list');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  if (appData.missions.length === 0) {
-    container.innerHTML = '<p class="empty-message">Nenhuma missão cadastrada.</p>';
-    return;
-  }
-
-  appData.missions.forEach((mission) => {
-    // Verificar se a missão está atrasada
-    const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const isOverdue =
-      (mission.type === 'epica' &&
-        mission.deadline &&
-        parseLocalDateString(mission.deadline) < startOfToday) ||
-      (mission.type === 'eventual' &&
-        mission.date &&
-        parseLocalDateString(mission.date) < startOfToday);
-    const missionCard = document.createElement('div');
-    missionCard.className = `item-card ${isOverdue ? 'overdue' : ''}`;
-
-    let deadlineInfo = '';
-    if (mission.type === 'epica' && mission.deadline) {
-      const deadline = parseLocalDateString(mission.deadline);
-      const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
-      deadlineInfo = `<div class="mission-deadline">Prazo: ${formatDate(mission.deadline)} (${daysLeft} dias)</div>`;
-    } else if (mission.type === 'eventual' && mission.date) {
-      const deadline = parseLocalDateString(mission.date);
-      const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
-      deadlineInfo = `<div class="mission-deadline">Prazo: ${formatDate(mission.date)} (${daysLeft} dias)</div>`;
-    }
-
-    missionCard.innerHTML = `
-            <div class="item-info">
-                <span class="item-emoji">${mission.emoji || '🎯'}</span>
-                <div>
-                    <div class="item-name">${mission.name}</div>
-                    <div class="item-type">${getMissionTypeName(mission.type)}</div>
-                    ${deadlineInfo}
-                    ${isOverdue ? '<div class="overdue-warning">ATRASADA!</div>' : ''}
-                </div>
-            </div>
-            <div class="item-actions">
-                <button class="action-btn edit-btn" data-id="${mission.id}"><i class="fas fa-edit"></i></button>
-                <button class="action-btn delete-btn" data-id="${mission.id}"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
-
-    container.appendChild(missionCard);
-  });
-
-  // Adicionar eventos aos botões
-  container.querySelectorAll('.edit-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'));
-      editMission(id);
-    });
-  });
-
-  container.querySelectorAll('.delete-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'));
-      deleteMission(id);
-    });
-  });
-}
-
-// Atualizar streaks display
+// Atualizar lista de miss�es cadastradas`r`n// Atualizar streaks display
 function updateStreaksDisplay() {
   updateMaxStreaks();
   const generalEl = document.getElementById('streak-general');
@@ -867,7 +613,7 @@ function updateMaxStreaks() {
   );
 }
 
-// Atualizar estatísticas
+// Atualizar estat�sticas
 function updateStatistics() {
   const statWorkoutsDone = document.getElementById('stat-workouts-done');
   if (statWorkoutsDone) statWorkoutsDone.textContent = appData.statistics.workoutsDone || 0;
@@ -919,8 +665,8 @@ function updateAdvancedStatistics() {
   const weeklyPrevious = getPeriodTotals(7, 7);
   if (weeklyCompareEl) {
     weeklyCompareEl.innerHTML = `
-            <p>Missões: ${weeklyCurrent.missions} (${formatTrendHtml(weeklyCurrent.missions, weeklyPrevious.missions)})</p>
-            <p>Falhas/Ignoradas Missões: ${weeklyCurrent.missionsMissed} (${formatTrendHtml(weeklyCurrent.missionsMissed, weeklyPrevious.missionsMissed, true)})</p>
+            <p>Miss�es: ${weeklyCurrent.missions} (${formatTrendHtml(weeklyCurrent.missions, weeklyPrevious.missions)})</p>
+            <p>Falhas/Ignoradas Miss�es: ${weeklyCurrent.missionsMissed} (${formatTrendHtml(weeklyCurrent.missionsMissed, weeklyPrevious.missionsMissed, true)})</p>
             <p>Trabalhos: ${weeklyCurrent.works} (${formatTrendHtml(weeklyCurrent.works, weeklyPrevious.works)})</p>
             <p>Falhas/Ignorados Trabalhos: ${weeklyCurrent.worksMissed} (${formatTrendHtml(weeklyCurrent.worksMissed, weeklyPrevious.worksMissed, true)})</p>
             <p>Treinos: ${weeklyCurrent.workouts} (${formatTrendHtml(weeklyCurrent.workouts, weeklyPrevious.workouts)})</p>
@@ -935,8 +681,8 @@ function updateAdvancedStatistics() {
   const monthPrevious = getMonthTotals(getPreviousMonthKey(getLocalDateString().slice(0, 7)));
   if (monthlyCompareEl) {
     monthlyCompareEl.innerHTML = `
-            <p>Missões: ${monthCurrent.missions} (${formatTrendHtml(monthCurrent.missions, monthPrevious.missions)})</p>
-            <p>Falhas/Ignoradas Missões: ${monthCurrent.missionsMissed} (${formatTrendHtml(monthCurrent.missionsMissed, monthPrevious.missionsMissed, true)})</p>
+            <p>Miss�es: ${monthCurrent.missions} (${formatTrendHtml(monthCurrent.missions, monthPrevious.missions)})</p>
+            <p>Falhas/Ignoradas Miss�es: ${monthCurrent.missionsMissed} (${formatTrendHtml(monthCurrent.missionsMissed, monthPrevious.missionsMissed, true)})</p>
             <p>Trabalhos: ${monthCurrent.works} (${formatTrendHtml(monthCurrent.works, monthPrevious.works)})</p>
             <p>Falhas/Ignorados Trabalhos: ${monthCurrent.worksMissed} (${formatTrendHtml(monthCurrent.worksMissed, monthPrevious.worksMissed, true)})</p>
             <p>Treinos: ${monthCurrent.workouts} (${formatTrendHtml(monthCurrent.workouts, monthPrevious.workouts)})</p>
@@ -957,14 +703,14 @@ function updateAdvancedStatistics() {
   const monthStudiesPlanned = monthCurrent.studies + monthCurrent.studiesMissed;
   if (adherenceEl) {
     adherenceEl.innerHTML = `
-            <p>7 dias - Missões: ${formatRate(weeklyCurrent.missions, weekMissionsPlanned)}</p>
+            <p>7 dias - Miss�es: ${formatRate(weeklyCurrent.missions, weekMissionsPlanned)}</p>
             <p>7 dias - Trabalhos: ${formatRate(weeklyCurrent.works, weekWorksPlanned)}</p>
             <p>7 dias - Treinos: ${formatRate(weeklyCurrent.workouts, weekWorkoutsPlanned)}</p>
             <p>7 dias - Estudos: ${formatRate(weeklyCurrent.studies, weekStudiesPlanned)}</p>
-            <p>Mês - Missões: ${formatRate(monthCurrent.missions, monthMissionsPlanned)}</p>
-            <p>Mês - Trabalhos: ${formatRate(monthCurrent.works, monthWorksPlanned)}</p>
-            <p>Mês - Treinos: ${formatRate(monthCurrent.workouts, monthWorkoutsPlanned)}</p>
-            <p>Mês - Estudos: ${formatRate(monthCurrent.studies, monthStudiesPlanned)}</p>
+            <p>M�s - Miss�es: ${formatRate(monthCurrent.missions, monthMissionsPlanned)}</p>
+            <p>M�s - Trabalhos: ${formatRate(monthCurrent.works, monthWorksPlanned)}</p>
+            <p>M�s - Treinos: ${formatRate(monthCurrent.workouts, monthWorkoutsPlanned)}</p>
+            <p>M�s - Estudos: ${formatRate(monthCurrent.studies, monthStudiesPlanned)}</p>
         `;
   }
 
@@ -972,7 +718,7 @@ function updateAdvancedStatistics() {
   if (goalsStatusEl) {
     const goals = appData.statisticsGoals || { missions: 60, workouts: 20, studies: 20, works: 30 };
     goalsStatusEl.innerHTML = `
-            <p class="${getGoalStatusClass(weeklyCurrent.missions, goals.missions)}">Missões: ${weeklyCurrent.missions}/${goals.missions}</p>
+            <p class="${getGoalStatusClass(weeklyCurrent.missions, goals.missions)}">Miss�es: ${weeklyCurrent.missions}/${goals.missions}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.works, goals.works)}">Trabalhos: ${weeklyCurrent.works}/${goals.works}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.workouts, goals.workouts)}">Treinos: ${weeklyCurrent.workouts}/${goals.workouts}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.studies, goals.studies)}">Estudos: ${weeklyCurrent.studies}/${goals.studies}</p>
@@ -1006,7 +752,7 @@ function formatTrendHtml(current, previous, lowerIsBetter = false) {
   const sign = delta > 0 ? '+' : '';
   let text = '';
   let trendClass = 'trend-flat';
-  let trendArrow = '→';
+  let trendArrow = '?';
 
   if (!Number.isFinite(previous) || previous === 0) {
     if (!Number.isFinite(current) || current === 0) {
@@ -1014,11 +760,11 @@ function formatTrendHtml(current, previous, lowerIsBetter = false) {
     } else if (current > 0) {
       text = `${sign}${delta} / novo`;
       trendClass = lowerIsBetter ? 'trend-down' : 'trend-up';
-      trendArrow = '↑';
+      trendArrow = '?';
     } else {
       text = `${sign}${delta} / sem base`;
       trendClass = lowerIsBetter ? 'trend-up' : 'trend-down';
-      trendArrow = '↓';
+      trendArrow = '?';
     }
   } else {
     const percent = calculatePercentChange(current, previous);
@@ -1029,7 +775,7 @@ function formatTrendHtml(current, previous, lowerIsBetter = false) {
       const improved = lowerIsBetter ? delta < 0 : delta > 0;
       trendClass = improved ? 'trend-up' : 'trend-down';
     }
-    trendArrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
+    trendArrow = delta > 0 ? '?' : delta < 0 ? '?' : '?';
   }
   return `<span class="stats-trend ${trendClass}">${trendArrow} ${text}</span>`;
 }
@@ -1123,7 +869,7 @@ function saveStatisticsGoals() {
     !Number.isFinite(studies) ||
     studies <= 0
   ) {
-    showFeedback('Informe metas válidas (números maiores que zero).', 'warn');
+    showFeedback('Informe metas v�lidas (n�meros maiores que zero).', 'warn');
     return;
   }
   appData.statisticsGoals = { missions, works, workouts, studies };
@@ -1178,7 +924,7 @@ function updateRecords() {
       let recordText = '';
 
       if (workout.type === 'repeticao' && workout.stats.bestReps > 0) {
-        recordText = `${workout.emoji} ${workout.name}: ${workout.stats.bestReps} repetições`;
+        recordText = `${workout.emoji} ${workout.name}: ${workout.stats.bestReps} repeti��es`;
       } else if (workout.type === 'distancia' && workout.stats.bestDistance > 0) {
         recordText = `${workout.emoji} ${workout.name}: ${workout.stats.bestDistance.toFixed(2)} km`;
       } else if (
@@ -1199,12 +945,12 @@ function updateRecords() {
 
   const productiveDaysRecords = Object.values(appData.statistics.productiveDays || {});
 
-  // Records de missões
+  // Records de miss�es
   const maxMissionsPerDay = Math.max(0, ...productiveDaysRecords.map((r) => r.missions || 0));
   if (maxMissionsPerDay > 0) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `🎯 Máximo de missões em um dia: ${maxMissionsPerDay}`;
+    recordItem.textContent = `?? M�ximo de miss�es em um dia: ${maxMissionsPerDay}`;
     container.appendChild(recordItem);
   }
 
@@ -1213,7 +959,7 @@ function updateRecords() {
   if (maxStudiesPerDay > 0) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `📚 Máximo de estudos em um dia: ${maxStudiesPerDay}`;
+    recordItem.textContent = `?? M�ximo de estudos em um dia: ${maxStudiesPerDay}`;
     container.appendChild(recordItem);
   }
 
@@ -1222,7 +968,7 @@ function updateRecords() {
   if (maxWorkoutsPerDay > 0) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `💪 Máximo de treinos em um dia: ${maxWorkoutsPerDay}`;
+    recordItem.textContent = `?? M�ximo de treinos em um dia: ${maxWorkoutsPerDay}`;
     container.appendChild(recordItem);
   }
 
@@ -1230,7 +976,7 @@ function updateRecords() {
   if (maxWorksPerDay > 0) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `💼 Máximo de trabalhos em um dia: ${maxWorksPerDay}`;
+    recordItem.textContent = `?? M�ximo de trabalhos em um dia: ${maxWorksPerDay}`;
     container.appendChild(recordItem);
   }
 
@@ -1286,7 +1032,7 @@ function updateRecords() {
   if (bestNoFailStreak > 0) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `🛡️ Maior sequência sem falhas: ${bestNoFailStreak} dias`;
+    recordItem.textContent = `??? Maior sequ�ncia sem falhas: ${bestNoFailStreak} dias`;
     container.appendChild(recordItem);
   }
 
@@ -1303,7 +1049,7 @@ function updateRecords() {
   if (bestXpValue > 0 && bestXpDate) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `⭐ Maior XP em um dia: ${bestXpValue} (${formatDate(bestXpDate)})`;
+    recordItem.textContent = `? Maior XP em um dia: ${bestXpValue} (${formatDate(bestXpDate)})`;
     container.appendChild(recordItem);
   }
 
@@ -1339,7 +1085,7 @@ function updateRecords() {
     start.setDate(start.getDate() - 6);
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `📈 Melhor semana: ${bestWeekDone} concluídas (${formatDate(getLocalDateString(start))} a ${formatDate(bestWeekEnd)})`;
+    recordItem.textContent = `?? Melhor semana: ${bestWeekDone} conclu�das (${formatDate(getLocalDateString(start))} a ${formatDate(bestWeekEnd)})`;
     container.appendChild(recordItem);
   }
   if (bestWeekAdherenceEnd) {
@@ -1347,7 +1093,7 @@ function updateRecords() {
     start.setDate(start.getDate() - 6);
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `✅ Maior aderência semanal: ${bestWeekAdherence.toFixed(1).replace('.', ',')}% (${formatDate(getLocalDateString(start))} a ${formatDate(bestWeekAdherenceEnd)})`;
+    recordItem.textContent = `? Maior ader�ncia semanal: ${bestWeekAdherence.toFixed(1).replace('.', ',')}% (${formatDate(getLocalDateString(start))} a ${formatDate(bestWeekAdherenceEnd)})`;
     container.appendChild(recordItem);
   }
 
@@ -1374,7 +1120,7 @@ function updateRecords() {
     });
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `🗓️ Melhor mês (XP): ${bestMonthXp} em ${label}`;
+    recordItem.textContent = `??? Melhor m�s (XP): ${bestMonthXp} em ${label}`;
     container.appendChild(recordItem);
   }
 
@@ -1382,19 +1128,19 @@ function updateRecords() {
   if (appData.statistics.maxStreakGeneral) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `🔥 Maior streak geral: ${appData.statistics.maxStreakGeneral} dias`;
+    recordItem.textContent = `?? Maior streak geral: ${appData.statistics.maxStreakGeneral} dias`;
     container.appendChild(recordItem);
   }
   if (appData.statistics.maxStreakPhysical) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `💪 Maior streak físico: ${appData.statistics.maxStreakPhysical} dias`;
+    recordItem.textContent = `?? Maior streak f�sico: ${appData.statistics.maxStreakPhysical} dias`;
     container.appendChild(recordItem);
   }
   if (appData.statistics.maxStreakMental) {
     const recordItem = document.createElement('div');
     recordItem.className = 'record-item';
-    recordItem.textContent = `📚 Maior streak mental: ${appData.statistics.maxStreakMental} dias`;
+    recordItem.textContent = `?? Maior streak mental: ${appData.statistics.maxStreakMental} dias`;
     container.appendChild(recordItem);
   }
 }
@@ -1427,21 +1173,18 @@ function updateProductiveDays() {
   });
 }
 
-// Atualizar diário
+// Atualizar di�rio
 
 // __appActivitiesBridge: exposes activity APIs for legacy scripts during module migration
 Object.assign(globalThis, {
-  updateMissions,
-  updateWorks,
+  getActivityCategoryMeta,
+  getUnifiedTodayActivities,
+  getUnifiedHistoryActivities,
+  getUnifiedManagedActivities,
+  updateUnifiedActivities,
   wasItemLoggedForDate,
-  updateDailyWorks,
-  updateCompletedWorks,
   checkOverdueWorks,
-  updateWorksList,
-  updateDailyMissions,
-  updateCompletedMissions,
   checkOverdueMissions,
-  updateMissionsList,
   updateStreaksDisplay,
   updateMaxStreaks,
   updateStatistics,

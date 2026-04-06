@@ -49,21 +49,13 @@
             <i class="fas fa-user"></i>
             <span>Perfil</span>
           </li>
-          <li class="nav-item" data-tab="missoes" data-mobile="primary">
-            <i class="fas fa-flag-checkered"></i>
-            <span>Missões</span>
-          </li>
-          <li class="nav-item" data-tab="trabalhos" data-mobile="primary">
-            <i class="fas fa-briefcase"></i>
-            <span>Trabalho</span>
-          </li>
-          <li class="nav-item" data-tab="arena" data-mobile="primary">
-            <i class="fas fa-dumbbell"></i>
-            <span>Arena</span>
+          <li class="nav-item" data-tab="atividades" data-mobile="primary">
+            <i class="fas fa-layer-group"></i>
+            <span>Atividades</span>
           </li>
           <li class="nav-item" data-tab="biblioteca" data-mobile="primary">
             <i class="fas fa-book-open"></i>
-            <span>Biblioteca</span>
+            <span>Livros</span>
           </li>
           <li class="nav-item" data-tab="calendarios" data-mobile="extra">
             <i class="fas fa-calendar-alt"></i>
@@ -338,60 +330,80 @@
           </div>
         </section>
 
-        <!-- Aba Missões -->
-        <section id="missoes" class="tab-content">
+        <section id="atividades" class="tab-content">
           <div class="page-header">
-            <h2><i class="fas fa-flag-checkered"></i> Missões</h2>
-            <div class="time-display" id="mission-time">Hoje: <span id="current-date"></span></div>
+            <h2><i class="fas fa-layer-group"></i> Atividades</h2>
+            <div class="time-display">Hoje: <span id="activities-current-date"></span></div>
           </div>
 
           <div class="sub-nav">
-            <button class="sub-nav-btn active" data-subtab="missoes-dia">Missões do Dia</button>
-            <button class="sub-nav-btn" data-subtab="missoes-cumpridas">Missões Cumpridas</button>
-            <button class="sub-nav-btn" data-subtab="gerenciar-missoes">Gerenciar Missões</button>
+            <button class="sub-nav-btn active" data-subtab="atividades-hoje">Hoje</button>
+            <button class="sub-nav-btn" data-subtab="atividades-historico">Histórico</button>
+            <button class="sub-nav-btn" data-subtab="atividades-gerenciar">Gerenciar</button>
           </div>
 
           <div class="sub-content">
-            <!-- Missões do Dia -->
-            <div id="missoes-dia" class="sub-tab active">
-              <div class="missions-list" id="daily-missions">
-                <!-- Missões do dia serão adicionadas via JavaScript -->
-              </div>
+            <div id="atividades-hoje" class="sub-tab active">
+              <div class="missions-list" id="daily-activities"></div>
             </div>
 
-            <!-- Missões Cumpridas -->
-            <div id="missoes-cumpridas" class="sub-tab">
-              <div class="missions-list" id="completed-missions">
-                <!-- Missões cumpridas serão adicionadas via JavaScript -->
-              </div>
+            <div id="atividades-historico" class="sub-tab">
+              <div class="missions-list history-list" id="completed-activities"></div>
             </div>
 
-            <!-- Gerenciar Missões -->
-            <div id="gerenciar-missoes" class="sub-tab">
+            <div id="atividades-gerenciar" class="sub-tab">
               <div class="form-container">
-                <h3>Cadastrar Nova Missão</h3>
-                <form id="mission-form">
+                <h3>Cadastrar Nova Atividade</h3>
+                <form id="activity-form">
                   <div class="form-group">
-                    <label for="mission-name">Nome da Missão</label>
-                    <input type="text" id="mission-name" placeholder="Ex: Ir à academia" required />
+                    <label for="activity-category">Categoria</label>
+                    <select id="activity-category" required>
+                      <option value="mission">Missão</option>
+                      <option value="work">Trabalho</option>
+                      <option value="workout">Treino</option>
+                      <option value="study">Estudo</option>
+                    </select>
                   </div>
 
                   <div class="form-group">
-                    <label for="mission-emoji">Emoji (opcional)</label>
-                    <input type="text" id="mission-emoji" placeholder="🏋️" />
+                    <label for="activity-name">Nome</label>
+                    <input type="text" id="activity-name" placeholder="Ex: Ir à academia" required />
                   </div>
 
                   <div class="form-group">
-                    <label for="mission-type">Tipo de Missão</label>
-                    <select id="mission-type" required>
+                    <label for="activity-emoji">Emoji (opcional)</label>
+                    <input type="text" id="activity-emoji" placeholder="🎯" />
+                  </div>
+
+                  <div class="form-group" id="activity-schedule-container">
+                    <label for="activity-schedule-type">Agendamento</label>
+                    <select id="activity-schedule-type" required>
                       <option value="rotina">Rotina</option>
                       <option value="eventual">Eventual</option>
                       <option value="epica">Épica</option>
                     </select>
                   </div>
 
-                  <div class="form-group" id="mission-days-container" style="display: none">
-                    <label>Dias da Semana (para missões de rotina)</label>
+                  <div class="form-group" id="activity-workout-type-container" style="display: none">
+                    <label for="activity-workout-type">Tipo de Treino</label>
+                    <select id="activity-workout-type">
+                      <option value="repeticao">Repetição</option>
+                      <option value="distancia">Distância</option>
+                      <option value="maior-tempo">Maior Tempo</option>
+                      <option value="menor-tempo">Menor Tempo</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group" id="activity-study-type-container" style="display: none">
+                    <label for="activity-study-type">Tipo de Estudo</label>
+                    <select id="activity-study-type">
+                      <option value="logico">Lógico</option>
+                      <option value="criativo">Criativo</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group" id="activity-days-container">
+                    <label>Dias da Semana</label>
                     <div class="days-selector">
                       <label class="day-checkbox"
                         ><input type="checkbox" data-select-all="true" /> Todos</label
@@ -406,148 +418,39 @@
                     </div>
                   </div>
 
-                  <div class="form-group" id="mission-date-container" style="display: none">
-                    <label for="mission-date">Prazo (para missões eventuais)</label>
-                    <input type="date" id="mission-date" />
+                  <div class="form-group" id="activity-date-container" style="display: none">
+                    <label for="activity-date">Prazo</label>
+                    <input type="date" id="activity-date" />
                   </div>
 
-                  <div class="form-group" id="mission-deadline-container" style="display: none">
-                    <label for="mission-deadline">Prazo (para missões épicas)</label>
-                    <input type="date" id="mission-deadline" />
+                  <div class="form-group" id="activity-deadline-container" style="display: none">
+                    <label for="activity-deadline">Prazo</label>
+                    <input type="date" id="activity-deadline" />
                   </div>
 
-                  <div class="form-group">
+                  <div class="form-group" id="activity-attributes-container">
                     <label>Atributos Associados</label>
-                    <div class="attributes-selector" id="mission-attributes">
-                      <!-- Atributos serão adicionados via JavaScript -->
-                    </div>
-                  </div>
-                  <button type="submit" class="submit-btn">Cadastrar Missão</button>
-                </form>
-              </div>
-
-              <div class="existing-items">
-                <h3>Missões Cadastradas</h3>
-                <div class="items-list" id="missions-list">
-                  <!-- Lista de missões cadastradas -->
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Aba Trabalho -->
-        <section id="trabalhos" class="tab-content">
-          <div class="page-header">
-            <h2><i class="fas fa-briefcase"></i> Trabalho</h2>
-            <div class="time-display" id="work-time">
-              Hoje: <span id="current-date-work"></span>
-            </div>
-          </div>
-
-          <div class="sub-nav">
-            <button class="sub-nav-btn active" data-subtab="trabalhos-dia">Trabalhos do Dia</button>
-            <button class="sub-nav-btn" data-subtab="trabalhos-cumpridos">
-              Trabalhos Cumpridos
-            </button>
-            <button class="sub-nav-btn" data-subtab="gerenciar-trabalhos">
-              Gerenciar Trabalhos
-            </button>
-          </div>
-
-          <div class="sub-content">
-            <div id="trabalhos-dia" class="sub-tab active">
-              <div class="missions-list" id="daily-works">
-                <!-- Trabalhos do dia serão adicionados via JavaScript -->
-              </div>
-            </div>
-
-            <div id="trabalhos-cumpridos" class="sub-tab">
-              <div class="missions-list" id="completed-works">
-                <!-- Trabalhos cumpridos serão adicionados via JavaScript -->
-              </div>
-            </div>
-
-            <div id="gerenciar-trabalhos" class="sub-tab">
-              <div class="form-container">
-                <h3>Cadastrar Novo Trabalho</h3>
-                <form id="work-form">
-                  <div class="form-group">
-                    <label for="work-name">Nome do Trabalho</label>
-                    <input
-                      type="text"
-                      id="work-name"
-                      placeholder="Ex: Relatório de rotina"
-                      required
-                    />
+                    <div class="attributes-selector" id="activity-attributes"></div>
                   </div>
 
-                  <div class="form-group">
-                    <label for="work-emoji">Emoji (opcional)</label>
-                    <input type="text" id="work-emoji" placeholder="💼" />
-                  </div>
-
-                  <div class="form-group">
-                    <label for="work-type">Tipo de Trabalho</label>
-                    <select id="work-type" required>
-                      <option value="rotina">Rotina</option>
-                      <option value="eventual">Eventual</option>
-                      <option value="epica">Épica</option>
-                    </select>
-                  </div>
-
-                  <div class="form-group" id="work-days-container" style="display: none">
-                    <label>Dias da Semana (para trabalhos de rotina)</label>
-                    <div class="days-selector">
-                      <label class="day-checkbox"
-                        ><input type="checkbox" data-select-all="true" /> Todos</label
-                      >
-                      <label class="day-checkbox"><input type="checkbox" value="0" /> Dom</label>
-                      <label class="day-checkbox"><input type="checkbox" value="1" /> Seg</label>
-                      <label class="day-checkbox"><input type="checkbox" value="2" /> Ter</label>
-                      <label class="day-checkbox"><input type="checkbox" value="3" /> Qua</label>
-                      <label class="day-checkbox"><input type="checkbox" value="4" /> Qui</label>
-                      <label class="day-checkbox"><input type="checkbox" value="5" /> Sex</label>
-                      <label class="day-checkbox"><input type="checkbox" value="6" /> Sáb</label>
-                    </div>
-                  </div>
-
-                  <div class="form-group" id="work-date-container" style="display: none">
-                    <label for="work-date">Prazo (para trabalhos eventuais)</label>
-                    <input type="date" id="work-date" />
-                  </div>
-
-                  <div class="form-group" id="work-deadline-container" style="display: none">
-                    <label for="work-deadline">Prazo (para trabalhos épicos)</label>
-                    <input type="date" id="work-deadline" />
-                  </div>
-
-                  <div class="form-group">
-                    <label>Atributos Associados</label>
-                    <div class="attributes-selector" id="work-attributes">
-                      <!-- Atributos serão adicionados via JavaScript -->
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <label for="work-class">Classe Associada (opcional)</label>
-                    <select id="work-class">
+                  <div class="form-group" id="activity-class-container" style="display: none">
+                    <label for="activity-class">Classe Associada (opcional)</label>
+                    <select id="activity-class">
                       <option value="">Nenhuma</option>
                     </select>
                   </div>
 
-                  <div class="form-group checkbox-group">
+                  <div class="form-group checkbox-group" id="activity-urgent-container" style="display: none">
                     <label class="checkbox-label">
-                      <input type="checkbox" id="work-urgent" />
+                      <input type="checkbox" id="activity-urgent" />
                       <span>🚀 Trabalho Urgente</span>
                     </label>
-                    <small style="color: var(--text-muted)"
-                      >Trabalhos urgentes aparecem em destaque no topo da lista</small
-                    >
                   </div>
 
-                  <button type="submit" class="submit-btn">Cadastrar Trabalho</button>
+                  <button type="submit" class="submit-btn">Cadastrar Atividade</button>
                 </form>
               </div>
+
               <div class="form-container">
                 <h3>Cadastrar Nova Classe</h3>
                 <form id="class-form">
@@ -571,110 +474,8 @@
               </div>
 
               <div class="existing-items">
-                <h3>Trabalhos Cadastrados</h3>
-                <div class="items-list" id="works-list">
-                  <!-- Lista de trabalhos cadastrados -->
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Aba Arena -->
-        <section id="arena" class="tab-content">
-          <div class="page-header">
-            <h2><i class="fas fa-dumbbell"></i> Arena</h2>
-          </div>
-
-          <div class="preparation-sections">
-            <div class="preparation-section arena-section">
-              <h3><i class="fas fa-helmet-battle"></i> Arena</h3>
-
-              <div class="sub-nav">
-                <button class="sub-nav-btn active" data-subtab="treinos-dia">Treinos do Dia</button>
-                <button class="sub-nav-btn" data-subtab="gerenciar-treinos">
-                  Gerenciar Treinos
-                </button>
-                <button class="sub-nav-btn" data-subtab="historico-treinos">Histórico</button>
-              </div>
-
-              <div class="sub-content">
-                <!-- Treinos do Dia -->
-                <div id="treinos-dia" class="sub-tab active">
-                  <div class="workouts-list" id="daily-workouts">
-                    <!-- Treinos do dia serão carregados aqui -->
-                  </div>
-                </div>
-
-                <!-- Gerenciar Treinos -->
-                <div id="gerenciar-treinos" class="sub-tab">
-                  <div class="form-container">
-                    <h3>Cadastrar Novo Treino</h3>
-                    <form id="workout-form">
-                      <div class="form-group">
-                        <label for="workout-name">Nome do Treino</label>
-                        <input type="text" id="workout-name" placeholder="Ex: Flexões" required />
-                      </div>
-
-                      <div class="form-group">
-                        <label for="workout-emoji">Emoji (opcional)</label>
-                        <input type="text" id="workout-emoji" placeholder="💪" />
-                      </div>
-
-                      <div class="form-group">
-                        <label for="workout-type">Tipo de Treino</label>
-                        <select id="workout-type" required>
-                          <option value="repeticao">Repetição</option>
-                          <option value="distancia">Distância</option>
-                          <option value="maior-tempo">Maior Tempo</option>
-                          <option value="menor-tempo">Menor Tempo</option>
-                        </select>
-                      </div>
-
-                      <div class="form-group">
-                        <label>Dias da Semana</label>
-                        <div class="days-selector">
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="0" /> Dom</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="1" /> Seg</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="2" /> Ter</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="3" /> Qua</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="4" /> Qui</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="5" /> Sex</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="6" /> Sáb</label
-                          >
-                        </div>
-                      </div>
-
-                      <button type="submit" class="submit-btn">Cadastrar Treino</button>
-                    </form>
-                  </div>
-
-                  <div class="existing-items">
-                    <h3>Treinos Cadastrados</h3>
-                    <div class="items-list" id="workouts-list">
-                      <!-- Lista de treinos cadastrados -->
-                    </div>
-                  </div>
-                </div>
-
-                <div id="historico-treinos" class="sub-tab">
-                  <div class="items-list history-list" id="completed-workouts">
-                    <!-- Histórico de treinos concluídos -->
-                  </div>
-                </div>
+                <h3>Atividades Cadastradas</h3>
+                <div class="items-list" id="activities-list"></div>
               </div>
             </div>
           </div>
@@ -683,130 +484,31 @@
         <!-- Aba Biblioteca -->
         <section id="biblioteca" class="tab-content">
           <div class="page-header">
-            <h2><i class="fas fa-book-open"></i> Biblioteca</h2>
+            <h2><i class="fas fa-book-open"></i> Livros</h2>
           </div>
 
-          <div class="preparation-sections">
-            <div class="preparation-section biblioteca-section">
-              <h3><i class="fas fa-book-open"></i> Biblioteca</h3>
-
-              <div class="sub-nav">
-                <button class="sub-nav-btn active" data-subtab="estudos-dia">Estudos do Dia</button>
-                <button class="sub-nav-btn" data-subtab="gerenciar-estudos">
-                  Gerenciar Estudos
-                </button>
-                <button class="sub-nav-btn" data-subtab="historico-estudos">Histórico</button>
-                <button class="sub-nav-btn" data-subtab="livros">Livros</button>
-              </div>
-
-              <div class="sub-content">
-                <!-- Estudos do Dia -->
-                <div id="estudos-dia" class="sub-tab active">
-                  <div class="studies-list" id="daily-studies">
-                    <!-- Estudos do dia serão carregados aqui -->
-                  </div>
-                </div>
-
-                <!-- Gerenciar Estudos -->
-                <div id="gerenciar-estudos" class="sub-tab">
-                  <div class="form-container">
-                    <h3>Cadastrar Novo Estudo</h3>
-                    <form id="study-form">
-                      <div class="form-group">
-                        <label for="study-name">Nome do Estudo</label>
-                        <input
-                          type="text"
-                          id="study-name"
-                          placeholder="Ex: Álgebra Linear"
-                          required
-                        />
-                      </div>
-
-                      <div class="form-group">
-                        <label for="study-emoji">Emoji (opcional)</label>
-                        <input type="text" id="study-emoji" placeholder="📚" />
-                      </div>
-
-                      <div class="form-group">
-                        <label for="study-type">Tipo de Estudo</label>
-                        <select id="study-type" required>
-                          <option value="logico">Lógico</option>
-                          <option value="criativo">Criativo</option>
-                        </select>
-                      </div>
-
-                      <div class="form-group">
-                        <label>Dias da Semana</label>
-                        <div class="days-selector">
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="0" /> Dom</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="1" /> Seg</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="2" /> Ter</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="3" /> Qua</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="4" /> Qui</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="5" /> Sex</label
-                          >
-                          <label class="day-checkbox"
-                            ><input type="checkbox" value="6" /> Sáb</label
-                          >
-                        </div>
-                      </div>
-
-                      <button type="submit" class="submit-btn">Cadastrar Estudo</button>
-                    </form>
-                  </div>
-
-                  <div class="existing-items">
-                    <h3>Estudos Cadastrados</h3>
-                    <div class="items-list" id="studies-list">
-                      <!-- Lista de estudos cadastrados -->
-                    </div>
-                  </div>
-                </div>
-
-                <div id="historico-estudos" class="sub-tab">
-                  <div class="items-list history-list" id="completed-studies">
-                    <!-- Histórico de estudos concluídos -->
-                  </div>
-                </div>
-
-                <div id="livros" class="sub-tab">
-                  <div class="books-section">
-                    <h3>Biblioteca</h3>
-                    <div class="books-toolbar">
-                      <input
-                        type="search"
-                        id="books-search"
-                        class="books-search-input"
-                        placeholder="Buscar por nome, autor ou status"
-                      />
-                    </div>
-                    <div class="items-list" id="books-list">
-                      <!-- Livros serão carregados aqui -->
-                    </div>
-                    <br />
-                    <button class="add-btn" id="add-book-btn">
-                      <i class="fas fa-plus"></i> Adicionar Livro
-                    </button>
-                  </div>
-                  <div class="books-section books-history-section">
-                    <h3>Histórico de Livros Concluídos</h3>
-                    <div class="items-list history-list" id="books-history-list">
-                      <!-- Histórico de livros concluídos -->
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <div class="books-section">
+            <h3>Biblioteca</h3>
+            <div class="books-toolbar">
+              <input
+                type="search"
+                id="books-search"
+                class="books-search-input"
+                placeholder="Buscar por nome, autor ou status"
+              />
+            </div>
+            <div class="items-list" id="books-list">
+              <!-- Livros serão carregados aqui -->
+            </div>
+            <br />
+            <button class="add-btn" id="add-book-btn">
+              <i class="fas fa-plus"></i> Adicionar Livro
+            </button>
+          </div>
+          <div class="books-section books-history-section">
+            <h3>Histórico de Livros Concluídos</h3>
+            <div class="items-list history-list" id="books-history-list">
+              <!-- Histórico de livros concluídos -->
             </div>
           </div>
         </section>
