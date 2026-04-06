@@ -490,18 +490,18 @@ function handleMissionSubmit(e) {
     completed: false,
     dateAdded: getLocalDateString(),
   };
-  if (type === 'diaria' || type === 'semanal') {
+  if (type === 'rotina') {
     newMission.originalId = newMission.id;
   }
 
   // Adicionar campos específicos por tipo
-  if (type === 'semanal') {
+  if (type === 'rotina') {
     const dayCheckboxes = document.querySelectorAll(
-      '#mission-days-container input[type="checkbox"]:checked'
+      '#mission-days-container input[type="checkbox"]:checked:not([data-select-all])'
     );
     const selectedDays = Array.from(dayCheckboxes).map((cb) => parseInt(cb.value, 10));
     if (selectedDays.length === 0) {
-      showFeedback('Selecione pelo menos um dia da semana para missão semanal.', 'warn');
+      showFeedback('Selecione pelo menos um dia da semana para a missão de rotina.', 'warn');
       return;
     }
     newMission.days = selectedDays;
@@ -551,17 +551,17 @@ function handleWorkSubmit(e) {
     urgent: isUrgent,
     dateAdded: getLocalDateString(),
   };
-  if (type === 'diaria' || type === 'semanal') {
+  if (type === 'rotina') {
     newWork.originalId = newWork.id;
   }
 
-  if (type === 'semanal') {
+  if (type === 'rotina') {
     const dayCheckboxes = document.querySelectorAll(
-      '#work-days-container input[type="checkbox"]:checked'
+      '#work-days-container input[type="checkbox"]:checked:not([data-select-all])'
     );
     const selectedDays = Array.from(dayCheckboxes).map((cb) => parseInt(cb.value, 10));
     if (selectedDays.length === 0) {
-      showFeedback('Selecione pelo menos um dia da semana para trabalho semanal.', 'warn');
+      showFeedback('Selecione pelo menos um dia da semana para o trabalho de rotina.', 'warn');
       return;
     }
     newWork.days = selectedDays;
@@ -666,7 +666,7 @@ function updateMissionForm(missionType) {
 
   // Mostrar o container apropriado
   switch (missionType) {
-    case 'semanal':
+    case 'rotina':
       daysContainer.style.display = 'block';
       break;
     case 'eventual':
@@ -695,7 +695,7 @@ function updateWorkForm(workType) {
   deadlineContainer.style.display = 'none';
 
   switch (workType) {
-    case 'semanal':
+    case 'rotina':
       daysContainer.style.display = 'block';
       break;
     case 'eventual':
@@ -718,10 +718,10 @@ function completeMission(missionId, feedbackText = '') {
 
   const mission = appData.missions[missionIndex];
   const todayStr = getLocalDateString();
-  const isWeekly = mission.type === 'semanal';
+  const isRoutine = isRoutineType(mission.type);
 
   // Marcar como concluída (sem remover itens semanais da lista)
-  if (!isWeekly) {
+  if (!isRoutine) {
     mission.completed = true;
     mission.completedDate = todayStr;
   }
@@ -745,13 +745,8 @@ function completeMission(missionId, feedbackText = '') {
   });
 
   // 2. SEGUNDO: Remover da lista de missões ativas (IMEDIATAMENTE)
-  if (!isWeekly) {
+  if (!isRoutine) {
     appData.missions.splice(missionIndex, 1);
-  }
-
-  // 3. Se for missão diária, recriar para amanhã
-  if (mission.type === 'diaria') {
-    recreateDailyMissionForTomorrow(mission);
   }
 
   // 4. Aplicar recompensas
@@ -791,7 +786,9 @@ function completeMission(missionId, feedbackText = '') {
   updateUI({ mode: 'activity' });
 
   // 6. Mostrar feedback visual
-  const missionDoneMessage = `Missão "${mission.name}" concluída! ${mission.type === 'diaria' ? 'Ela reaparecerá amanhã.' : ''}`;
+  const missionDoneMessage = `Missão "${mission.name}" concluída! ${
+    isRoutine ? 'Ela reaparecerá conforme os dias marcados.' : ''
+  }`;
   celebrateAction({
     containerSelector: '#daily-missions',
     xp: xpGained,
@@ -807,9 +804,9 @@ function completeWork(workId, feedbackText = '') {
 
   const work = appData.works[workIndex];
   const todayStr = getLocalDateString();
-  const isWeekly = work.type === 'semanal';
+  const isRoutine = isRoutineType(work.type);
 
-  if (!isWeekly) {
+  if (!isRoutine) {
     work.completed = true;
     work.completedDate = todayStr;
   }
@@ -829,12 +826,8 @@ function completeWork(workId, feedbackText = '') {
     completed: true,
     completedDate: todayStr,
   });
-  if (!isWeekly) {
+  if (!isRoutine) {
     appData.works.splice(workIndex, 1);
-  }
-
-  if (work.type === 'diaria') {
-    recreateDailyWorkForTomorrow(work);
   }
 
   let xpGained = 1;
@@ -873,99 +866,14 @@ function completeWork(workId, feedbackText = '') {
     containerSelector: '#daily-works',
     xp: xpGained,
     coins: coinsGained,
-    message: `Trabalho "${work.name}" concluído! ${work.type === 'diaria' ? 'Ele reaparecerá amanhã.' : ''}`,
+    message: `Trabalho "${work.name}" concluído! ${
+      isRoutine ? 'Ele reaparecerá conforme os dias marcados.' : ''
+    }`,
   });
   saveToLocalStorage();
 }
 
-// Recriar missão diária para o próximo dia (VERSÃO CORRIGIDA)
-function recreateDailyMissionForTomorrow(originalMission) {
-  const tomorrow = getGameNow();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = getLocalDateString(tomorrow);
-
-  // Criar nova missão com os mesmos dados, mas com data DE AMANHÃ
-  const newMission = {
-    id: createUniqueId(appData.missions, appData.completedMissions),
-    originalId: originalMission.originalId || originalMission.id,
-    name: originalMission.name,
-    emoji: originalMission.emoji || '🎯',
-    type: 'diaria',
-    attributes: [...originalMission.attributes],
-    completed: false,
-    dateAdded: tomorrowStr,
-    availableDate: tomorrowStr,
-  };
-
-  // Adicionar à lista de missões
-  appData.missions.push(newMission);
-
-  console.log(
-    `Missão diária "${originalMission.name}" recriada para ${tomorrowStr} (disponível amanhã)`
-  );
-}
-
-// Recriar missão semanal para o próximo dia agendado da semana
-function recreateWeeklyMissionForNextWeek(originalMission) {
-  if (!originalMission.days || originalMission.days.length === 0) {
-    console.log(
-      `Missão semanal "${originalMission.name}" não tem dias agendados, não será recriada`
-    );
-    return;
-  }
-
-  const today = getGameNow();
-  const currentDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, etc.
-
-  // Encontrar o próximo dia agendado
-  let nextDay = null;
-  for (let i = 0; i < 7; i++) {
-    const checkDay = (currentDayOfWeek + i + 1) % 7;
-    if (originalMission.days.includes(checkDay)) {
-      nextDay = checkDay;
-      break;
-    }
-  }
-
-  if (nextDay === null) {
-    console.log(`Missão semanal "${originalMission.name}" não tem próximo dia agendado`);
-    return;
-  }
-
-  // Calcular a data do próximo dia agendado
-  const nextDate = new Date(today);
-  const daysUntilNext = (nextDay - currentDayOfWeek + 7) % 7;
-  if (daysUntilNext === 0) {
-    nextDate.setDate(nextDate.getDate() + 7); // Se é hoje, vai para próxima semana
-  } else {
-    nextDate.setDate(nextDate.getDate() + daysUntilNext);
-  }
-  const nextDateStr = getLocalDateString(nextDate);
-
-  // Criar nova missão semanal para o próximo dia
-  const newMission = {
-    id: createUniqueId(appData.missions, appData.completedMissions),
-    originalId: originalMission.originalId || originalMission.id,
-    name: originalMission.name,
-    emoji: originalMission.emoji || '🎯',
-    type: 'semanal',
-    attributes: [...originalMission.attributes],
-    days: [...originalMission.days],
-    completed: false,
-    dateAdded: nextDateStr,
-    availableDate: nextDateStr,
-    lastShownWeek: getWeekKey(nextDate),
-  };
-
-  // Adicionar à lista de missões
-  appData.missions.push(newMission);
-
-  console.log(
-    `Missão semanal "${originalMission.name}" recriada para ${nextDateStr} (dia ${nextDay})`
-  );
-}
-
-// Recriar missões diárias para o dia atual (VERSÃO CORRIGIDA)
+// Recriar rotinas para o dia atual
 function recreateDailyMissionsForToday() {
   const today = getGameNow();
   const todayStr = getLocalDateString();
@@ -973,24 +881,21 @@ function recreateDailyMissionsForToday() {
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
 
-  // Encontrar missões diárias de ontem (concluídas, falhadas ou puladas), 1 por linhagem
-  const yesterdayDailyMissionsByLineage = new Map();
+  const yesterdayRoutineMissionsByLineage = new Map();
   appData.completedMissions.forEach((mission) => {
-    if (mission.type !== 'diaria') return;
+    if (!isRoutineType(mission.type)) return;
     const missionDate = mission.completedDate || mission.failedDate || mission.skippedDate;
     if (missionDate !== yesterdayStr) return;
     const lineageKey = String(mission.originalId || mission.id);
-    if (!yesterdayDailyMissionsByLineage.has(lineageKey)) {
-      yesterdayDailyMissionsByLineage.set(lineageKey, mission);
+    if (!yesterdayRoutineMissionsByLineage.has(lineageKey)) {
+      yesterdayRoutineMissionsByLineage.set(lineageKey, mission);
     }
   });
 
-  // Recriar cada missão diária de ontem para hoje
-  yesterdayDailyMissionsByLineage.forEach((originalMission, lineageKey) => {
-    // Verificar se já existe uma missão igual disponível HOJE
+  yesterdayRoutineMissionsByLineage.forEach((originalMission, lineageKey) => {
     const alreadyExists = appData.missions.some(
       (mission) =>
-        mission.type === 'diaria' &&
+        isRoutineType(mission.type) &&
         String(mission.originalId || mission.id) === lineageKey &&
         mission.dateAdded === todayStr
     );
@@ -1001,20 +906,20 @@ function recreateDailyMissionsForToday() {
         originalId: originalMission.originalId || originalMission.id,
         name: originalMission.name,
         emoji: originalMission.emoji || '🎯',
-        type: 'diaria',
+        type: 'rotina',
         attributes: [...originalMission.attributes],
+        days: getRoutineDays(originalMission),
         completed: false,
         dateAdded: todayStr,
-        availableDate: todayStr, // Disponível HOJE
       };
 
       appData.missions.push(newMission);
-      console.log(`Missão diária "${originalMission.name}" recriada para HOJE (${todayStr})`);
+      console.log(`Rotina "${originalMission.name}" recriada para hoje (${todayStr})`);
     }
   });
 }
 
-// Limpar missões diárias antigas que não foram completadas
+// Limpar rotinas antigas que não foram completadas
 function cleanupOldDailyMissions() {
   const today = getGameNow();
   const todayStr = getLocalDateString();
@@ -1022,13 +927,11 @@ function cleanupOldDailyMissions() {
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
 
-  // Remover missões diárias com dateAdded de ontem ou anterior que não foram concluídas
-  // (isso limpa missões que o usuário pulou)
   const missionsToRemove = [];
 
   appData.missions.forEach((mission, index) => {
     if (
-      mission.type === 'diaria' &&
+      isRoutineType(mission.type) &&
       !mission.completed &&
       !mission.failed &&
       mission.dateAdded &&
@@ -1050,9 +953,7 @@ function cleanupOldDailyMissions() {
           reason: 'Não concluída no dia',
         });
       }
-      console.log(
-        `Removendo missão diária antiga: ${mission.name} (adicionada em ${mission.dateAdded})`
-      );
+      console.log(`Removendo rotina antiga: ${mission.name} (adicionada em ${mission.dateAdded})`);
       missionsToRemove.push(index);
     }
   });
@@ -1063,90 +964,8 @@ function cleanupOldDailyMissions() {
   });
 
   if (missionsToRemove.length > 0) {
-    console.log(`Removidas ${missionsToRemove.length} missões diárias antigas`);
+    console.log(`Removidas ${missionsToRemove.length} rotinas antigas de missões`);
   }
-}
-
-function recreateDailyWorkForTomorrow(originalWork) {
-  const tomorrow = getGameNow();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = getLocalDateString(tomorrow);
-
-  const newWork = {
-    id: createUniqueId(appData.works, appData.completedWorks),
-    originalId: originalWork.originalId || originalWork.id,
-    name: originalWork.name,
-    emoji: originalWork.emoji || '💼',
-    type: 'diaria',
-    attributes: [...originalWork.attributes],
-    classId: originalWork.classId || null,
-    completed: false,
-    dateAdded: tomorrowStr,
-    availableDate: tomorrowStr,
-  };
-
-  appData.works.push(newWork);
-}
-
-// Recriar trabalho semanal para o próximo dia agendado da semana
-function recreateWeeklyWorkForNextWeek(originalWork) {
-  if (!originalWork.days || originalWork.days.length === 0) {
-    console.log(
-      `Trabalho semanal "${originalWork.name}" não tem dias agendados, não será recriado`
-    );
-    return;
-  }
-
-  const today = getGameNow();
-  const currentDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, etc.
-
-  // Encontrar o próximo dia agendado
-  let nextDay = null;
-  for (let i = 0; i < 7; i++) {
-    const checkDay = (currentDayOfWeek + i + 1) % 7;
-    if (originalWork.days.includes(checkDay)) {
-      nextDay = checkDay;
-      break;
-    }
-  }
-
-  if (nextDay === null) {
-    console.log(`Trabalho semanal "${originalWork.name}" não tem próximo dia agendado`);
-    return;
-  }
-
-  // Calcular a data do próximo dia agendado
-  const nextDate = new Date(today);
-  const daysUntilNext = (nextDay - currentDayOfWeek + 7) % 7;
-  if (daysUntilNext === 0) {
-    nextDate.setDate(nextDate.getDate() + 7); // Se é hoje, vai para próxima semana
-  } else {
-    nextDate.setDate(nextDate.getDate() + daysUntilNext);
-  }
-  const nextDateStr = getLocalDateString(nextDate);
-
-  // Criar novo trabalho semanal para o próximo dia
-  const newWork = {
-    id: createUniqueId(appData.works, appData.completedWorks),
-    originalId: originalWork.originalId || originalWork.id,
-    name: originalWork.name,
-    emoji: originalWork.emoji || '💼',
-    type: 'semanal',
-    attributes: [...originalWork.attributes],
-    days: [...originalWork.days],
-    classId: originalWork.classId || null,
-    completed: false,
-    dateAdded: nextDateStr,
-    availableDate: nextDateStr,
-    lastShownWeek: getWeekKey(nextDate),
-  };
-
-  // Adicionar à lista de trabalhos
-  appData.works.push(newWork);
-
-  console.log(
-    `Trabalho semanal "${originalWork.name}" recriado para ${nextDateStr} (dia ${nextDay})`
-  );
 }
 
 function recreateDailyWorksForToday() {
@@ -1156,21 +975,21 @@ function recreateDailyWorksForToday() {
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
 
-  const yesterdayDailyWorksByLineage = new Map();
+  const yesterdayRoutineWorksByLineage = new Map();
   appData.completedWorks.forEach((work) => {
-    if (work.type !== 'diaria') return;
+    if (!isRoutineType(work.type)) return;
     const workDate = work.completedDate || work.failedDate || work.skippedDate;
     if (workDate !== yesterdayStr) return;
     const lineageKey = String(work.originalId || work.id);
-    if (!yesterdayDailyWorksByLineage.has(lineageKey)) {
-      yesterdayDailyWorksByLineage.set(lineageKey, work);
+    if (!yesterdayRoutineWorksByLineage.has(lineageKey)) {
+      yesterdayRoutineWorksByLineage.set(lineageKey, work);
     }
   });
 
-  yesterdayDailyWorksByLineage.forEach((originalWork, lineageKey) => {
+  yesterdayRoutineWorksByLineage.forEach((originalWork, lineageKey) => {
     const alreadyExists = appData.works.some(
       (work) =>
-        work.type === 'diaria' &&
+        isRoutineType(work.type) &&
         String(work.originalId || work.id) === lineageKey &&
         work.dateAdded === todayStr
     );
@@ -1181,12 +1000,12 @@ function recreateDailyWorksForToday() {
         originalId: originalWork.originalId || originalWork.id,
         name: originalWork.name,
         emoji: originalWork.emoji || '💼',
-        type: 'diaria',
+        type: 'rotina',
         attributes: [...originalWork.attributes],
+        days: getRoutineDays(originalWork),
         classId: originalWork.classId || null,
         completed: false,
         dateAdded: todayStr,
-        availableDate: todayStr,
       });
     }
   });
@@ -1198,7 +1017,7 @@ function cleanupOldDailyWorks() {
 
   appData.works.forEach((work, index) => {
     if (
-      work.type === 'diaria' &&
+      isRoutineType(work.type) &&
       !work.completed &&
       !work.failed &&
       work.dateAdded &&
@@ -1245,7 +1064,6 @@ function ensureProductiveDaySnapshot(data = {}) {
     xpWorkout: Number(data.xpWorkout || 0),
     xpStudy: Number(data.xpStudy || 0),
     xpBook: Number(data.xpBook || 0),
-    xpDiary: Number(data.xpDiary || 0),
     totalXP: Number(data.totalXP || 0),
   };
 }
@@ -1266,7 +1084,14 @@ function ensureProductiveDayEntry(dateKey = getLocalDateString()) {
 }
 
 // Atualizar dia produtivo
-function updateProductiveDay(workouts = 0, missions = 0, studies = 0, xp = 0, works = 0, options = {}) {
+function updateProductiveDay(
+  workouts = 0,
+  missions = 0,
+  studies = 0,
+  xp = 0,
+  works = 0,
+  options = {}
+) {
   const productiveDay = ensureProductiveDayEntry(options.date || getLocalDateString());
 
   productiveDay.workouts += Number(workouts || 0);
@@ -1282,7 +1107,6 @@ function updateProductiveDay(workouts = 0, missions = 0, studies = 0, xp = 0, wo
   productiveDay.xpWorkout += Number(options.xpWorkout || 0);
   productiveDay.xpStudy += Number(options.xpStudy || 0);
   productiveDay.xpBook += Number(options.xpBook || 0);
-  productiveDay.xpDiary += Number(options.xpDiary || 0);
   productiveDay.totalXP += Number(xp || 0);
 }
 
@@ -1301,7 +1125,6 @@ function rebuildProductiveDaysFromHistory() {
       xpWorkout: data?.xpWorkout || 0,
       xpStudy: data?.xpStudy || 0,
       xpBook: data?.xpBook || 0,
-      xpDiary: data?.xpDiary || 0,
     });
   });
 
@@ -1323,7 +1146,6 @@ function rebuildProductiveDaysFromHistory() {
     day.xpWorkout += Number(counts.xpWorkout || 0);
     day.xpStudy += Number(counts.xpStudy || 0);
     day.xpBook += Number(counts.xpBook || 0);
-    day.xpDiary += Number(counts.xpDiary || 0);
     rebuilt[dateKey] = day;
   };
 
@@ -1338,7 +1160,9 @@ function rebuildProductiveDaysFromHistory() {
   (appData.completedWorks || []).forEach((entry) => {
     registerEntry(
       entry,
-      entry.failed || entry.skipped ? { worksMissed: 1 } : { works: 1, xpWork: entry.type === 'epica' ? 20 : 1 }
+      entry.failed || entry.skipped
+        ? { worksMissed: 1 }
+        : { works: 1, xpWork: entry.type === 'epica' ? 20 : 1 }
     );
   });
   (appData.completedWorkouts || []).forEach((entry) => {
@@ -1359,15 +1183,6 @@ function rebuildProductiveDaysFromHistory() {
     if (!book?.completed || !book?.dateCompleted) return;
     registerEntry(book, { xpBook: 20 });
   });
-  const diaryEntries = diaryDbAvailable ? diaryCache || [] : appData.diaryEntries || [];
-  (diaryEntries || []).forEach((entry) => {
-    if (!entry?.date) return;
-    registerEntry(
-      { completedDate: getLocalDateString(new Date(entry.date)) },
-      { xpDiary: Number(entry.xpGained || 0) }
-    );
-  });
-
   appData.statistics.productiveDays = rebuilt;
 }
 
@@ -1630,12 +1445,8 @@ Object.assign(globalThis, {
   updateWorkForm,
   completeMission,
   completeWork,
-  recreateDailyMissionForTomorrow,
-  recreateWeeklyMissionForNextWeek,
   recreateDailyMissionsForToday,
   cleanupOldDailyMissions,
-  recreateDailyWorkForTomorrow,
-  recreateWeeklyWorkForNextWeek,
   recreateDailyWorksForToday,
   cleanupOldDailyWorks,
   ensureProductiveDayEntry,

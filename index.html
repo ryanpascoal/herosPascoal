@@ -81,10 +81,6 @@
             <i class="fas fa-chart-bar"></i>
             <span>Estatísticas</span>
           </li>
-          <li class="nav-item" data-tab="diario" data-mobile="extra">
-            <i class="fas fa-book"></i>
-            <span>Diário</span>
-          </li>
           <li class="nav-item nav-more" id="nav-more-toggle">
             <i class="fas fa-ellipsis-h"></i>
             <span>Mais</span>
@@ -104,9 +100,6 @@
         </button>
         <button class="mobile-more-item" data-tab="estatisticas">
           <i class="fas fa-chart-bar"></i> Estatísticas
-        </button>
-        <button class="mobile-more-item" data-tab="diario">
-          <i class="fas fa-book"></i> Diário
         </button>
       </div>
 
@@ -391,16 +384,18 @@
                   <div class="form-group">
                     <label for="mission-type">Tipo de Missão</label>
                     <select id="mission-type" required>
-                      <option value="diaria">Diária</option>
-                      <option value="semanal">Semanal</option>
+                      <option value="rotina">Rotina</option>
                       <option value="eventual">Eventual</option>
                       <option value="epica">Épica</option>
                     </select>
                   </div>
 
                   <div class="form-group" id="mission-days-container" style="display: none">
-                    <label>Dias da Semana (para missões semanais)</label>
+                    <label>Dias da Semana (para missões de rotina)</label>
                     <div class="days-selector">
+                      <label class="day-checkbox"
+                        ><input type="checkbox" data-select-all="true" /> Todos</label
+                      >
                       <label class="day-checkbox"><input type="checkbox" value="0" /> Dom</label>
                       <label class="day-checkbox"><input type="checkbox" value="1" /> Seg</label>
                       <label class="day-checkbox"><input type="checkbox" value="2" /> Ter</label>
@@ -482,7 +477,7 @@
                     <input
                       type="text"
                       id="work-name"
-                      placeholder="Ex: Relatório semanal"
+                      placeholder="Ex: Relatório de rotina"
                       required
                     />
                   </div>
@@ -495,16 +490,18 @@
                   <div class="form-group">
                     <label for="work-type">Tipo de Trabalho</label>
                     <select id="work-type" required>
-                      <option value="diaria">Diária</option>
-                      <option value="semanal">Semanal</option>
+                      <option value="rotina">Rotina</option>
                       <option value="eventual">Eventual</option>
                       <option value="epica">Épica</option>
                     </select>
                   </div>
 
                   <div class="form-group" id="work-days-container" style="display: none">
-                    <label>Dias da Semana (para trabalhos semanais)</label>
+                    <label>Dias da Semana (para trabalhos de rotina)</label>
                     <div class="days-selector">
+                      <label class="day-checkbox"
+                        ><input type="checkbox" data-select-all="true" /> Todos</label
+                      >
                       <label class="day-checkbox"><input type="checkbox" value="0" /> Dom</label>
                       <label class="day-checkbox"><input type="checkbox" value="1" /> Seg</label>
                       <label class="day-checkbox"><input type="checkbox" value="2" /> Ter</label>
@@ -819,6 +816,34 @@
             <h2><i class="fas fa-calendar-alt"></i> Calendários</h2>
           </div>
           <div class="calendar-panel">
+            <div class="calendar-today-panel">
+              <div class="calendar-today-header">
+                <div>
+                  <h3 id="cal-today-title">Hoje</h3>
+                  <p id="cal-today-subtitle">Seu painel principal do dia.</p>
+                </div>
+                <button class="calendar-rest-btn" id="cal-go-today" type="button">
+                  Ir para hoje
+                </button>
+              </div>
+              <div class="calendar-today-summary" id="cal-today-summary">
+                <div class="calendar-today-stat">
+                  <span class="label">Pendentes</span>
+                  <strong id="cal-today-pending-count">0</strong>
+                </div>
+                <div class="calendar-today-stat">
+                  <span class="label">Concluídas</span>
+                  <strong id="cal-today-done-count">0</strong>
+                </div>
+                <div class="calendar-today-stat">
+                  <span class="label">Falhas/Pulos</span>
+                  <strong id="cal-today-failed-count">0</strong>
+                </div>
+              </div>
+              <div class="calendar-today-list" id="cal-today-list">
+                <p class="empty-message">Nenhuma atividade para hoje.</p>
+              </div>
+            </div>
             <div class="calendar-header">
               <button class="calendar-nav-btn" id="cal-prev-month">
                 <i class="fas fa-chevron-left"></i>
@@ -863,8 +888,7 @@
                 <label for="cal-details-filter">Filtrar por tipo:</label>
                 <select id="cal-details-filter">
                   <option value="all">Todos</option>
-                  <option value="daily">Missões diárias</option>
-                  <option value="weekly">Missões semanais</option>
+                  <option value="routine">Rotinas</option>
                   <option value="eventual">Missões eventuais</option>
                   <option value="epic">Missões épicas</option>
                   <option value="workout">Treinos</option>
@@ -1677,76 +1701,6 @@
                   </thead>
                   <tbody id="nutrition-meal-breakdown-body"></tbody>
                 </table>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Aba Diário -->
-        <section id="diario" class="tab-content">
-          <div class="page-header">
-            <h2><i class="fas fa-book"></i> Diário Pessoal</h2>
-            <div class="time-display">Data: <span id="diary-date"></span></div>
-          </div>
-
-          <div class="diary-tabs">
-            <div class="sub-nav">
-              <button class="sub-nav-btn active" data-subtab="escrever-diario">Escrever</button>
-              <button class="sub-nav-btn" data-subtab="ler-diario">Ler Diário</button>
-            </div>
-
-            <div class="sub-content">
-              <!-- Escrever Diário -->
-              <div id="escrever-diario" class="sub-tab active">
-                <div class="form-container">
-                  <div class="form-group">
-                    <label for="diary-title">Título</label>
-                    <input type="text" id="diary-title" placeholder="Título do seu relato" />
-                  </div>
-
-                  <div class="form-group">
-                    <label for="diary-content">Conteúdo</label>
-                    <textarea
-                      id="diary-content"
-                      rows="10"
-                      placeholder="Escreva sobre seu dia, conquistas, sentimentos..."
-                    ></textarea>
-                  </div>
-
-                  <div class="form-group">
-                    <label>Recompensa do Diário</label>
-                    <p class="empty-message">
-                      Escrever no diário concede +1 Conhecimento e +1 Inteligência, no máximo 1 vez
-                      por dia.
-                    </p>
-                  </div>
-
-                  <button class="submit-btn" id="save-diary">Salvar Entrada no Diário</button>
-                </div>
-              </div>
-
-              <!-- Ler Diário -->
-              <div id="ler-diario" class="sub-tab">
-                <div class="diary-filter">
-                  <input type="text" id="diary-search" placeholder="Buscar no diário..." />
-                  <select id="diary-filter-month">
-                    <option value="">Todos os meses</option>
-                    <!-- Meses serão adicionados via JavaScript -->
-                  </select>
-                  <input type="date" id="diary-filter-date" />
-                  <select id="diary-filter-attribute">
-                    <option value="">Todos os atributos</option>
-                  </select>
-                  <select id="diary-filter-xp">
-                    <option value="all">Com e sem XP</option>
-                    <option value="with">Somente com XP</option>
-                    <option value="without">Somente sem XP</option>
-                  </select>
-                </div>
-
-                <div class="diary-entries" id="diary-entries-list">
-                  <!-- Entradas do diário serão adicionadas via JavaScript -->
-                </div>
               </div>
             </div>
           </div>

@@ -1,139 +1,3 @@
-﻿function updateDiary() {
-  updateDiaryEntries();
-}
-
-// Atualizar entradas do diário
-function updateDiaryEntries() {
-  const container = document.getElementById('diary-entries-list');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  if (!diaryLoaded) {
-    container.innerHTML = '<p class="empty-message">Carregando diário...</p>';
-    return;
-  }
-
-  const entries = diaryDbAvailable ? diaryCache : appData.diaryEntries || [];
-  updateDiaryFilterOptions(entries);
-
-  if (entries.length === 0) {
-    container.innerHTML = '<p class="empty-message">Nenhuma entrada no diário ainda.</p>';
-    return;
-  }
-
-  const searchFilter = (document.getElementById('diary-search')?.value || '').trim().toLowerCase();
-  const monthFilter = document.getElementById('diary-filter-month')?.value || '';
-  const dateFilter = document.getElementById('diary-filter-date')?.value || '';
-  const attributeFilter = document.getElementById('diary-filter-attribute')?.value || '';
-  const xpFilter = document.getElementById('diary-filter-xp')?.value || 'all';
-
-  const sortedEntries = [...entries].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const filteredEntries = sortedEntries.filter((entry) => {
-    const entryDate = new Date(entry.date);
-    const entryDateString = getLocalDateString(entryDate);
-    const entryMonth = entryDateString.slice(0, 7);
-
-    if (monthFilter && entryMonth !== monthFilter) return false;
-    if (dateFilter && entryDateString !== dateFilter) return false;
-
-    const entryAttributes = Array.isArray(entry.attributes)
-      ? entry.attributes.map((id) => String(id))
-      : [];
-    if (attributeFilter && !entryAttributes.includes(String(attributeFilter))) return false;
-
-    const xpGained = Number(entry.xpGained) || 0;
-    if (xpFilter === 'with' && xpGained <= 0) return false;
-    if (xpFilter === 'without' && xpGained > 0) return false;
-
-    if (searchFilter) {
-      const attributesText = entryAttributes
-        .map(
-          (attrId) => appData.attributes.find((a) => String(a.id) === String(attrId))?.name || ''
-        )
-        .join(' ')
-        .toLowerCase();
-      const fullText =
-        `${entry.title || ''} ${entry.content || ''} ${attributesText}`.toLowerCase();
-      if (!fullText.includes(searchFilter)) return false;
-    }
-
-    return true;
-  });
-
-  if (filteredEntries.length === 0) {
-    container.innerHTML =
-      '<p class="empty-message">Nenhuma entrada encontrada para os filtros selecionados.</p>';
-    return;
-  }
-
-  filteredEntries.forEach((entry) => {
-    const entryElement = document.createElement('div');
-    entryElement.className = 'diary-entry';
-
-    // Usar localDate se disponível, caso contrário calcular a partir da data ISO
-    let formattedDate;
-    if (entry.localDate) {
-      formattedDate = entry.localDate;
-    } else {
-      const date = new Date(entry.date);
-      formattedDate = date.toLocaleString('pt-BR', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZoneName: 'short',
-      });
-    }
-
-    const attributesText =
-      entry.attributes && entry.attributes.length > 0
-        ? entry.attributes
-            .map((attrId) => {
-              const attr = appData.attributes.find((a) => a.id === attrId);
-              return attr ? `${attr.emoji} ${escapeHtml(attr.name)}` : '';
-            })
-            .filter((text) => text)
-            .join(', ')
-        : 'Nenhum atributo selecionado';
-
-    const safeTitle = escapeHtml(entry.title || 'Sem título');
-    const safeContent = escapeHtml(entry.content || '');
-    entryElement.innerHTML = `
-            <div class="diary-entry-header">
-                <div class="diary-entry-title">${safeTitle}</div>
-                <div class="diary-entry-date">${formattedDate}</div>
-            </div>
-            <div class="diary-entry-content">${safeContent}</div>
-            <div class="diary-entry-attributes">
-                <strong>Atributos:</strong> ${attributesText}
-            </div>
-            ${entry.xpGained ? `<div class="diary-entry-xp">XP ganho: ${entry.xpGained}</div>` : ''}
-            <div class="diary-entry-actions">
-                <button class="diary-action-btn edit" data-action="edit" data-id="${escapeHtml(String(entry.id))}">Editar</button>
-                <button class="diary-action-btn delete" data-action="delete" data-id="${escapeHtml(String(entry.id))}">Excluir</button>
-            </div>
-        `;
-
-    container.appendChild(entryElement);
-  });
-
-  container.querySelectorAll('.diary-action-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const action = btn.getAttribute('data-action');
-      const entryId = btn.getAttribute('data-id');
-      if (!entryId || !action) return;
-      if (action === 'edit') {
-        await editDiaryEntry(entryId);
-      } else if (action === 'delete') {
-        await deleteDiaryEntry(entryId);
-      }
-    });
-  });
-}
-
 function updateFinanceSummary() {
   const incomeEl = document.getElementById('finance-income');
   const expenseEl = document.getElementById('finance-expense');
@@ -268,88 +132,6 @@ function applyRecurringFinanceEntries() {
       monthKey = getMonthKey(getLocalDateString(next));
     }
   });
-}
-
-function updateDiaryFilterOptions(entriesSource) {
-  const entries = Array.isArray(entriesSource) ? entriesSource : [];
-  const monthSelect = document.getElementById('diary-filter-month');
-  const attributeSelect = document.getElementById('diary-filter-attribute');
-  if (monthSelect) {
-    const previousMonth = monthSelect.value || '';
-    const months = Array.from(
-      new Set(
-        entries
-          .map((entry) => getLocalDateString(parseLocalDateString(entry.date)).slice(0, 7))
-          .filter((month) => /^\d{4}-\d{2}$/.test(month))
-      )
-    ).sort((a, b) => b.localeCompare(a));
-    monthSelect.innerHTML =
-      '<option value="">Todos os meses</option>' +
-      months.map((month) => `<option value="${month}">${month}</option>`).join('');
-    monthSelect.value = months.includes(previousMonth) ? previousMonth : '';
-  }
-  if (attributeSelect) {
-    const previousAttribute = attributeSelect.value || '';
-    const options = appData.attributes
-      .slice()
-      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR'))
-      .map((attr) => `<option value="${attr.id}">${attr.emoji} ${escapeHtml(attr.name)}</option>`)
-      .join('');
-    attributeSelect.innerHTML = '<option value="">Todos os atributos</option>' + options;
-    const isValidValue = appData.attributes.some(
-      (attr) => String(attr.id) === String(previousAttribute)
-    );
-    attributeSelect.value = isValidValue ? previousAttribute : '';
-  }
-}
-
-async function editDiaryEntry(entryId) {
-  const entries = diaryDbAvailable ? diaryCache || [] : appData.diaryEntries || [];
-  const entry = entries.find((item) => String(item?.id) === String(entryId));
-  if (!entry) return;
-
-  const titleInput = await askInput('Editar título da entrada:', {
-    title: 'Editar diário',
-    defaultValue: entry.title || '',
-  });
-  if (titleInput === null) return;
-
-  const contentInput = await askInput('Editar conteúdo da entrada:', {
-    title: 'Editar diário',
-    defaultValue: entry.content || '',
-    confirmText: 'Salvar',
-    validate: (value) => (value.trim() ? '' : 'O conteúdo não pode ficar vazio.'),
-  });
-  if (contentInput === null) return;
-
-  const nextEntries = entries.map((item) => {
-    if (String(item?.id) !== String(entryId)) return item;
-    return {
-      ...item,
-      title: titleInput.trim() || 'Sem título',
-      content: contentInput,
-      updatedAt: new Date().toISOString(),
-    };
-  });
-
-  await replaceDiaryEntriesInStorage(nextEntries);
-  saveToLocalStorage();
-  updateDiaryEntries();
-}
-
-async function deleteDiaryEntry(entryId) {
-  const confirmed = await askConfirmation('Deseja excluir esta entrada do diário?', {
-    title: 'Excluir diário',
-    confirmText: 'Excluir',
-  });
-  if (!confirmed) return;
-  const entries = diaryDbAvailable ? diaryCache || [] : appData.diaryEntries || [];
-  const nextEntries = entries.filter((item) => String(item?.id) !== String(entryId));
-  if (nextEntries.length === entries.length) return;
-
-  await replaceDiaryEntriesInStorage(nextEntries);
-  saveToLocalStorage();
-  updateDiaryEntries();
 }
 
 function renderFinanceBudgets() {
@@ -1046,7 +828,7 @@ function createWorkoutPayload(name, emoji, type, days) {
   return {
     id: createUniqueId(appData.workouts),
     name,
-    emoji: emoji || '💪',
+    emoji: emoji || '??',
     type,
     days: days.length > 0 ? days : [1, 2, 3, 4, 5],
     xp: 0,
@@ -1067,7 +849,7 @@ function createStudyPayload(name, emoji, type, days) {
   return {
     id: createUniqueId(appData.studies),
     name,
-    emoji: emoji || '📚',
+    emoji: emoji || '??',
     type,
     days: days.length > 0 ? days : [1, 2, 3, 4, 5],
     xp: 0,
@@ -1158,14 +940,9 @@ function updateDailyStudies() {
 
 // __appDiaryFinanceBridge: exposes diary/finance APIs for legacy scripts during module migration
 Object.assign(globalThis, {
-  updateDiary,
-  updateDiaryEntries,
   updateFinanceSummary,
   updateFinanceView,
   applyRecurringFinanceEntries,
-  updateDiaryFilterOptions,
-  editDiaryEntry,
-  deleteDiaryEntry,
   renderFinanceBudgets,
   renderFinanceRecurringList,
   renderFinanceList,

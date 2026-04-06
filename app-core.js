@@ -1,127 +1,4 @@
-﻿function openDiaryDB() {
-  if (diaryDbPromise) return diaryDbPromise;
-  diaryDbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(DIARY_DB_NAME, DIARY_DB_VERSION);
-    request.onupgradeneeded = function (event) {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(DIARY_STORE)) {
-        const store = db.createObjectStore(DIARY_STORE, { keyPath: 'id' });
-        store.createIndex('date', 'date', { unique: false });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-  return diaryDbPromise;
-}
-
-function getAllDiaryEntriesFromDB() {
-  return openDiaryDB().then(
-    (db) =>
-      new Promise((resolve, reject) => {
-        const tx = db.transaction(DIARY_STORE, 'readonly');
-        const store = tx.objectStore(DIARY_STORE);
-        const req = store.getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => reject(req.error);
-      })
-  );
-}
-
-function saveDiaryEntryToDB(entry) {
-  return openDiaryDB().then(
-    (db) =>
-      new Promise((resolve, reject) => {
-        const tx = db.transaction(DIARY_STORE, 'readwrite');
-        const store = tx.objectStore(DIARY_STORE);
-        const req = store.put(entry);
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      })
-  );
-}
-
-function replaceDiaryEntriesInDB(entries) {
-  return openDiaryDB().then(
-    (db) =>
-      new Promise((resolve, reject) => {
-        const tx = db.transaction(DIARY_STORE, 'readwrite');
-        const store = tx.objectStore(DIARY_STORE);
-        const clearReq = store.clear();
-        clearReq.onerror = () => reject(clearReq.error);
-        clearReq.onsuccess = () => {
-          entries.forEach((entry) => store.put(entry));
-        };
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      })
-  );
-}
-
-async function refreshDiaryCache() {
-  if (!diaryDbAvailable) {
-    diaryCache = Array.isArray(appData.diaryEntries) ? appData.diaryEntries : [];
-    diaryLoaded = true;
-    return;
-  }
-  const entries = await getAllDiaryEntriesFromDB();
-  diaryCache = entries;
-  diaryLoaded = true;
-}
-
-async function migrateDiaryEntriesToDBIfNeeded() {
-  if (!diaryDbAvailable) return;
-  if (!Array.isArray(appData.diaryEntries) || appData.diaryEntries.length === 0) return;
-  const entries = appData.diaryEntries.slice();
-  appData.diaryEntries = [];
-  saveToLocalStorage();
-  await replaceDiaryEntriesInDB(entries);
-}
-
-async function initDiaryStorage() {
-  if (!('indexedDB' in window)) {
-    diaryDbAvailable = false;
-    diaryLoaded = true;
-    return;
-  }
-  try {
-    await openDiaryDB();
-    await migrateDiaryEntriesToDBIfNeeded();
-    await refreshDiaryCache();
-  } catch (e) {
-    console.warn('IndexedDB indisponível. Usando localStorage para diário.', e);
-    diaryDbAvailable = false;
-    diaryLoaded = true;
-  }
-}
-
-async function saveDiaryEntryToStorage(entry) {
-  if (!diaryDbAvailable) {
-    if (!Array.isArray(appData.diaryEntries)) appData.diaryEntries = [];
-    appData.diaryEntries.push(entry);
-    diaryCache = appData.diaryEntries;
-    diaryLoaded = true;
-    return;
-  }
-  await saveDiaryEntryToDB(entry);
-  diaryCache.push(entry);
-  diaryLoaded = true;
-}
-
-async function replaceDiaryEntriesInStorage(entries) {
-  const safeEntries = Array.isArray(entries) ? entries.slice() : [];
-  if (!diaryDbAvailable) {
-    appData.diaryEntries = safeEntries;
-    diaryCache = appData.diaryEntries;
-    diaryLoaded = true;
-    return;
-  }
-  await replaceDiaryEntriesInDB(safeEntries);
-  diaryCache = safeEntries;
-  diaryLoaded = true;
-}
-
-// Inicialização principal do aplicativo
+// InicializaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o principal do aplicativo
 function startApp() {
   if (window.__appStarted) return;
   window.__appStarted = true;
@@ -142,7 +19,7 @@ function startApp() {
   if (canRunCriticalResets) {
     checkDailyReset();
 
-    // 2. Verificar e recriar missões diárias para HOJE (coloque AQUI!)
+    // 2. Verificar e recriar missÃƒÆ’Ã‚Âµes diÃƒÆ’Ã‚Â¡rias para HOJE (coloque AQUI!)
     recreateDailyMissionsForToday();
     recreateDailyWorksForToday();
 
@@ -158,16 +35,16 @@ function startApp() {
     generateDailyActivities();
   }
 
-  // 5. Resto da inicialização...
+  // 5. Resto da inicializaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o...
   updateStreaks();
   initUI();
   initEvents();
   initHydrationUI();
-  initDiaryStorage().then(() => {
-    updateDiaryEntries();
-  });
   updateUI();
-  if (appData.hero?.pendingGameOverNotice === true && typeof globalThis.showGameOverModal === 'function') {
+  if (
+    appData.hero?.pendingGameOverNotice === true &&
+    typeof globalThis.showGameOverModal === 'function'
+  ) {
     globalThis.showGameOverModal();
   }
   updateMidnightCountdown();
@@ -181,13 +58,13 @@ function startApp() {
   }
 }
 
-// Carregar dados - agora delega para a nuvem quando disponível
+// Carregar dados - agora delega para a nuvem quando disponÃƒÆ’Ã‚Â­vel
 function loadFromLocalStorage() {
   const delegatedLoader = window.loadFromLocalStorage;
-  // Delegar para a função do cloud-sync se estiver disponível (ela é definida após autenticação)
-  // A função cloud-sync carrega os dados da nuvem quando o usuário está logado
+  // Delegar para a funÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o do cloud-sync se estiver disponÃƒÆ’Ã‚Â­vel (ela ÃƒÆ’Ã‚Â© definida apÃƒÆ’Ã‚Â³s autenticaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o)
+  // A funÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o cloud-sync carrega os dados da nuvem quando o usuÃƒÆ’Ã‚Â¡rio estÃƒÆ’Ã‚Â¡ logado
   if (typeof delegatedLoader === 'function' && delegatedLoader !== loadFromLocalStorage) {
-    // Chamar a função global (pode ser do cloud-sync ou fallback)
+    // Chamar a funÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o global (pode ser do cloud-sync ou fallback)
     delegatedLoader();
   } else {
     // Fallback: apenas para desenvolvimento offline sem Firebase
@@ -209,26 +86,35 @@ function ensureCoreAttributes() {
   if (!Array.isArray(appData.attributes)) appData.attributes = [];
   const hasRiqueza = appData.attributes.some((a) => a.id === 14);
   if (!hasRiqueza) {
-    appData.attributes.push({ id: 14, name: 'Riqueza', emoji: '💎', xp: 0, maxXp: 100, level: 0 });
+    appData.attributes.push({
+      id: 14,
+      name: 'Riqueza',
+      emoji: '\uD83D\uDC8E',
+      xp: 0,
+      maxXp: 100,
+      level: 0,
+    });
   }
 }
 
 function ensureClasses() {
   if (!Array.isArray(appData.classes)) appData.classes = [];
   if (appData.classes.length === 0) {
-    const legacyClassName = appData.hero?.class;
-    const baseName = legacyClassName || 'Classe';
-    appData.classes.push({ id: 1, name: baseName, emoji: '💼', xp: 0, maxXp: 100, level: 0 });
-  }
-  if (appData.hero && Object.prototype.hasOwnProperty.call(appData.hero, 'class')) {
-    delete appData.hero.class;
+    appData.classes.push({
+      id: 1,
+      name: 'Classe',
+      emoji: '\uD83D\uDC8E',
+      xp: 0,
+      maxXp: 100,
+      level: 0,
+    });
   }
   let nextId = 1;
   appData.classes.forEach((cls) => {
     if (!Number.isFinite(cls.id)) cls.id = nextId;
     nextId = Math.max(nextId, cls.id + 1);
     if (!cls.name) cls.name = 'Classe';
-    if (!cls.emoji) cls.emoji = '💼';
+    if (!cls.emoji) cls.emoji = '\uD83D\uDCBC';
     if (!Number.isFinite(cls.xp) || cls.xp < 0) cls.xp = 0;
     if (!Number.isFinite(cls.maxXp) || cls.maxXp <= 0) cls.maxXp = 100;
     if (!Number.isFinite(cls.level) || cls.level < 0) cls.level = 0;
@@ -335,7 +221,7 @@ function ensureCriticalDataShape() {
     appData.shopItems.push({
       id: createUniqueId(appData.shopItems),
       name: 'Pulo',
-      emoji: '⏭️',
+      emoji: '\uD83D\uDCBC',
       cost: SKIP_ACTIVITY_COST,
       level: 0,
       description: 'Permite pular 1 atividade sem penalidade',
@@ -366,16 +252,6 @@ function ensureCriticalDataShape() {
     Number(appData.statisticsGoals.works) > 0
       ? Math.floor(Number(appData.statisticsGoals.works))
       : 30;
-
-  // Migracao de metas legadas para o novo padrao solicitado.
-  if (
-    appData.statisticsGoals.missions === 14 &&
-    appData.statisticsGoals.workouts === 5 &&
-    appData.statisticsGoals.studies === 7 &&
-    appData.statisticsGoals.works === 5
-  ) {
-    appData.statisticsGoals = { missions: 60, workouts: 20, studies: 20, works: 30 };
-  }
 
   appData.financeBudgets = appData.financeBudgets
     .filter((b) => b && typeof b === 'object')
@@ -540,42 +416,8 @@ function ensureCriticalDataShape() {
 }
 
 function normalizeWeekdayValue(value) {
-  const text = String(value ?? '')
-    .trim()
-    .toLowerCase();
-  const byName = {
-    dom: 0,
-    domingo: 0,
-    seg: 1,
-    segunda: 1,
-    'segunda-feira': 1,
-    ter: 2,
-    terca: 2,
-    terça: 2,
-    'terça-feira': 2,
-    qua: 3,
-    quarta: 3,
-    'quarta-feira': 3,
-    qui: 4,
-    quinta: 4,
-    'quinta-feira': 4,
-    sex: 5,
-    sexta: 5,
-    'sexta-feira': 5,
-    sab: 6,
-    sabado: 6,
-    sábado: 6,
-  };
-  if (Object.prototype.hasOwnProperty.call(byName, text)) return byName[text];
-
-  const asNumber = Number(text);
-  if (Number.isFinite(asNumber)) {
-    if (asNumber === 7) return 0;
-    if (asNumber >= 0 && asNumber <= 6) return asNumber;
-    if (asNumber >= 1 && asNumber <= 7) return asNumber % 7;
-  }
-
-  return null;
+  const asNumber = Number(value);
+  return Number.isInteger(asNumber) && asNumber >= 0 && asNumber <= 6 ? asNumber : null;
 }
 
 function normalizeActivityDays() {
@@ -618,7 +460,7 @@ function normalizeClassIds() {
   normalizeList(appData.completedWorks);
 }
 
-// Função helper para consolidar validação de dados (elimina duplicação)
+// FunÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o helper para consolidar validaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de dados (elimina duplicaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o)
 function ensureDataIntegrity() {
   ensureCriticalDataShape();
   ensureCoreAttributes();
@@ -661,10 +503,7 @@ function recoverInvalidLivesStateOnLoad() {
   }
 
   const todayStr = getLocalDateString();
-  const maxLives = Math.max(
-    1,
-    Number.isFinite(appData.hero.maxLives) ? appData.hero.maxLives : 10
-  );
+  const maxLives = Math.max(1, Number.isFinite(appData.hero.maxLives) ? appData.hero.maxLives : 10);
 
   appData.hero.maxLives = maxLives;
   appData.hero.coins = 0;
@@ -686,7 +525,7 @@ function recoverInvalidLivesStateOnLoad() {
   addHeroLog(
     'system',
     'Game Over recuperado no carregamento',
-    'O save tinha 0 vidas. O app restaurou 3 vidas automaticamente e zerou moedas e XP, mantendo os níveis.'
+    'O save tinha 0 vidas. O app restaurou 3 vidas automaticamente e zerou moedas e XP, mantendo os nÃƒÆ’Ã‚Â­veis.'
   );
 
   return true;
@@ -715,10 +554,16 @@ function buildLocalCachePayload() {
     historyWindow: LOCAL_CACHE_HISTORY_LIMIT,
     heroLogsWindow: LOCAL_CACHE_HERO_LOG_LIMIT,
     totalCounts: {
-      completedMissions: Array.isArray(appData.completedMissions) ? appData.completedMissions.length : 0,
+      completedMissions: Array.isArray(appData.completedMissions)
+        ? appData.completedMissions.length
+        : 0,
       completedWorks: Array.isArray(appData.completedWorks) ? appData.completedWorks.length : 0,
-      completedWorkouts: Array.isArray(appData.completedWorkouts) ? appData.completedWorkouts.length : 0,
-      completedStudies: Array.isArray(appData.completedStudies) ? appData.completedStudies.length : 0,
+      completedWorkouts: Array.isArray(appData.completedWorkouts)
+        ? appData.completedWorkouts.length
+        : 0,
+      completedStudies: Array.isArray(appData.completedStudies)
+        ? appData.completedStudies.length
+        : 0,
       heroLogs: Array.isArray(appData.heroLogs) ? appData.heroLogs.length : 0,
     },
     cachedCounts: {
@@ -733,7 +578,7 @@ function buildLocalCachePayload() {
   return payload;
 }
 
-// Função para mesclar dados
+// FunÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o para mesclar dados
 function mergeData(target, source) {
   for (const key in source) {
     if (source.hasOwnProperty(key)) {
@@ -741,7 +586,7 @@ function mergeData(target, source) {
       const targetValue = target[key];
 
       if (Array.isArray(sourceValue)) {
-        // Arrays devem ser copiados (não mesclados recursivamente)
+        // Arrays devem ser copiados (nÃƒÆ’Ã‚Â£o mesclados recursivamente)
         target[key] = sourceValue.slice();
         continue;
       }
@@ -760,12 +605,12 @@ function mergeData(target, source) {
   }
 }
 
-/* saveToLocalStorage() substituída por saveManager.js */
+/* saveToLocalStorage() substituÃƒÆ’Ã‚Â­da por saveManager.js */
 
-// Verificar reset diário - usa apenas serverMeta (salvo na nuvem)
+// Verificar reset diÃƒÆ’Ã‚Â¡rio - usa apenas serverMeta (salvo na nuvem)
 function checkDailyReset() {
   const today = getLocalDateString();
-  // Agora usa apenas serverMeta.lastDailyReset (que é salvo na nuvem)
+  // Agora usa apenas serverMeta.lastDailyReset (que ÃƒÆ’Ã‚Â© salvo na nuvem)
   let lastReset = appData.serverMeta?.lastDailyReset;
   if (!Number.isFinite(appData.hero.maxLives) || appData.hero.maxLives <= 0)
     appData.hero.maxLives = 10;
@@ -807,7 +652,7 @@ function checkDailyReset() {
     appData.dailyWorkouts = [];
     appData.dailyStudies = [];
 
-    // Atualizar missões/trabalhos diários e limpar antigos
+    // Atualizar missÃƒÆ’Ã‚Âµes/trabalhos diÃƒÆ’Ã‚Â¡rios e limpar antigos
     cleanupOldDailyMissions();
     cleanupOldDailyWorks();
 
@@ -826,7 +671,7 @@ function checkDailyReset() {
     appData.serverMeta.lastDailyReset = today;
     queueSave();
     updateUI({ mode: 'activity' });
-    console.log('Reset diário aplicado');
+    console.log('Reset diÃƒÆ’Ã‚Â¡rio aplicado');
   }
 }
 
@@ -834,7 +679,7 @@ function checkDailyReset() {
 function checkWeeklyReset() {
   const today = getGameNow();
   const thisWeekKey = getWeekKey(today);
-  // Agora usa apenas serverMeta.lastWeeklyReset (que é salvo na nuvem)
+  // Agora usa apenas serverMeta.lastWeeklyReset (que ÃƒÆ’Ã‚Â© salvo na nuvem)
   let lastWeeklyReset = appData.serverMeta?.lastWeeklyReset;
 
   if (!lastWeeklyReset) {
@@ -858,7 +703,7 @@ function checkWeeklyReset() {
   }
 }
 
-// Gerar número da semana
+// Gerar nÃƒÆ’Ã‚Âºmero da semana
 function getWeekNumber(date) {
   const key = getWeekKey(date);
   if (!key) return 0;
@@ -881,7 +726,7 @@ function getWeekKey(date) {
 
 function addHeroLog(type, title, content) {
   if (!appData.heroLogs) appData.heroLogs = [];
-  // Usar data local com horário correto
+  // Usar data local com horÃƒÆ’Ã‚Â¡rio correto
   const now = new Date();
   const localDate = new Date(
     now.getFullYear(),
@@ -958,7 +803,7 @@ function getDialogModal() {
   modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="fx-dialog-title">Confirmação</h3>
+                <h3 id="fx-dialog-title">ConfirmaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o</h3>
                 <button type="button" class="close-modal" data-dialog-close>&times;</button>
             </div>
             <div class="modal-body" id="fx-dialog-body"></div>
@@ -976,7 +821,7 @@ function closeDialogModal() {
 
 function showDialog(options = {}) {
   const {
-    title = 'Confirmação',
+    title = 'ConfirmaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o',
     message = '',
     confirmText = 'Confirmar',
     cancelText = 'Cancelar',
@@ -1069,7 +914,7 @@ function showDialog(options = {}) {
 
 async function askConfirmation(message, options = {}) {
   const result = await showDialog({
-    title: options.title || 'Confirmar ação',
+    title: options.title || 'Confirmar aÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o',
     message,
     confirmText: options.confirmText || 'Confirmar',
     cancelText: options.cancelText || 'Cancelar',
@@ -1178,7 +1023,7 @@ function applyActivityPenalties(config) {
         date: dayItem.date,
         failedDate: targetDateStr,
         failed: true,
-        reason: 'Não concluído',
+        reason: 'NÃƒÆ’Ã‚Â£o concluÃƒÆ’Ã‚Â­do',
       });
     }
   });
@@ -1288,15 +1133,6 @@ function generateDailyActivities() {
 
 // __appCoreBridge: exposes core APIs for legacy scripts during module migration
 Object.assign(globalThis, {
-  openDiaryDB,
-  getAllDiaryEntriesFromDB,
-  saveDiaryEntryToDB,
-  replaceDiaryEntriesInDB,
-  refreshDiaryCache,
-  migrateDiaryEntriesToDBIfNeeded,
-  initDiaryStorage,
-  saveDiaryEntryToStorage,
-  replaceDiaryEntriesInStorage,
   startApp,
   loadFromLocalStorage,
   ensureCoreAttributes,

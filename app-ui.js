@@ -16,16 +16,11 @@
       currentDateElement?.textContent || getGameNow().toLocaleDateString('pt-BR');
   }
 
-  // Configurar a data do diário
-  const diaryDateElement = document.getElementById('diary-date');
-  if (diaryDateElement) {
-    const now = getGameNow();
-    diaryDateElement.textContent = now.toLocaleDateString('pt-BR');
-  }
-
   // Inicializar os seletores de atributos
   initAttributesSelectors();
   initClassSelectors();
+  initSelectAllDays('#mission-days-container .days-selector');
+  initSelectAllDays('#work-days-container .days-selector');
 
   // Inicializar opções do mês em Gestão
   populateFinanceMonthOptions();
@@ -53,6 +48,46 @@ function bindById(id, eventName, handler) {
 
 function bindManyById(eventName, handlersById) {
   Object.entries(handlersById).forEach(([id, handler]) => bindById(id, eventName, handler));
+}
+
+function initSelectAllDays(containerSelector) {
+  const container = document.querySelector(containerSelector);
+  if (!container) return;
+
+  const selectAll = container.querySelector('input[data-select-all="true"]');
+  const dayCheckboxes = Array.from(
+    container.querySelectorAll('input[type="checkbox"][value]:not([data-select-all])')
+  );
+  if (!selectAll || dayCheckboxes.length === 0) return;
+
+  const syncSelectAllState = () => {
+    const checkedCount = dayCheckboxes.filter((checkbox) => checkbox.checked).length;
+    selectAll.checked = checkedCount === dayCheckboxes.length;
+    selectAll.indeterminate = checkedCount > 0 && checkedCount < dayCheckboxes.length;
+  };
+
+  selectAll.addEventListener('change', function () {
+    dayCheckboxes.forEach((checkbox) => {
+      checkbox.checked = this.checked;
+    });
+    this.indeterminate = false;
+  });
+
+  dayCheckboxes.forEach((checkbox) => {
+    checkbox.addEventListener('change', syncSelectAllState);
+  });
+
+  const form = container.closest('form');
+  if (form) {
+    form.addEventListener('reset', () => {
+      requestAnimationFrame(() => {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+      });
+    });
+  }
+
+  syncSelectAllState();
 }
 
 // Inicializar eventos
@@ -124,7 +159,6 @@ function initEvents() {
     'hydration-add-btn': addHydrationGlass,
     'hydration-remove-btn': removeHydrationGlass,
     'add-book-btn': () => showBookModal(),
-    'save-diary': saveDiaryEntry,
     'save-stats-goals-btn': saveStatisticsGoals,
     'reset-foods-btn': resetNutritionFoods,
     'reset-btn': resetProgress,
@@ -153,10 +187,6 @@ function initEvents() {
     'nutrition-goals-form': handleNutritionGoalsSubmit,
   });
   bindManyById('change', {
-    'diary-filter-month': updateDiaryEntries,
-    'diary-filter-date': updateDiaryEntries,
-    'diary-filter-attribute': updateDiaryEntries,
-    'diary-filter-xp': updateDiaryEntries,
     'stats-chart-period': updateCharts,
     'workout-evolution-select': () => globalThis.updateWorkoutEvolutionChart?.(),
     'import-foods-file': handleImportFoods,
@@ -166,7 +196,6 @@ function initEvents() {
     'finance-filter-type': updateFinanceView,
   });
   bindManyById('input', {
-    'diary-search': updateDiaryEntries,
     'nutrition-entry-qty': updateNutritionEntryPreview,
     'finance-filter-category': updateFinanceView,
   });
@@ -274,6 +303,13 @@ function initEvents() {
     }
     renderMissionsCalendar();
   });
+  document.getElementById('cal-go-today')?.addEventListener('click', () => {
+    const today = getGameNow();
+    calendarState.month = today.getMonth();
+    calendarState.year = today.getFullYear();
+    calendarState.selectedDate = getLocalDateString(today);
+    renderMissionsCalendar();
+  });
   document.getElementById('cal-rest-toggle')?.addEventListener('click', () => {
     if (!calendarState.selectedDate) return;
     toggleRestDay(calendarState.selectedDate);
@@ -310,6 +346,62 @@ function initEvents() {
 
   // Botões de conclusão de treinos do dia
   document.addEventListener('click', function (e) {
+    const calendarCompleteMissionBtn = e.target.closest('.calendar-complete-mission-btn');
+    if (calendarCompleteMissionBtn) {
+      const missionId = parseInt(calendarCompleteMissionBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(missionId)) completeMission(missionId);
+      return;
+    }
+
+    const calendarSkipMissionBtn = e.target.closest('.calendar-skip-mission-btn');
+    if (calendarSkipMissionBtn) {
+      const missionId = parseInt(calendarSkipMissionBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(missionId)) skipMission(missionId);
+      return;
+    }
+
+    const calendarCompleteWorkBtn = e.target.closest('.calendar-complete-work-btn');
+    if (calendarCompleteWorkBtn) {
+      const workId = parseInt(calendarCompleteWorkBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(workId)) completeWork(workId);
+      return;
+    }
+
+    const calendarSkipWorkBtn = e.target.closest('.calendar-skip-work-btn');
+    if (calendarSkipWorkBtn) {
+      const workId = parseInt(calendarSkipWorkBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(workId)) skipWork(workId);
+      return;
+    }
+
+    const calendarCompleteWorkoutBtn = e.target.closest('.calendar-complete-workout-btn');
+    if (calendarCompleteWorkoutBtn) {
+      const workoutDayId = parseInt(calendarCompleteWorkoutBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(workoutDayId)) showWorkoutCompletionModal(workoutDayId);
+      return;
+    }
+
+    const calendarSkipWorkoutBtn = e.target.closest('.calendar-skip-workout-btn');
+    if (calendarSkipWorkoutBtn) {
+      const workoutDayId = parseInt(calendarSkipWorkoutBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(workoutDayId)) skipDailyWorkout(workoutDayId);
+      return;
+    }
+
+    const calendarCompleteStudyBtn = e.target.closest('.calendar-complete-study-btn');
+    if (calendarCompleteStudyBtn) {
+      const studyDayId = parseInt(calendarCompleteStudyBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(studyDayId)) showStudyCompletionModal(studyDayId);
+      return;
+    }
+
+    const calendarSkipStudyBtn = e.target.closest('.calendar-skip-study-btn');
+    if (calendarSkipStudyBtn) {
+      const studyDayId = parseInt(calendarSkipStudyBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(studyDayId)) skipDailyStudy(studyDayId);
+      return;
+    }
+
     const skipWorkoutBtn = e.target.closest('.skip-workout-btn');
     if (skipWorkoutBtn) {
       const workoutDayId = parseInt(skipWorkoutBtn.getAttribute('data-id'));
@@ -382,7 +474,6 @@ function updateUI(options = {}) {
 
   const shouldUpdateActivity = isFull || isActivity;
   const shouldUpdateShop = isFull || isShop;
-  const shouldUpdateDiary = isFull;
   const shouldUpdateFinance = isFull || isFinance;
   const shouldUpdateNutrition =
     (isFull || isActivity || options.forceNutrition) && isTabActive('alimentacao');
@@ -483,11 +574,6 @@ function updateUI(options = {}) {
 
     // Atualizar lista de itens da loja para gerenciamento
     updateShopItemsList();
-  }
-
-  if (shouldUpdateDiary) {
-    // Atualizar diário
-    updateDiary();
   }
 
   if (shouldUpdateCalendar) {
@@ -934,11 +1020,7 @@ function updateBooks() {
     .map((book) => normalizeBook(book))
     .filter((book) => {
       if (!query) return true;
-      const haystack = [
-        book.name || '',
-        book.author || '',
-        searchableStatus[book.status] || '',
-      ]
+      const haystack = [book.name || '', book.author || '', searchableStatus[book.status] || '']
         .join(' ')
         .toLowerCase();
       return haystack.includes(query);
@@ -1429,11 +1511,11 @@ function failMission(missionId, reason = '', options = {}) {
   // Verificar se já está falida para evitar penalidades duplicadas
   if (mission.failed) return;
 
-  const isWeekly = mission.type === 'semanal';
+  const isRoutine = isRoutineType(mission.type);
   const todayStr = getLocalDateString();
 
-  // Marcar como falhada (sem remover itens semanais da lista)
-  if (!isWeekly) {
+  // Marcar como falhada (sem remover itens de rotina da lista)
+  if (!isRoutine) {
     mission.failed = true;
     mission.failedDate = todayStr;
   }
@@ -1465,13 +1547,8 @@ function failMission(missionId, reason = '', options = {}) {
   });
 
   // Remover da lista de missões ativas
-  if (!isWeekly) {
+  if (!isRoutine) {
     appData.missions.splice(missionIndex, 1);
-  }
-
-  // Se for missão diária, recriar para amanhã (como no completeMission)
-  if (mission.type === 'diaria') {
-    recreateDailyMissionForTomorrow(mission);
   }
 
   // Atualizar UI
@@ -1530,7 +1607,7 @@ async function skipMission(missionId) {
   if (missionIndex === -1) return;
 
   const mission = appData.missions[missionIndex];
-  const isWeekly = mission.type === 'semanal';
+  const isRoutine = isRoutineType(mission.type);
   if (!(await tryConsumeSkipItem(`a missao "${mission.name}"`))) return;
 
   const todayStr = getLocalDateString();
@@ -1546,12 +1623,8 @@ async function skipMission(missionId) {
     date: todayStr,
     missionsMissed: 1,
   });
-  if (!isWeekly) {
+  if (!isRoutine) {
     appData.missions.splice(missionIndex, 1);
-  }
-
-  if (mission.type === 'diaria') {
-    recreateDailyMissionForTomorrow(mission);
   }
 
   addHeroLog(
@@ -1573,9 +1646,9 @@ function failWork(workId, reason = '', options = {}) {
   // Verificar se já está falido para evitar penalidades duplicadas
   if (work.failed) return;
 
-  const isWeekly = work.type === 'semanal';
+  const isRoutine = isRoutineType(work.type);
   const todayStr = getLocalDateString();
-  if (!isWeekly) {
+  if (!isRoutine) {
     work.failed = true;
     work.failedDate = todayStr;
   }
@@ -1603,13 +1676,8 @@ function failWork(workId, reason = '', options = {}) {
     worksMissed: 1,
   });
 
-  if (!isWeekly) {
+  if (!isRoutine) {
     appData.works.splice(workIndex, 1);
-  }
-
-  // Se for trabalho diário, recriar para amanhã (como no skipWork)
-  if (work.type === 'diaria') {
-    recreateDailyWorkForTomorrow(work);
   }
 
   updateUI({ mode: 'activity' });
@@ -1627,7 +1695,7 @@ async function skipWork(workId) {
   if (workIndex === -1) return;
 
   const work = appData.works[workIndex];
-  const isWeekly = work.type === 'semanal';
+  const isRoutine = isRoutineType(work.type);
   if (!(await tryConsumeSkipItem(`o trabalho "${work.name}"`))) return;
 
   const todayStr = getLocalDateString();
@@ -1645,12 +1713,8 @@ async function skipWork(workId) {
   });
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.worksIgnored = (appData.statistics.worksIgnored || 0) + 1;
-  if (!isWeekly) {
+  if (!isRoutine) {
     appData.works.splice(workIndex, 1);
-  }
-
-  if (work.type === 'diaria') {
-    recreateDailyWorkForTomorrow(work);
   }
 
   addHeroLog(

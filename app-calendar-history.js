@@ -1,6 +1,7 @@
 ﻿function renderMissionsCalendar() {
   const grid = document.getElementById('cal-missions-grid');
   const title = document.getElementById('cal-month-title');
+  renderCalendarTodayPanel();
   if (!grid || !title) return;
 
   const month = calendarState.month;
@@ -60,6 +61,153 @@
 
   calendarState.selectedDate = null;
   resetCalendarDetails();
+}
+
+function getCalendarStatusMeta(status) {
+  return {
+    tag:
+      status === 'failed'
+        ? 'Falhou'
+        : status === 'skipped'
+          ? 'Pulada'
+          : status === 'done'
+            ? 'Concluída'
+            : 'Pendente',
+    className:
+      status === 'failed'
+        ? 'failed'
+        : status === 'skipped'
+          ? 'skipped'
+          : status === 'done'
+            ? 'done'
+            : 'pending',
+  };
+}
+
+function renderCalendarTodayPanel() {
+  const title = document.getElementById('cal-today-title');
+  const subtitle = document.getElementById('cal-today-subtitle');
+  const list = document.getElementById('cal-today-list');
+  const pendingCountEl = document.getElementById('cal-today-pending-count');
+  const doneCountEl = document.getElementById('cal-today-done-count');
+  const failedCountEl = document.getElementById('cal-today-failed-count');
+  if (!title || !subtitle || !list) return;
+
+  const today = getGameNow();
+  const todayStr = getLocalDateString(today);
+  const items = getCalendarItemsForDate(todayStr);
+  const pendingCount = items.filter((item) => item.status === 'pending').length;
+  const doneCount = items.filter((item) => item.status === 'done').length;
+  const failedCount = items.filter(
+    (item) => item.status === 'failed' || item.status === 'skipped'
+  ).length;
+
+  title.textContent = `Hoje, ${today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
+  subtitle.textContent = today.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  if (pendingCountEl) pendingCountEl.textContent = String(pendingCount);
+  if (doneCountEl) doneCountEl.textContent = String(doneCount);
+  if (failedCountEl) failedCountEl.textContent = String(failedCount);
+
+  const statusOrder = { pending: 0, failed: 1, skipped: 2, done: 3 };
+  const sortedItems = items
+    .slice()
+    .sort(
+      (a, b) =>
+        (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99) ||
+        String(a.kindLabel).localeCompare(String(b.kindLabel), 'pt-BR') ||
+        String(a.name).localeCompare(String(b.name), 'pt-BR')
+    );
+
+  list.innerHTML = '';
+
+  if (sortedItems.length === 0) {
+    list.innerHTML = '<p class="empty-message">Nenhuma atividade para hoje.</p>';
+    return;
+  }
+
+  sortedItems.forEach((item) => {
+    const statusMeta = getCalendarStatusMeta(item.status);
+    const row = document.createElement('div');
+    row.className = `calendar-today-item ${item.status}`;
+
+    const meta = document.createElement('div');
+    meta.className = 'calendar-today-main';
+    meta.innerHTML = `
+      <div class="calendar-today-title">
+        <span>${item.emoji || '🎯'}</span>
+        <span>${item.name}</span>
+      </div>
+      <div class="calendar-today-meta">
+        <span class="calendar-tag kind ${item.kindClass}">${item.kindLabel}</span>
+        <span class="calendar-tag ${item.typeClass}">${item.typeLabel}</span>
+        <span class="calendar-tag ${statusMeta.className}">${statusMeta.tag}</span>
+      </div>
+    `;
+    row.appendChild(meta);
+
+    const actionsHtml = getCalendarTodayActionsHtml(item);
+    if (actionsHtml) {
+      const actions = document.createElement('div');
+      actions.className = 'calendar-today-actions';
+      actions.innerHTML = actionsHtml;
+      row.appendChild(actions);
+    }
+
+    list.appendChild(row);
+  });
+}
+
+function getCalendarTodayActionsHtml(item) {
+  if (item.status !== 'pending' || !Number.isFinite(Number(item.actionId))) {
+    return '';
+  }
+
+  switch (item.entryKind) {
+    case 'mission':
+      return `
+        <button type="button" class="calendar-action-btn primary calendar-complete-mission-btn" data-id="${item.actionId}">
+          Concluir
+        </button>
+        <button type="button" class="calendar-action-btn warn calendar-skip-mission-btn" data-id="${item.actionId}">
+          Pular
+        </button>
+      `;
+    case 'work':
+      return `
+        <button type="button" class="calendar-action-btn primary calendar-complete-work-btn" data-id="${item.actionId}">
+          Concluir
+        </button>
+        <button type="button" class="calendar-action-btn warn calendar-skip-work-btn" data-id="${item.actionId}">
+          Pular
+        </button>
+      `;
+    case 'workout':
+      return `
+        <button type="button" class="calendar-action-btn primary calendar-complete-workout-btn" data-id="${item.actionId}">
+          Registrar
+        </button>
+        <button type="button" class="calendar-action-btn warn calendar-skip-workout-btn" data-id="${item.actionId}">
+          Pular
+        </button>
+      `;
+    case 'study':
+      return `
+        <button type="button" class="calendar-action-btn primary calendar-complete-study-btn" data-id="${item.actionId}">
+          Registrar
+        </button>
+        <button type="button" class="calendar-action-btn warn calendar-skip-study-btn" data-id="${item.actionId}">
+          Pular
+        </button>
+      `;
+    default:
+      return '';
+  }
 }
 
 function hasFailedActivities(dateStr) {
@@ -143,8 +291,7 @@ function ensureCalendarDetailsFilterOptions() {
   const currentValue = calendarState.detailsFilter || 'all';
   const baseOptions = [
     { value: 'all', label: 'Todos' },
-    { value: 'daily', label: 'Missões diárias' },
-    { value: 'weekly', label: 'Missões semanais' },
+    { value: 'routine', label: 'Rotinas' },
     { value: 'eventual', label: 'Missões eventuais' },
     { value: 'epic', label: 'Missões épicas' },
     { value: 'workout', label: 'Treinos' },
@@ -222,22 +369,7 @@ function renderCalendarDetails(dateStr) {
     const isPending = item.status === 'pending';
     row.className = `calendar-details-item ${isPending ? 'pending' : 'completed'}`;
 
-    const statusTag =
-      item.status === 'failed'
-        ? 'Falhou'
-        : item.status === 'skipped'
-          ? 'Pulada'
-          : item.status === 'done'
-            ? 'Concluida'
-            : 'Pendente';
-    const statusClass =
-      item.status === 'failed'
-        ? 'failed'
-        : item.status === 'skipped'
-          ? 'skipped'
-          : item.status === 'done'
-            ? 'done'
-            : 'pending';
+    const statusMeta = getCalendarStatusMeta(item.status);
 
     row.innerHTML = `
             <div class="calendar-details-title">
@@ -247,7 +379,7 @@ function renderCalendarDetails(dateStr) {
             <div class="calendar-details-tags">
                 <span class="calendar-tag kind ${item.kindClass}">${item.kindLabel}</span>
                 <span class="calendar-tag ${item.typeClass}">${item.typeLabel}</span>
-                <span class="calendar-tag ${statusClass}">${statusTag}</span>
+                <span class="calendar-tag ${statusMeta.className}">${statusMeta.tag}</span>
             </div>
         `;
 
@@ -294,28 +426,33 @@ function getCalendarItemsForDate(dateStr) {
     const typeInfo = getMissionTypeInfo(mission.type);
     if (!typeInfo) return;
 
-    if (mission.type === 'diaria') {
-      const availableFrom = mission.availableDate || mission.dateAdded || null;
-      if (!availableFrom || availableFrom <= dateStr) {
-        items.push({ ...typeInfo, ...mission, status: 'pending' });
-      }
-    }
-
-    if (mission.type === 'semanal' && mission.days && mission.days.includes(dayOfWeek)) {
-      items.push({ ...typeInfo, ...mission, status: 'pending' });
+    if (isRoutineType(mission.type) && getRoutineDays(mission).includes(dayOfWeek)) {
+      items.push({ ...typeInfo, ...mission, entryKind: 'mission', actionId: mission.id, status: 'pending' });
     }
 
     if (mission.type === 'eventual' && mission.date) {
       const missionDateStr = getLocalDateString(parseLocalDateString(mission.date));
       if (dateStr <= missionDateStr) {
-        items.push({ ...typeInfo, ...mission, status: 'pending' });
+        items.push({
+          ...typeInfo,
+          ...mission,
+          entryKind: 'mission',
+          actionId: mission.id,
+          status: 'pending',
+        });
       }
     }
 
     if (mission.type === 'epica' && mission.deadline) {
       const deadlineStr = getLocalDateString(parseLocalDateString(mission.deadline));
       if (dateStr <= deadlineStr) {
-        items.push({ ...typeInfo, ...mission, status: 'pending' });
+        items.push({
+          ...typeInfo,
+          ...mission,
+          entryKind: 'mission',
+          actionId: mission.id,
+          status: 'pending',
+        });
       }
     }
   });
@@ -329,6 +466,7 @@ function getCalendarItemsForDate(dateStr) {
       items.push({
         ...typeInfo,
         ...mission,
+        entryKind: 'mission',
         status: mission.failed ? 'failed' : mission.skipped ? 'skipped' : 'done',
       });
     }
@@ -340,28 +478,33 @@ function getCalendarItemsForDate(dateStr) {
     const typeInfo = getWorkTypeInfo(work.type);
     if (!typeInfo) return;
 
-    if (work.type === 'diaria') {
-      const availableFrom = work.availableDate || work.dateAdded || null;
-      if (!availableFrom || availableFrom <= dateStr) {
-        items.push({ ...typeInfo, ...work, status: 'pending' });
-      }
-    }
-
-    if (work.type === 'semanal' && work.days && work.days.includes(dayOfWeek)) {
-      items.push({ ...typeInfo, ...work, status: 'pending' });
+    if (isRoutineType(work.type) && getRoutineDays(work).includes(dayOfWeek)) {
+      items.push({ ...typeInfo, ...work, entryKind: 'work', actionId: work.id, status: 'pending' });
     }
 
     if (work.type === 'eventual' && work.date) {
       const workDateStr = getLocalDateString(parseLocalDateString(work.date));
       if (dateStr <= workDateStr) {
-        items.push({ ...typeInfo, ...work, status: 'pending' });
+        items.push({
+          ...typeInfo,
+          ...work,
+          entryKind: 'work',
+          actionId: work.id,
+          status: 'pending',
+        });
       }
     }
 
     if (work.type === 'epica' && work.deadline) {
       const deadlineStr = getLocalDateString(parseLocalDateString(work.deadline));
       if (dateStr <= deadlineStr) {
-        items.push({ ...typeInfo, ...work, status: 'pending' });
+        items.push({
+          ...typeInfo,
+          ...work,
+          entryKind: 'work',
+          actionId: work.id,
+          status: 'pending',
+        });
       }
     }
   });
@@ -375,6 +518,7 @@ function getCalendarItemsForDate(dateStr) {
       items.push({
         ...typeInfo,
         ...work,
+        entryKind: 'work',
         status: work.failed ? 'failed' : work.skipped ? 'skipped' : 'done',
       });
     }
@@ -383,13 +527,18 @@ function getCalendarItemsForDate(dateStr) {
   // Treinos do dia (agenda)
   appData.workouts.forEach((workout) => {
     if (workout.days && workout.days.includes(dayOfWeek)) {
+      const dailyEntry = appData.dailyWorkouts.find(
+        (entry) => String(entry.workoutId) === String(workout.id) && entry.date === dateStr
+      );
       items.push({
+        entryKind: 'workout',
         kindLabel: 'Treino',
         kindClass: 'workout',
         typeLabel: getWorkoutTypeName(workout.type),
         typeClass: 'workout',
         status: 'pending',
         id: `workout-${workout.id}`,
+        actionId: dailyEntry?.id ?? null,
         name: workout.name,
         emoji: workout.emoji,
       });
@@ -399,13 +548,18 @@ function getCalendarItemsForDate(dateStr) {
   // Estudos do dia (agenda)
   appData.studies.forEach((study) => {
     if (study.days && study.days.includes(dayOfWeek)) {
+      const dailyEntry = appData.dailyStudies.find(
+        (entry) => String(entry.studyId) === String(study.id) && entry.date === dateStr
+      );
       items.push({
+        entryKind: 'study',
         kindLabel: 'Estudo',
         kindClass: 'study',
         typeLabel: study.type === 'logico' ? 'Lógico' : 'Criativo',
         typeClass: 'study',
         status: 'pending',
         id: `study-${study.id}`,
+        actionId: dailyEntry?.id ?? null,
         name: study.name,
         emoji: study.emoji,
       });
@@ -421,6 +575,7 @@ function getCalendarItemsForDate(dateStr) {
       entry.skippedDate === dateStr
     ) {
       items.push({
+        entryKind: 'workout',
         kindLabel: 'Treino',
         kindClass: 'workout',
         typeLabel: getWorkoutTypeName(entry.type),
@@ -442,6 +597,7 @@ function getCalendarItemsForDate(dateStr) {
       entry.skippedDate === dateStr
     ) {
       items.push({
+        entryKind: 'study',
         kindLabel: 'Estudo',
         kindClass: 'study',
         typeLabel: entry.type === 'logico' ? 'Lógico' : 'Criativo',
@@ -475,21 +631,13 @@ function getCalendarItemsForDate(dateStr) {
 
 function getMissionTypeInfo(type) {
   switch (type) {
-    case 'diaria':
+    case 'rotina':
       return {
         kindLabel: 'Missão',
         kindClass: 'kind',
-        type: 'daily',
-        typeLabel: 'Diária',
-        typeClass: 'daily',
-      };
-    case 'semanal':
-      return {
-        kindLabel: 'Missão',
-        kindClass: 'kind',
-        type: 'weekly',
-        typeLabel: 'Semanal',
-        typeClass: 'weekly',
+        type: 'routine',
+        typeLabel: 'Rotina',
+        typeClass: 'routine',
       };
     case 'eventual':
       return {
@@ -514,21 +662,13 @@ function getMissionTypeInfo(type) {
 
 function getWorkTypeInfo(type) {
   switch (type) {
-    case 'diaria':
+    case 'rotina':
       return {
         kindLabel: 'Trabalho',
         kindClass: 'work-kind',
-        type: 'daily',
-        typeLabel: 'Diária',
-        typeClass: 'daily',
-      };
-    case 'semanal':
-      return {
-        kindLabel: 'Trabalho',
-        kindClass: 'work-kind',
-        type: 'weekly',
-        typeLabel: 'Semanal',
-        typeClass: 'weekly',
+        type: 'routine',
+        typeLabel: 'Rotina',
+        typeClass: 'routine',
       };
     case 'eventual':
       return {
@@ -668,83 +808,84 @@ function updateWorkoutHistory() {
     completedContainer,
     recent,
     (entry) => {
-    const card = document.createElement('div');
-    card.className = `mission-card history-card compact-history ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : 'completed'}`.trim();
+      const card = document.createElement('div');
+      card.className =
+        `mission-card history-card compact-history ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : 'completed'}`.trim();
 
-    const details = [];
-    const statusText = entry.failed ? 'FALHOU' : entry.skipped ? 'PULADO' : 'CONCLUIDO';
-    const statusClass = entry.failed
-      ? 'failed-status'
-      : entry.skipped
-        ? 'skipped-status'
-        : 'completed-status';
-    if (entry.failed) {
-      details.push(`<p>Falhou em: ${formatDate(entry.failedDate || entry.date)}</p>`);
-    } else if (entry.skipped) {
-      details.push(`<p>Pulado em: ${formatDate(entry.skippedDate || entry.date)}</p>`);
-    } else {
-      details.push(`<p>Concluido em: ${formatDate(entry.completedDate || entry.date)}</p>`);
-    }
-    details.push(`<p>Tipo: ${getWorkoutTypeName(entry.type)}</p>`);
+      const details = [];
+      const statusText = entry.failed ? 'FALHOU' : entry.skipped ? 'PULADO' : 'CONCLUIDO';
+      const statusClass = entry.failed
+        ? 'failed-status'
+        : entry.skipped
+          ? 'skipped-status'
+          : 'completed-status';
+      if (entry.failed) {
+        details.push(`<p>Falhou em: ${formatDate(entry.failedDate || entry.date)}</p>`);
+      } else if (entry.skipped) {
+        details.push(`<p>Pulado em: ${formatDate(entry.skippedDate || entry.date)}</p>`);
+      } else {
+        details.push(`<p>Concluido em: ${formatDate(entry.completedDate || entry.date)}</p>`);
+      }
+      details.push(`<p>Tipo: ${getWorkoutTypeName(entry.type)}</p>`);
 
-    if (
-      !entry.failed &&
-      !entry.skipped &&
-      entry.type === 'repeticao' &&
-      Array.isArray(entry.series)
-    ) {
-      const totalReps = entry.series.reduce((sum, val) => sum + (parseInt(val) || 0), 0);
-      const prevTotal = prevTotalsByEntryId.get(entry.id);
-      let trend = '';
-      if (prevTotal !== undefined) {
-        if (totalReps > prevTotal) trend = ' <span class="trend-up">&uarr;</span>';
-        else if (totalReps < prevTotal) trend = ' <span class="trend-down">&darr;</span>';
+      if (
+        !entry.failed &&
+        !entry.skipped &&
+        entry.type === 'repeticao' &&
+        Array.isArray(entry.series)
+      ) {
+        const totalReps = entry.series.reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+        const prevTotal = prevTotalsByEntryId.get(entry.id);
+        let trend = '';
+        if (prevTotal !== undefined) {
+          if (totalReps > prevTotal) trend = ' <span class="trend-up">&uarr;</span>';
+          else if (totalReps < prevTotal) trend = ' <span class="trend-down">&darr;</span>';
+        }
+        details.push(
+          `<p>Séries: ${entry.series.map((v) => v || 0).join(' / ')} (Total: ${totalReps})${trend}</p>`
+        );
       }
-      details.push(
-        `<p>Séries: ${entry.series.map((v) => v || 0).join(' / ')} (Total: ${totalReps})${trend}</p>`
-      );
-    }
-    if (
-      !entry.failed &&
-      !entry.skipped &&
-      entry.type === 'distancia' &&
-      entry.distance !== null &&
-      entry.distance !== undefined
-    ) {
-      const distance = Number(entry.distance);
-      let trend = '';
-      const prevDistance = prevDistancesByEntryId.get(entry.id);
-      if (prevDistance !== undefined && Number.isFinite(distance)) {
-        if (distance > prevDistance) trend = ' <span class="trend-up">&uarr;</span>';
-        else if (distance < prevDistance) trend = ' <span class="trend-down">&darr;</span>';
-      }
-      details.push(`<p>Distância: ${entry.distance} km${trend}</p>`);
-      if (entry.time !== null && entry.time !== undefined) {
-        const time = Number(entry.time);
-        if (Number.isFinite(time) && time > 0) {
-          const speed = (distance / time) * 60;
-          details.push(`<p>Tempo: ${time} min</p>`);
-          details.push(`<p>Velocidade média: ${speed.toFixed(1)} km/h</p>`);
+      if (
+        !entry.failed &&
+        !entry.skipped &&
+        entry.type === 'distancia' &&
+        entry.distance !== null &&
+        entry.distance !== undefined
+      ) {
+        const distance = Number(entry.distance);
+        let trend = '';
+        const prevDistance = prevDistancesByEntryId.get(entry.id);
+        if (prevDistance !== undefined && Number.isFinite(distance)) {
+          if (distance > prevDistance) trend = ' <span class="trend-up">&uarr;</span>';
+          else if (distance < prevDistance) trend = ' <span class="trend-down">&darr;</span>';
+        }
+        details.push(`<p>Distância: ${entry.distance} km${trend}</p>`);
+        if (entry.time !== null && entry.time !== undefined) {
+          const time = Number(entry.time);
+          if (Number.isFinite(time) && time > 0) {
+            const speed = (distance / time) * 60;
+            details.push(`<p>Tempo: ${time} min</p>`);
+            details.push(`<p>Velocidade média: ${speed.toFixed(1)} km/h</p>`);
+          }
         }
       }
-    }
-    if (
-      !entry.failed &&
-      !entry.skipped &&
-      (entry.type === 'maior-tempo' || entry.type === 'menor-tempo') &&
-      entry.time !== null &&
-      entry.time !== undefined
-    ) {
-      details.push(`<p>Tempo: ${entry.time} min</p>`);
-    }
-    if (entry.reason && !entry.failed) {
-      details.push(`<p class="mission-reason">Motivo: ${entry.reason}</p>`);
-    }
-    if (entry.feedback) {
-      details.push(`<p>Feedback: ${entry.feedback}</p>`);
-    }
+      if (
+        !entry.failed &&
+        !entry.skipped &&
+        (entry.type === 'maior-tempo' || entry.type === 'menor-tempo') &&
+        entry.time !== null &&
+        entry.time !== undefined
+      ) {
+        details.push(`<p>Tempo: ${entry.time} min</p>`);
+      }
+      if (entry.reason && !entry.failed) {
+        details.push(`<p class="mission-reason">Motivo: ${entry.reason}</p>`);
+      }
+      if (entry.feedback) {
+        details.push(`<p>Feedback: ${entry.feedback}</p>`);
+      }
 
-    card.innerHTML = `
+      card.innerHTML = `
             <div class="mission-header">
                 <div class="mission-name">
                     <span class="mission-emoji">${entry.emoji || '💪'}</span>
@@ -776,35 +917,36 @@ function updateStudyHistory() {
     completedContainer,
     recent,
     (entry) => {
-    const card = document.createElement('div');
-    card.className = `mission-card history-card compact-history ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : 'completed'}`.trim();
+      const card = document.createElement('div');
+      card.className =
+        `mission-card history-card compact-history ${entry.failed ? 'failed' : entry.skipped ? 'skipped' : 'completed'}`.trim();
 
-    const details = [];
-    const statusText = entry.failed ? 'FALHOU' : entry.skipped ? 'PULADO' : 'CONCLUIDO';
-    const statusClass = entry.failed
-      ? 'failed-status'
-      : entry.skipped
-        ? 'skipped-status'
-        : 'completed-status';
-    if (entry.failed) {
-      details.push(`<p>Falhou em: ${formatDate(entry.failedDate || entry.date)}</p>`);
-    } else if (entry.skipped) {
-      details.push(`<p>Pulado em: ${formatDate(entry.skippedDate || entry.date)}</p>`);
-    } else {
-      details.push(`<p>Concluido em: ${formatDate(entry.completedDate || entry.date)}</p>`);
-    }
-    details.push(`<p>Tipo: ${entry.type === 'logico' ? 'Lógico' : 'Criativo'}</p>`);
-    if (!entry.failed && !entry.skipped) {
-      details.push(`<p>Aplicado: ${entry.applied ? 'Sim' : 'Não'}</p>`);
-    }
-    if (entry.reason && !entry.failed) {
-      details.push(`<p class="mission-reason">Motivo: ${entry.reason}</p>`);
-    }
-    if (entry.feedback) {
-      details.push(`<p>Feedback: ${entry.feedback}</p>`);
-    }
+      const details = [];
+      const statusText = entry.failed ? 'FALHOU' : entry.skipped ? 'PULADO' : 'CONCLUIDO';
+      const statusClass = entry.failed
+        ? 'failed-status'
+        : entry.skipped
+          ? 'skipped-status'
+          : 'completed-status';
+      if (entry.failed) {
+        details.push(`<p>Falhou em: ${formatDate(entry.failedDate || entry.date)}</p>`);
+      } else if (entry.skipped) {
+        details.push(`<p>Pulado em: ${formatDate(entry.skippedDate || entry.date)}</p>`);
+      } else {
+        details.push(`<p>Concluido em: ${formatDate(entry.completedDate || entry.date)}</p>`);
+      }
+      details.push(`<p>Tipo: ${entry.type === 'logico' ? 'Lógico' : 'Criativo'}</p>`);
+      if (!entry.failed && !entry.skipped) {
+        details.push(`<p>Aplicado: ${entry.applied ? 'Sim' : 'Não'}</p>`);
+      }
+      if (entry.reason && !entry.failed) {
+        details.push(`<p class="mission-reason">Motivo: ${entry.reason}</p>`);
+      }
+      if (entry.feedback) {
+        details.push(`<p>Feedback: ${entry.feedback}</p>`);
+      }
 
-    card.innerHTML = `
+      card.innerHTML = `
             <div class="mission-header">
                 <div class="mission-name">
                     <span class="mission-emoji">${entry.emoji || '📚'}</span>

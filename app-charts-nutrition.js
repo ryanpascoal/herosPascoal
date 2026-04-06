@@ -140,8 +140,7 @@ function populateWorkoutEvolutionOptions() {
   select.disabled = false;
   select.innerHTML = workouts
     .map(
-      (workout) =>
-        `<option value="${workout.id}">${workout.emoji || '💪'} ${workout.name}</option>`
+      (workout) => `<option value="${workout.id}">${workout.emoji || '💪'} ${workout.name}</option>`
     )
     .join('');
 
@@ -654,7 +653,6 @@ function updateXpBySourceChart() {
   let workoutXP = 0;
   let studyXP = 0;
   let bookXP = 0;
-  let diaryXP = 0;
 
   periodKeys.forEach((key) => {
     const day = productiveDays[key] || {};
@@ -663,17 +661,16 @@ function updateXpBySourceChart() {
     workoutXP += Number(day.xpWorkout || 0);
     studyXP += Number(day.xpStudy || 0);
     bookXP += Number(day.xpBook || 0);
-    diaryXP += Number(day.xpDiary || 0);
   });
 
   ctx.chart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ['Missões', 'Trabalhos', 'Treinos', 'Estudos', 'Livros', 'Diário'],
+      labels: ['Missões', 'Trabalhos', 'Treinos', 'Estudos', 'Livros'],
       datasets: [
         {
           label: `XP estimado por fonte (${periodDays} dias)`,
-          data: [missionXP, workXP, workoutXP, studyXP, bookXP, diaryXP],
+          data: [missionXP, workXP, workoutXP, studyXP, bookXP],
           backgroundColor: [
             CATEGORY_COLORS.mission.solid,
             CATEGORY_COLORS.work.solid,
@@ -1151,6 +1148,7 @@ async function deleteNutritionFood(foodId) {
   appData.foodItems = (appData.foodItems || []).filter(
     (item) => Number(item.id) !== Number(foodId)
   );
+  if (typeof queueSave === 'function') queueSave();
   updateNutritionView();
   showFeedback('Alimento excluído com sucesso!', 'success');
 }
@@ -1169,6 +1167,7 @@ async function resetNutritionFoods() {
   if (hidden) hidden.value = '';
   const searchInput = document.getElementById('nutrition-entry-food-search');
   if (searchInput) searchInput.value = '';
+  if (typeof queueSave === 'function') queueSave();
   updateNutritionView();
   showFeedback('Alimentos resetados com sucesso!', 'success');
 }
@@ -1183,6 +1182,7 @@ async function deleteNutritionEntry(entryId) {
     (entry) => Number(entry.id) !== Number(entryId)
   );
   recalcNutritionStats();
+  if (typeof queueSave === 'function') queueSave();
   updateNutritionView();
   showFeedback('Refeição removida.', 'success');
 }
@@ -1839,6 +1839,8 @@ function initHydrationUI() {
 }
 
 function updateNutritionView() {
+  rolloverHydrationDay(getLocalDateString());
+  updateHydrationUI();
   recalcNutritionStats();
   initNutritionForms();
   const goals = appData.nutritionGoals || {};

@@ -6,8 +6,8 @@ const appData = {
     level: 1,
     xp: 0,
     maxXp: 100,
-    lives: 10,
-    maxLives: 10,
+    lives: 7,
+    maxLives: 7,
     coins: 0,
     protection: {
       shield: false,
@@ -99,7 +99,6 @@ const appData = {
     productiveDays: {},
     deathDates: [],
   },
-  diaryEntries: [],
   feedbacks: [],
   dailyWorkouts: [],
   dailyStudies: [],
@@ -204,15 +203,6 @@ const CATEGORY_COLORS = {
   },
 };
 
-// Diário em IndexedDB (para evitar limite do localStorage)
-const DIARY_DB_NAME = 'heroJourneyDB';
-const DIARY_DB_VERSION = 1;
-const DIARY_STORE = 'diaryEntries';
-let diaryDbPromise = null;
-let diaryCache = [];
-let diaryLoaded = false;
-let diaryDbAvailable = true;
-
 Object.assign(globalThis, {
   appData,
   APP_DEFAULTS,
@@ -224,11 +214,4 @@ Object.assign(globalThis, {
   NUTRITION_MEALS,
   NUTRITION_MEAL_ORDER,
   CATEGORY_COLORS,
-  DIARY_DB_NAME,
-  DIARY_DB_VERSION,
-  DIARY_STORE,
-  diaryDbPromise,
-  diaryCache,
-  diaryLoaded,
-  diaryDbAvailable,
 });

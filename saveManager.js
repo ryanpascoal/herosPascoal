@@ -3,24 +3,9 @@
  * Step 2 do plano de revisão do sistema de salvamento
  */
 
-let saveTimeout = null;
-let isSaving = false;
-let pendingSave = false;
-const DEBOUNCE_MS = 1000;
-const DATA_VERSION = 2; // Incrementar em mudanças estruturais
 const LOCAL_PROGRESS_KEY = 'heroJourneyData';
 
-// Adiciona versão e serverMeta ao appData se não existirem
-function ensureDataVersion() {
-  if (!appData.dataVersion) {
-    appData.dataVersion = DATA_VERSION;
-  }
-  if (appData.dataVersion < DATA_VERSION) {
-    console.warn('Migrando dados para versão', DATA_VERSION);
-    // Aqui futuras migrações estruturais
-    appData.dataVersion = DATA_VERSION;
-  }
-
+function ensureSaveShape() {
   if (!appData.serverMeta) {
     appData.serverMeta = {
       lastDailyReset: null,
@@ -29,11 +14,9 @@ function ensureDataVersion() {
   }
 }
 
-// Serialização segura com versão
 function serializeAppData() {
-  ensureDataVersion();
-  const payload =
-    typeof buildLocalCachePayload === 'function' ? buildLocalCachePayload() : appData;
+  ensureSaveShape();
+  const payload = typeof buildLocalCachePayload === 'function' ? buildLocalCachePayload() : appData;
   return JSON.stringify(payload);
 }
 
@@ -55,14 +38,7 @@ function safeLocalStorageGet(key, fallback = null) {
   try {
     const value = localStorage.getItem(key);
     if (!value) return fallback;
-    const parsed = JSON.parse(value);
-    if (!parsed.dataVersion || parsed.dataVersion < DATA_VERSION) {
-      console.warn(
-        `Dados desatualizados (v${parsed?.dataVersion || 0}), migrando para v${DATA_VERSION}`
-      );
-      // Auto-migração aqui se necessário
-    }
-    return parsed;
+    return JSON.parse(value);
   } catch (e) {
     console.error('Erro ao carregar localStorage:', e);
     // Recovery automático com defaults
@@ -86,11 +62,7 @@ window.queueSave = function () {
   }
 };
 
-function performSave() {
-  window.queueSave();
-}
-
-// Substitui funções originais para compatibilidade
+// Implementacao local padrao de persistencia
 window.saveToLocalStorage = window.queueSave;
 window.loadFromLocalStorage = function () {
   // Se estiver logado na nuvem, a função do cloud-sync será usada automaticamente
@@ -103,22 +75,7 @@ window.loadFromLocalStorage = function () {
     mergeData(appData, saved);
   }
   ensureDataIntegrity();
-
-  // Migrar resets antigos
-  const oldDailyReset = localStorage.getItem('lastDailyReset');
-  const oldWeeklyReset = localStorage.getItem('lastWeeklyReset');
-  if (oldDailyReset && !appData.serverMeta.lastDailyReset) {
-    appData.serverMeta.lastDailyReset = oldDailyReset;
-    localStorage.removeItem('lastDailyReset');
-    console.log('Migrado lastDailyReset para appData.serverMeta');
-  }
-  if (oldWeeklyReset && !appData.serverMeta.lastWeeklyReset) {
-    appData.serverMeta.lastWeeklyReset = oldWeeklyReset;
-    localStorage.removeItem('lastWeeklyReset');
-    console.log('Migrado lastWeeklyReset para appData.serverMeta');
-  }
-
-  console.log('Dados carregados (v' + (appData.dataVersion || 1) + ')');
+  console.log('Dados carregados');
 };
 
 // Auto-save periódico otimizado (a cada 30s se mudou algo)

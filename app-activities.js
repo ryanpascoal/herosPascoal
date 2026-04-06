@@ -26,10 +26,7 @@ function renderPaginatedHistory(container, items, renderItem, emptyMessage, rere
 
   const stateKey = container.id || 'history';
   const totalPages = Math.max(1, Math.ceil(items.length / HISTORY_PAGE_SIZE));
-  const currentPage = Math.min(
-    Math.max(1, historyPaginationState[stateKey] || 1),
-    totalPages
-  );
+  const currentPage = Math.min(Math.max(1, historyPaginationState[stateKey] || 1), totalPages);
   historyPaginationState[stateKey] = currentPage;
   const startIndex = (currentPage - 1) * HISTORY_PAGE_SIZE;
   const endIndex = Math.min(startIndex + HISTORY_PAGE_SIZE, items.length);
@@ -89,7 +86,8 @@ function renderPaginatedHistory(container, items, renderItem, emptyMessage, rere
 
     const pageBtn = document.createElement('button');
     pageBtn.type = 'button';
-    pageBtn.className = `history-pagination-btn ${page === currentPage ? 'active' : 'secondary'}`.trim();
+    pageBtn.className =
+      `history-pagination-btn ${page === currentPage ? 'active' : 'secondary'}`.trim();
     pageBtn.textContent = String(page);
     pageBtn.disabled = page === currentPage;
     pageBtn.addEventListener('click', () => {
@@ -149,17 +147,9 @@ function updateDailyWorks() {
   const dailyWorks = appData.works.filter((work) => {
     if (work.completed || work.failed) return false;
 
-    if (work.type === 'diaria') {
+    if (isRoutineType(work.type)) {
       const alreadyLogged = wasItemLoggedForDate(work, appData.completedWorks, todayStr);
-      if (alreadyLogged) return false;
-      if (work.availableDate) return work.availableDate <= todayStr;
-      if (work.dateAdded) return work.dateAdded <= todayStr;
-      return true;
-    }
-
-    if (work.type === 'semanal') {
-      const alreadyLogged = wasItemLoggedForDate(work, appData.completedWorks, todayStr);
-      return !alreadyLogged && work.days && work.days.includes(dayOfWeek);
+      return !alreadyLogged && getRoutineDays(work).includes(dayOfWeek);
     }
 
     if (work.type === 'eventual') {
@@ -182,8 +172,7 @@ function updateDailyWorks() {
       return getLocalDateString(parseLocalDateString(work.deadline));
     if (work.type === 'eventual' && work.date)
       return getLocalDateString(parseLocalDateString(work.date));
-    if (work.type === 'diaria') return work.availableDate || work.dateAdded || todayStr;
-    if (work.type === 'semanal') return todayStr;
+    if (isRoutineType(work.type)) return todayStr;
     return '9999-12-31';
   };
 
@@ -230,7 +219,7 @@ function updateDailyWorks() {
                 ${dueBadge ? `<p>${dueBadge}</p>` : ''}
                 ${work.type === 'epica' ? `<p>Prazo: ${formatDate(work.deadline)}</p>` : ''}
                 ${work.type === 'eventual' ? `<p>Prazo: ${formatDate(work.date)}</p>` : ''}
-                ${work.type === 'semanal' ? `<p>Dias: ${getDaysNames(work.days)}</p>` : ''}
+                ${isRoutineType(work.type) ? `<p>Dias: ${getDaysNames(getRoutineDays(work))}</p>` : ''}
                 ${classLine}
             </div>
             <div class="mission-attributes">
@@ -279,28 +268,32 @@ function updateCompletedWorks() {
     container,
     recentWorks,
     (work) => {
-    const card = document.createElement('div');
-    card.className = `mission-card ${work.failed ? 'failed' : work.skipped ? 'skipped' : 'completed'}`;
+      const card = document.createElement('div');
+      card.className = `mission-card ${work.failed ? 'failed' : work.skipped ? 'skipped' : 'completed'}`;
 
-    const statusText = work.failed ? 'FALHOU' : work.skipped ? 'PULADO' : 'CONCLUIDO';
-    const statusClass = work.failed
-      ? 'failed-status'
-      : work.skipped
-        ? 'skipped-status'
-        : 'completed-status';
-    const rewardText = work.failed
-      ? 'Penalidade: -1 vida'
-      : work.skipped
-        ? 'Custo: 1 item de pulo'
-        : work.type === 'epica'
-          ? 'Recompensa: 1 XP + 1 moeda'
-          : 'Recompensa: 1 XP + 1 moeda';
-    const eventDateLabel = work.failed ? 'Falhou em' : work.skipped ? 'Pulado em' : 'Concluido em';
-    const eventDateValue = work.completedDate || work.failedDate || work.skippedDate;
-    const className = work.classId ? getClassNameById(work.classId) : '';
-    const classLine = className ? `<p>Classe: ${className}</p>` : '';
+      const statusText = work.failed ? 'FALHOU' : work.skipped ? 'PULADO' : 'CONCLUIDO';
+      const statusClass = work.failed
+        ? 'failed-status'
+        : work.skipped
+          ? 'skipped-status'
+          : 'completed-status';
+      const rewardText = work.failed
+        ? 'Penalidade: -1 vida'
+        : work.skipped
+          ? 'Custo: 1 item de pulo'
+          : work.type === 'epica'
+            ? 'Recompensa: 1 XP + 1 moeda'
+            : 'Recompensa: 1 XP + 1 moeda';
+      const eventDateLabel = work.failed
+        ? 'Falhou em'
+        : work.skipped
+          ? 'Pulado em'
+          : 'Concluido em';
+      const eventDateValue = work.completedDate || work.failedDate || work.skippedDate;
+      const className = work.classId ? getClassNameById(work.classId) : '';
+      const classLine = className ? `<p>Classe: ${className}</p>` : '';
 
-    card.innerHTML = `
+      card.innerHTML = `
             <div class="mission-header">
                 <div class="mission-name">
                     <span class="mission-emoji">${work.emoji || '💼'}</span>
@@ -367,21 +360,12 @@ function checkOverdueWorks(options = {}) {
       }
     }
 
-    // Diárias: falha se availableDate ou dateAdded <= ontem
-    if (work.type === 'diaria') {
-      const availableDate = work.availableDate || work.dateAdded;
-      if (availableDate && availableDate <= yesterdayStr) {
-        overdueToFail.push({ id: work.id, reason: 'Prazo diário expirado' });
-      }
-    }
-
-    // Semanais: falha no dia seguinte ao dia programado não cumprido
-    if (!skipWeekly && work.type === 'semanal') {
+    if (!skipWeekly && isRoutineType(work.type)) {
       const workLineageKey = work.originalId || work.id;
       const yesterdayDayOfWeek = yesterday.getDay();
       const availableFrom = work.availableDate || work.dateAdded || todayStr;
       const shouldCheckYesterday =
-        work.days && work.days.includes(yesterdayDayOfWeek) && availableFrom <= yesterdayStr;
+        getRoutineDays(work).includes(yesterdayDayOfWeek) && availableFrom <= yesterdayStr;
       if (shouldCheckYesterday) {
         const alreadyLoggedYesterday = wasItemLoggedForDate(
           work,
@@ -397,7 +381,7 @@ function checkOverdueWorks(options = {}) {
         if (!alreadyLoggedYesterday && !alreadyFailedForMissedDate) {
           overdueToFail.push({
             id: work.id,
-            reason: 'Semanal não concluída no dia programado',
+            reason: 'Rotina não concluída no dia programado',
             missedDate: yesterdayStr,
           });
         }
@@ -530,24 +514,9 @@ function updateDailyMissions() {
     if (mission.completed || mission.failed) return false;
 
     // Para missões diárias: verificar se estão disponíveis HOJE
-    if (mission.type === 'diaria') {
+    if (isRoutineType(mission.type)) {
       const alreadyLogged = wasItemLoggedForDate(mission, appData.completedMissions, todayStr);
-      if (alreadyLogged) return false;
-      // Se tiver availableDate, verificar se é hoje ou antes
-      if (mission.availableDate) {
-        return mission.availableDate <= todayStr;
-      }
-      // Se não tiver availableDate, verificar se foi adicionada hoje ou antes
-      if (mission.dateAdded) {
-        return mission.dateAdded <= todayStr;
-      }
-      // Se não tiver data, mostrar sempre (compatibilidade)
-      return true;
-    }
-
-    if (mission.type === 'semanal') {
-      const alreadyLogged = wasItemLoggedForDate(mission, appData.completedMissions, todayStr);
-      return !alreadyLogged && mission.days && mission.days.includes(dayOfWeek);
+      return !alreadyLogged && getRoutineDays(mission).includes(dayOfWeek);
     }
 
     if (mission.type === 'eventual') {
@@ -571,8 +540,7 @@ function updateDailyMissions() {
       return getLocalDateString(parseLocalDateString(mission.deadline));
     if (mission.type === 'eventual' && mission.date)
       return getLocalDateString(parseLocalDateString(mission.date));
-    if (mission.type === 'diaria') return mission.availableDate || mission.dateAdded || todayStr;
-    if (mission.type === 'semanal') return todayStr;
+    if (isRoutineType(mission.type)) return todayStr;
     return '9999-12-31';
   };
 
@@ -611,7 +579,7 @@ function updateDailyMissions() {
                 ${dueBadge ? `<p>${dueBadge}</p>` : ''}
                 ${mission.type === 'epica' ? `<p>Prazo: ${formatDate(mission.deadline)}</p>` : ''}
                 ${mission.type === 'eventual' ? `<p>Prazo: ${formatDate(mission.date)}</p>` : ''}
-                ${mission.type === 'semanal' ? `<p>Dias: ${getDaysNames(mission.days)}</p>` : ''}
+                ${isRoutineType(mission.type) ? `<p>Dias: ${getDaysNames(getRoutineDays(mission))}</p>` : ''}
             </div>
             <div class="mission-attributes">
                 ${attributesText ? `<p>Atributos: ${attributesText}</p>` : ''}
@@ -659,29 +627,29 @@ function updateCompletedMissions() {
     container,
     recentMissions,
     (mission) => {
-    const missionCard = document.createElement('div');
-    missionCard.className = `mission-card ${mission.failed ? 'failed' : mission.skipped ? 'skipped' : 'completed'}`;
+      const missionCard = document.createElement('div');
+      missionCard.className = `mission-card ${mission.failed ? 'failed' : mission.skipped ? 'skipped' : 'completed'}`;
 
-    const statusText = mission.failed ? 'FALHOU' : mission.skipped ? 'PULADA' : 'CONCLUIDA';
-    const statusClass = mission.failed
-      ? 'failed-status'
-      : mission.skipped
-        ? 'skipped-status'
-        : 'completed-status';
-    const rewardText = mission.failed
-      ? 'Penalidade: -1 vida'
-      : mission.skipped
-        ? 'Custo: 1 item de pulo'
-        : mission.type === 'epica'
-          ? 'Recompensa: 20 XP + 10 moedas'
-          : 'Recompensa: 1 XP + 1 moeda';
-    const eventDateLabel = mission.failed
-      ? 'Falhou em'
-      : mission.skipped
-        ? 'Pulada em'
-        : 'Concluida em';
-    const eventDateValue = mission.completedDate || mission.failedDate || mission.skippedDate;
-    missionCard.innerHTML = `
+      const statusText = mission.failed ? 'FALHOU' : mission.skipped ? 'PULADA' : 'CONCLUIDA';
+      const statusClass = mission.failed
+        ? 'failed-status'
+        : mission.skipped
+          ? 'skipped-status'
+          : 'completed-status';
+      const rewardText = mission.failed
+        ? 'Penalidade: -1 vida'
+        : mission.skipped
+          ? 'Custo: 1 item de pulo'
+          : mission.type === 'epica'
+            ? 'Recompensa: 20 XP + 10 moedas'
+            : 'Recompensa: 1 XP + 1 moeda';
+      const eventDateLabel = mission.failed
+        ? 'Falhou em'
+        : mission.skipped
+          ? 'Pulada em'
+          : 'Concluida em';
+      const eventDateValue = mission.completedDate || mission.failedDate || mission.skippedDate;
+      missionCard.innerHTML = `
             <div class="mission-header">
                 <div class="mission-name">
                     <span class="mission-emoji">${mission.emoji || '🎯'}</span>
@@ -748,21 +716,12 @@ function checkOverdueMissions(options = {}) {
       }
     }
 
-    // Diárias: falha se availableDate ou dateAdded <= ontem
-    if (mission.type === 'diaria') {
-      const availableDate = mission.availableDate || mission.dateAdded;
-      if (availableDate && availableDate <= yesterdayStr) {
-        overdueToFail.push({ id: mission.id, reason: 'Prazo diário expirado' });
-      }
-    }
-
-    // Semanais: falha no dia seguinte ao dia programado não cumprido
-    if (!skipWeekly && mission.type === 'semanal') {
+    if (!skipWeekly && isRoutineType(mission.type)) {
       const missionLineageKey = mission.originalId || mission.id;
       const yesterdayDayOfWeek = yesterday.getDay();
       const availableFrom = mission.availableDate || mission.dateAdded || todayStr;
       const shouldCheckYesterday =
-        mission.days && mission.days.includes(yesterdayDayOfWeek) && availableFrom <= yesterdayStr;
+        getRoutineDays(mission).includes(yesterdayDayOfWeek) && availableFrom <= yesterdayStr;
       if (shouldCheckYesterday) {
         const alreadyLoggedYesterday = wasItemLoggedForDate(
           mission,
@@ -778,7 +737,7 @@ function checkOverdueMissions(options = {}) {
         if (!alreadyLoggedYesterday && !alreadyFailedForMissedDate) {
           overdueToFail.push({
             id: mission.id,
-            reason: 'Semanal não concluída no dia programado',
+            reason: 'Rotina não concluída no dia programado',
             missedDate: yesterdayStr,
           });
         }

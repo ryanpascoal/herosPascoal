@@ -1,4 +1,4 @@
-﻿function handleNutritionFoodSubmit(event) {
+function handleNutritionFoodSubmit(event) {
   event.preventDefault();
   const name = (document.getElementById('nutrition-food-name')?.value || '').trim();
   const brand = (document.getElementById('nutrition-food-brand')?.value || '').trim();
@@ -35,6 +35,7 @@
   if (portionInput) portionInput.value = '100';
   const fiberInput = document.getElementById('nutrition-food-fiber');
   if (fiberInput) fiberInput.value = '0';
+  if (typeof queueSave === 'function') queueSave();
   updateNutritionView();
   showFeedback('Alimento cadastrado com sucesso!', 'success');
 }
@@ -95,6 +96,7 @@ function handleImportFoods(event) {
         importedCount++;
       });
 
+      if (typeof queueSave === 'function') queueSave();
       updateNutritionView();
 
       if (importedCount > 0) {
@@ -186,6 +188,7 @@ function handleNutritionEntrySubmit(event) {
   if (qtyInput) qtyInput.value = '1';
   const diaryInput = document.getElementById('nutrition-diary-date');
   if (diaryInput) diaryInput.value = date;
+  if (typeof queueSave === 'function') queueSave();
   updateNutritionView();
   showFeedback('Refeição registrada!', 'success');
 }
@@ -205,6 +208,7 @@ function handleNutritionGoalsSubmit(event) {
 
   appData.nutritionGoals = { kcal, protein, carbs, fat, fiber };
   recalcNutritionStats();
+  if (typeof queueSave === 'function') queueSave();
   updateNutritionView();
   showFeedback('Metas nutricionais atualizadas!', 'success');
 }
@@ -242,70 +246,6 @@ function updateCurrentDate() {
   });
   if (dateElement) dateElement.textContent = formattedDate;
   if (workDateElement) workDateElement.textContent = formattedDate;
-}
-
-// Salvar entrada no diário
-async function saveDiaryEntry() {
-  const title = (document.getElementById('diary-title').value || '').trim();
-  const content = (document.getElementById('diary-content').value || '').trim();
-
-  if (!content) {
-    showFeedback('Por favor, escreva algo no diário.', 'warn');
-    return;
-  }
-
-  const todayStr = getLocalDateString();
-  const diaryEntries = diaryDbAvailable ? diaryCache || [] : appData.diaryEntries || [];
-  const alreadyRewardedToday = diaryEntries.some((entry) => {
-    if (!entry?.date) return false;
-    const entryDate = getLocalDateString(new Date(entry.date));
-    return entryDate === todayStr && Number(entry.xpGained || 0) > 0;
-  });
-  const diaryXpGained = alreadyRewardedToday ? 0 : 2;
-
-  const newEntry = {
-    id: createUniqueId(diaryDbAvailable ? diaryCache : appData.diaryEntries),
-    title: title || 'Sem título',
-    content,
-    date: new Date().toISOString(),
-    // Armazenar também a data local para display rápido
-    localDate:
-      getLocalDateString() +
-      ' ' +
-      new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    xpGained: diaryXpGained,
-  };
-
-  await saveDiaryEntryToStorage(newEntry);
-
-  if (diaryXpGained > 0) {
-    // Diario: recompensa fixa, no maximo uma vez por dia.
-    addAttributeXP(6, 1); // Disciplina
-    addAttributeXP(7, 1); // Inteligência
-    addAttributeXP(12, 1); // Conhecimento
-    appData.hero.coins += 1;
-    updateProductiveDay(0, 0, 0, diaryXpGained, 0, {
-      date: todayStr,
-      xpDiary: diaryXpGained,
-    });
-  }
-
-  // Limpar formulário
-  document.getElementById('diary-title').value = '';
-  document.getElementById('diary-content').value = '';
-
-  // Atualizar UI
-  updateUI();
-
-  // Mostrar mensagem de sucesso
-  if (diaryXpGained > 0) {
-    showFeedback(
-      'Entrada salva! +1 XP de Disciplina, +1 XP de Inteligência, +1 XP de Conhecimento e +1 moeda.',
-      'success'
-    );
-  } else {
-    showFeedback('Entrada salva! Recompensa de diário já foi aplicada hoje.', 'info');
-  }
 }
 
 // Resetar progresso
@@ -358,15 +298,6 @@ async function resetProgress() {
       console.error('Erro ao limpar dados na nuvem:', err);
     }
 
-    if (diaryDbAvailable) {
-      replaceDiaryEntriesInDB([]).then(() => {
-        diaryCache = [];
-        window.__suppressSave = true;
-        location.reload();
-      });
-      return;
-    }
-
     // Recarregar a página
     window.__suppressSave = true;
     location.reload();
@@ -410,15 +341,6 @@ async function resetProgress() {
     }
   }
 
-  if (diaryDbAvailable) {
-    replaceDiaryEntriesInDB([]).then(() => {
-      diaryCache = [];
-      window.__suppressSave = true;
-      location.reload();
-    });
-    return;
-  }
-
   // Recarregar a página
   window.__suppressSave = true;
   location.reload();
@@ -426,10 +348,7 @@ async function resetProgress() {
 
 // Exportar dados
 async function exportData() {
-  const diaryEntries = diaryDbAvailable
-    ? await getAllDiaryEntriesFromDB()
-    : appData.diaryEntries || [];
-  const dataToExport = { ...appData, diaryEntries };
+  const dataToExport = { ...appData };
   const dataStr = JSON.stringify(dataToExport, null, 2);
   const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
 
@@ -462,10 +381,6 @@ function importData() {
           throw new Error('Arquivo inválido');
         }
 
-        const importedDiaryEntries = Array.isArray(importedData.diaryEntries)
-          ? importedData.diaryEntries
-          : [];
-
         // Mesclar com defaults para evitar campos críticos ausentes
         const mergedImport = JSON.parse(JSON.stringify(APP_DEFAULTS));
         mergeData(mergedImport, importedData);
@@ -473,16 +388,6 @@ function importData() {
         Object.assign(appData, mergedImport);
         ensureDataIntegrity();
         populateFinanceMonthOptions();
-
-        if (diaryDbAvailable) {
-          await replaceDiaryEntriesInDB(importedDiaryEntries);
-          await refreshDiaryCache();
-          appData.diaryEntries = [];
-        } else {
-          appData.diaryEntries = importedDiaryEntries;
-          diaryCache = appData.diaryEntries;
-          diaryLoaded = true;
-        }
 
         // Salvar no localStorage
         saveToLocalStorage();
@@ -515,12 +420,29 @@ function getWorkoutTypeName(type) {
 
 function getMissionTypeName(type) {
   const types = {
-    diaria: 'Diária',
-    semanal: 'Semanal',
+    rotina: 'Rotina',
     eventual: 'Eventual',
     epica: 'Épica',
   };
   return types[type] || type;
+}
+
+function isRoutineType(type) {
+  return type === 'rotina';
+}
+
+function getRoutineDays(item) {
+  if (!item || !isRoutineType(item.type)) return [];
+  const sourceDays = Array.isArray(item.days) ? item.days : [];
+  return Array.from(
+    new Set(
+      sourceDays
+        .map((day) =>
+          typeof normalizeWeekdayValue === 'function' ? normalizeWeekdayValue(day) : Number(day)
+        )
+        .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+    )
+  );
 }
 
 function getMonthName(monthIndex) {
@@ -803,16 +725,15 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     return;
   }
 
-  const logMissedWeeklyItems = (list, completedList, typeLabel, entryType) => {
+  const logMissedRoutineItems = (list, completedList, typeLabel, entryType) => {
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const missed = list.filter(
       (item) =>
         item &&
-        item.type === 'semanal' &&
+        isRoutineType(item.type) &&
         !item.completed &&
         !item.failed &&
-        Array.isArray(item.days) &&
-        item.days.includes(dayOfWeek)
+        getRoutineDays(item).includes(dayOfWeek)
     );
     if (missed.length === 0) return 0;
     let added = 0;
@@ -832,7 +753,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         failedDate: targetDateStr,
         failed: true,
         ...(entryType === 'mission' || entryType === 'work' ? { penaltyApplied: true } : {}),
-        reason: `Não concluída no dia (${typeLabel} semanal)`,
+        reason: `Não concluída no dia (${typeLabel} de rotina)`,
       });
       added++;
     });
@@ -953,56 +874,13 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       });
     }
 
-    // Processar missões diárias que falharam (não foram completadas)
-    const missedDailyMissions = (appData.missions || []).filter(
-      (m) =>
-        m.type === 'diaria' &&
-        !m.completed &&
-        !m.failed &&
-        m.dateAdded &&
-        m.dateAdded <= targetDateStr
-    );
-    missedDailyMissions.forEach((mission) => {
-      // Verificar se já foi registrada como falha
-      const alreadyLogged = appData.completedMissions.some(
-        (entry) =>
-          entry.failed &&
-          (entry.originalId || entry.id) === (mission.originalId || mission.id) &&
-          entry.failedDate === targetDateStr
-      );
-      if (!alreadyLogged) {
-        appData.completedMissions.push({
-          ...mission,
-          completedDate: targetDateStr,
-          failedDate: targetDateStr,
-          failed: true,
-          penaltyApplied: true,
-          reason: 'Missão diária não completada',
-        });
-      }
-    });
-    if (missedDailyMissions.length > 0 && typeof updateProductiveDay === 'function') {
-      updateProductiveDay(0, 0, 0, 0, 0, {
-        date: targetDateStr,
-        missionsMissed: missedDailyMissions.length,
-      });
-    }
-    // Remover missões diárias falhadas da lista ativa
-    if (missedDailyMissions.length > 0) {
-      const idsToRemove = new Set(missedDailyMissions.map((m) => m.id));
-      appData.missions = (appData.missions || []).filter((m) => !idsToRemove.has(m.id));
-      if (!failedTypes.includes('mission')) {
-        failedTypes.push('mission');
-      }
-    }
-
-    const missedWeeklyMissions = logMissedWeeklyItems(
+    const missedRoutineMissions = logMissedRoutineItems(
       appData.missions || [],
       appData.completedMissions || [],
       'missão',
       'mission'
     );
-    if (missedWeeklyMissions > 0 && !failedTypes.includes('mission')) {
+    if (missedRoutineMissions > 0 && !failedTypes.includes('mission')) {
       failedTypes.push('mission');
     }
   }
@@ -1019,56 +897,13 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       });
     }
 
-    // Processar trabalhos diários que falharam (não foram completados)
-    const missedDailyWorks = (appData.works || []).filter(
-      (w) =>
-        w.type === 'diaria' &&
-        !w.completed &&
-        !w.failed &&
-        w.dateAdded &&
-        w.dateAdded <= targetDateStr
-    );
-    missedDailyWorks.forEach((work) => {
-      // Verificar se já foi registrada como falha
-      const alreadyLogged = appData.completedWorks.some(
-        (entry) =>
-          entry.failed &&
-          (entry.originalId || entry.id) === (work.originalId || work.id) &&
-          entry.failedDate === targetDateStr
-      );
-      if (!alreadyLogged) {
-        appData.completedWorks.push({
-          ...work,
-          completedDate: targetDateStr,
-          failedDate: targetDateStr,
-          failed: true,
-          penaltyApplied: true,
-          reason: 'Trabalho diário não completado',
-        });
-      }
-    });
-    if (missedDailyWorks.length > 0 && typeof updateProductiveDay === 'function') {
-      updateProductiveDay(0, 0, 0, 0, 0, {
-        date: targetDateStr,
-        worksMissed: missedDailyWorks.length,
-      });
-    }
-    // Remover trabalhos diários falhados da lista ativa
-    if (missedDailyWorks.length > 0) {
-      const idsToRemove = new Set(missedDailyWorks.map((w) => w.id));
-      appData.works = (appData.works || []).filter((w) => !idsToRemove.has(w.id));
-      if (!failedTypes.includes('work')) {
-        failedTypes.push('work');
-      }
-    }
-
-    const missedWeeklyWorks = logMissedWeeklyItems(
+    const missedRoutineWorks = logMissedRoutineItems(
       appData.works || [],
       appData.completedWorks || [],
       'trabalho',
       'work'
     );
-    if (missedWeeklyWorks > 0 && !failedTypes.includes('work')) {
+    if (missedRoutineWorks > 0 && !failedTypes.includes('work')) {
       failedTypes.push('work');
     }
   }
@@ -1090,29 +925,6 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     // For now, we assume nutrition should be logged daily
     // You can modify this condition if nutrition should not be required every day
     failedTypes.push('nutrition');
-  }
-
-  // Check diary - was there any diary entry on this day?
-  // Only penalize if not a rest day
-  const diaryEntries = diaryDbAvailable ? diaryCache || [] : appData.diaryEntries || [];
-  const diaryActive = diaryLoaded && diaryEntries.length > 0;
-  const hasDiaryEntry = diaryEntries.some((entry) => {
-    if (!entry || typeof entry !== 'object') return false;
-    if (typeof entry.localDate === 'string' && entry.localDate.length >= 10) {
-      return entry.localDate.slice(0, 10) === targetDateStr;
-    }
-    if (typeof entry.date === 'string' && entry.date.length >= 10) {
-      const isoPrefix = entry.date.slice(0, 10);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(isoPrefix) && isoPrefix === targetDateStr) {
-        return true;
-      }
-    }
-    if (!entry.date) return false;
-    const parsed = new Date(entry.date);
-    return Number.isFinite(parsed.getTime()) && getLocalDateString(parsed) === targetDateStr;
-  });
-  if (shouldCheckType('diary') && diaryActive && !hasDiaryEntry && !isRestDay(targetDateStr)) {
-    failedTypes.push('diary');
   }
 
   // Check hydration - penalize every day the goal is not met
@@ -1247,7 +1059,6 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
           if (t === 'mission') return 'missão';
           if (t === 'work') return 'trabalho';
           if (t === 'nutrition') return 'alimentação';
-          if (t === 'diary') return 'diário';
           return t;
         })
         .join(', ') + '.';
@@ -1296,12 +1107,13 @@ Object.assign(globalThis, {
   handleNutritionGoalsSubmit,
   updateMidnightCountdown,
   updateCurrentDate,
-  saveDiaryEntry,
   resetProgress,
   exportData,
   importData,
   getWorkoutTypeName,
   getMissionTypeName,
+  isRoutineType,
+  getRoutineDays,
   getMonthName,
   getDaysNames,
   getDueBadgeHtml,

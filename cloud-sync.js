@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   'use strict';
 
   const CLOUD_CACHE_KEY = 'heroJourneyData';
@@ -94,13 +94,6 @@
     }
   }
 
-  function ensureDiaryMemoryMode() {
-    if (typeof diaryDbAvailable !== 'undefined') diaryDbAvailable = false;
-    if (!Array.isArray(appData.diaryEntries)) appData.diaryEntries = [];
-    if (typeof diaryCache !== 'undefined') diaryCache = appData.diaryEntries;
-    if (typeof diaryLoaded !== 'undefined') diaryLoaded = true;
-  }
-
   function applyDataGuards() {
     if (typeof ensureDataIntegrity === 'function') {
       ensureDataIntegrity();
@@ -117,9 +110,6 @@
 
   function buildSerializableData() {
     const payload = deepClone(appData);
-    payload.diaryEntries = Array.isArray(diaryCache)
-      ? deepClone(diaryCache)
-      : deepClone(appData.diaryEntries || []);
     return payload;
   }
 
@@ -128,21 +118,6 @@
       return JSON.stringify(data || {});
     } catch (err) {
       return '';
-    }
-  }
-
-  async function loadLegacyDiaryFromIndexedDBIfNeeded() {
-    if (Array.isArray(appData.diaryEntries) && appData.diaryEntries.length > 0) return;
-    if (typeof getAllDiaryEntriesFromDB !== 'function') return;
-    try {
-      const legacyEntries = await getAllDiaryEntriesFromDB();
-      if (!Array.isArray(legacyEntries) || legacyEntries.length === 0) return;
-      appData.diaryEntries = legacyEntries.slice();
-      diaryCache = appData.diaryEntries;
-      diaryLoaded = true;
-      console.log('Diário legado migrado do IndexedDB para memória/nuvem');
-    } catch (err) {
-      console.warn('Falha ao ler diário legado do IndexedDB:', err);
     }
   }
 
@@ -166,14 +141,14 @@
       status.classList.add(kind || 'warn');
     }
 
-    // Atualizar indicador no cabeçalho também
+    // Atualizar indicador no cabeÃƒÂ§alho tambÃƒÂ©m
     updateHeaderSyncIndicator(message, kind);
   }
 
   function updateHeaderSyncIndicator(message, kind) {
     let indicator = document.getElementById('header-sync-indicator');
     if (!indicator) {
-      // Criar indicador no cabeçalho se não existir
+      // Criar indicador no cabeÃƒÂ§alho se nÃƒÂ£o existir
       const headerStats = document.querySelector('.header-stats');
       if (headerStats) {
         indicator = document.createElement('div');
@@ -189,7 +164,7 @@
           if (cloudReady && currentUser) {
             pushCloud(true);
           } else {
-            // Se não está conectado, mostra o painel de login
+            // Se nÃƒÂ£o estÃƒÂ¡ conectado, mostra o painel de login
             const panel = document.getElementById('cloud-auth-panel');
             if (panel) {
               panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
@@ -200,21 +175,21 @@
     }
 
     if (indicator) {
-      // Mapear mensagens para ícones e cores
-      let icon = '☁️';
+      // Mapear mensagens para ÃƒÂ­cones e cores
+      let icon = '??';
       let bgColor = 'rgba(255,255,255,0.05)';
       let textColor = 'var(--gray-color)';
 
       if (kind === 'ok') {
-        icon = '✅';
+        icon = '?';
         bgColor = 'rgba(32, 217, 128, 0.2)';
         textColor = '#20D980';
       } else if (kind === 'err') {
-        icon = '❌';
+        icon = '?';
         bgColor = 'rgba(255, 77, 109, 0.2)';
         textColor = '#FF4D6D';
       } else if (message && message.toLowerCase().includes('sincronizando')) {
-        icon = '🔄';
+        icon = '??';
         bgColor = 'rgba(16, 242, 255, 0.2)';
         textColor = '#10F2FF';
       }
@@ -247,7 +222,7 @@
       '<button id="cloud-register-btn" type="button">Criar conta</button>' +
       '<button id="cloud-logout-btn" type="button">Sair</button>' +
       '<button id="cloud-sync-now-btn" type="button">Sincronizar Agora</button>' +
-      '<span id="cloud-user-label">Não autenticado</span>' +
+      '<span id="cloud-user-label">NÃƒÂ£o autenticado</span>' +
       '<span id="cloud-sync-status" class="warn">Modo local</span>';
     document.body.appendChild(panel);
   }
@@ -264,7 +239,7 @@
   async function pushCloud(force) {
     if (!cloudReady || !currentUser) return;
     if (syncBlockedByConflict) {
-      setSyncStatus('Sincronização pausada por conflito', 'warn');
+      setSyncStatus('SincronizaÃƒÂ§ÃƒÂ£o pausada por conflito', 'warn');
       return;
     }
     if (saveInFlight) {
@@ -305,8 +280,8 @@
   // Salva apenas na nuvem (sem localStorage)
   function queueCloudSave() {
     if (!cloudReady || !currentUser) {
-      // Sem login: em modo cloud-only ignoramos saves automáticos silenciosamente.
-      // O estado de conexão já é exibido via onAuthStateChanged.
+      // Sem login: em modo cloud-only ignoramos saves automÃƒÂ¡ticos silenciosamente.
+      // O estado de conexÃƒÂ£o jÃƒÂ¡ ÃƒÂ© exibido via onAuthStateChanged.
       return;
     }
     // Push imediato para a nuvem (mais seguro)
@@ -314,7 +289,7 @@
   }
   window.queueCloudSave = queueCloudSave;
 
-  // Função para verificar e notificar sobre modificações remotas
+  // FunÃƒÂ§ÃƒÂ£o para verificar e notificar sobre modificaÃƒÂ§ÃƒÂµes remotas
   function checkRemoteModification(remoteTimestamp) {
     if (!remoteTimestamp) return;
 
@@ -330,39 +305,39 @@
       return;
     }
 
-    // Obter última sincronização local
+    // Obter ÃƒÂºltima sincronizaÃƒÂ§ÃƒÂ£o local
     const lastLocalSync = localStorage.getItem(LAST_SYNC_KEY);
     const lastSyncDate = lastLocalSync ? new Date(parseInt(lastLocalSync)) : null;
 
-    // Se Há dados locais e a nuvem foi modificada mais recentemente
+    // Se HÃƒÂ¡ dados locais e a nuvem foi modificada mais recentemente
     if (lastSyncDate && remoteDate > lastSyncDate) {
       const diffMs = Date.now() - remoteDate.getTime();
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
 
       let timeAgo;
-      if (diffMins < 1) timeAgo = 'Há poucos segundos';
-      else if (diffMins < 60) timeAgo = `Há ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
-      else if (diffHours < 24) timeAgo = `Há ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+      if (diffMins < 1) timeAgo = 'HÃƒÂ¡ poucos segundos';
+      else if (diffMins < 60) timeAgo = `HÃƒÂ¡ ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
+      else if (diffHours < 24) timeAgo = `HÃƒÂ¡ ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
       else timeAgo = remoteDate.toLocaleDateString('pt-BR');
 
-      // Mostrar notificação
+      // Mostrar notificaÃƒÂ§ÃƒÂ£o
       showRemoteChangeNotification(timeAgo);
     }
   }
 
-  // Mostrar notificação de alteração remota
+  // Mostrar notificaÃƒÂ§ÃƒÂ£o de alteraÃƒÂ§ÃƒÂ£o remota
   function showRemoteChangeNotification(timeAgo) {
     const notification = document.createElement('div');
     notification.id = 'remote-change-notification';
     notification.className = 'notification-banner info';
     notification.innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px; padding: 12px;">
-                <span style="font-size: 1.5rem;">📱</span>
+                <span style="font-size: 1.5rem;">??</span>
                 <div style="flex: 1;">
                     <strong>Dados modificados em outro dispositivo</strong>
                     <p style="margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9;">
-                        Última alteração na nuvem: ${timeAgo}
+                        ÃƒÅ¡ltima alteraÃƒÂ§ÃƒÂ£o na nuvem: ${timeAgo}
                     </p>
                 </div>
                 <button onclick="this.parentElement.parentElement.remove()" style="
@@ -372,10 +347,10 @@
             </div>
         `;
 
-    // Inserir no topo da página
+    // Inserir no topo da pÃƒÂ¡gina
     document.body.insertBefore(notification, document.body.firstChild);
 
-    // Auto-remover após 10 segundos
+    // Auto-remover apÃƒÂ³s 10 segundos
     setTimeout(() => {
       if (notification.parentElement) notification.remove();
     }, 10000);
@@ -404,13 +379,6 @@
 
     Object.keys(appData).forEach((key) => delete appData[key]);
     Object.assign(appData, deepClone(remoteAppData));
-
-    ensureDiaryMemoryMode();
-    if (Array.isArray(remoteAppData.diaryEntries)) {
-      appData.diaryEntries = remoteAppData.diaryEntries.slice();
-      diaryCache = appData.diaryEntries;
-      diaryLoaded = true;
-    }
 
     applyDataGuards();
     persistLocalCache();
@@ -442,10 +410,10 @@
 
   async function askConflictKeepLocal() {
     const message =
-      'Conflito detectado: dados mudaram em outro dispositivo enquanto havia alterações locais. Deseja manter a versão LOCAL e sobrescrever a nuvem?';
+      'Conflito detectado: dados mudaram em outro dispositivo enquanto havia alteraÃƒÂ§ÃƒÂµes locais. Deseja manter a versÃƒÂ£o LOCAL e sobrescrever a nuvem?';
     if (typeof askConfirmation === 'function') {
       return await askConfirmation(message, {
-        title: 'Conflito de sincronização',
+        title: 'Conflito de sincronizaÃƒÂ§ÃƒÂ£o',
         confirmText: 'Manter local',
         cancelText: 'Usar nuvem',
       });
@@ -468,7 +436,7 @@
       await pushCloud(true);
     } else {
       applyRemoteState(remote, {
-        statusMessage: 'Conflito resolvido: versão da nuvem aplicada',
+        statusMessage: 'Conflito resolvido: versÃƒÂ£o da nuvem aplicada',
         statusKind: 'ok',
       });
       syncBlockedByConflict = false;
@@ -535,7 +503,7 @@
       },
       function (err) {
         console.error('Erro no listener em tempo real:', err);
-        setSyncStatus('Falha na sincronização em tempo real', 'err');
+        setSyncStatus('Falha na sincronizaÃƒÂ§ÃƒÂ£o em tempo real', 'err');
       }
     );
     realtimeEnabled = true;
@@ -544,14 +512,13 @@
   async function pullCloud(uid) {
     const snap = await getProgressRef(uid).get();
     if (!snap.exists) {
-      await loadLegacyDiaryFromIndexedDBIfNeeded();
       updateServerMetaFromLocal();
       return { hasRemoteData: false };
     }
 
     const remote = snap.data() || {};
 
-    // Verificar se houve modificação remota antes de sobrescrever
+    // Verificar se houve modificaÃƒÂ§ÃƒÂ£o remota antes de sobrescrever
     const remoteTimestamp = remote.updatedAt;
     checkRemoteModification(remoteTimestamp);
     const applied = applyRemoteState(remote, {
@@ -569,7 +536,6 @@
     window.loadFromLocalStorage = function () {
       const saved = parseJson(localStorage.getItem(CLOUD_CACHE_KEY), null);
       if (saved && typeof saved === 'object') mergeData(appData, saved);
-      ensureDiaryMemoryMode();
       applyDataGuards();
       updateServerMetaFromLocal();
     };
@@ -585,7 +551,7 @@
       if (syncBlockedByConflict) {
         hasUnsyncedLocalChanges = true;
         persistLocalCache();
-        setSyncStatus('Sincronização pausada até resolver conflito', 'warn');
+        setSyncStatus('SincronizaÃƒÂ§ÃƒÂ£o pausada atÃƒÂ© resolver conflito', 'warn');
         return;
       }
       hasUnsyncedLocalChanges = true;
@@ -593,23 +559,9 @@
       queueCloudSave();
     };
 
-    window.initDiaryStorage = async function () {
-      ensureDiaryMemoryMode();
-    };
-
-    window.saveDiaryEntryToStorage = async function (entry) {
-      if (!Array.isArray(appData.diaryEntries)) appData.diaryEntries = [];
-      appData.diaryEntries.push(entry);
-      diaryCache = appData.diaryEntries;
-      diaryLoaded = true;
-      if (typeof queueSave === 'function') {
-        queueSave();
-      }
-    };
-
     window.checkDailyReset = function () {
       const today = getLocalDateString();
-      let lastReset = serverMeta.lastDailyReset || appData.serverMeta?.lastDailyReset || null;
+      const lastReset = serverMeta.lastDailyReset;
       if (!Number.isFinite(appData.hero.maxLives) || appData.hero.maxLives <= 0)
         appData.hero.maxLives = 10;
       if (!Number.isFinite(appData.hero.lives) || appData.hero.lives < 0)
@@ -651,8 +603,7 @@
         typeof getWeekKey === 'function'
           ? getWeekKey(today)
           : `${today.getFullYear()}-W${getWeekNumber(today)}`;
-      const lastWeeklyReset =
-        serverMeta.lastWeeklyReset || appData.serverMeta?.lastWeeklyReset || null;
+      const lastWeeklyReset = serverMeta.lastWeeklyReset;
       if (!lastWeeklyReset) {
         serverMeta.lastWeeklyReset = thisWeekKey;
         persistServerMetaToApp();
@@ -668,10 +619,12 @@
     };
 
     window.resetProgress = async function () {
-      if (!confirm('Tem certeza que deseja resetar todo o progresso? Isso não pode ser desfeito.'))
+      if (
+        !confirm('Tem certeza que deseja resetar todo o progresso? Isso nÃƒÂ£o pode ser desfeito.')
+      )
         return;
       const confirmationText = prompt(
-        'Digite RESETAR para confirmar a exclusão total do progresso:'
+        'Digite RESETAR para confirmar a exclusÃƒÂ£o total do progresso:'
       );
       if (confirmationText !== 'RESETAR') {
         alert('Reset cancelado.');
@@ -744,7 +697,7 @@
 
     syncNowBtn.addEventListener('click', async function () {
       if (!cloudReady || !currentUser) {
-        alert('Faça login para sincronizar.');
+        alert('FaÃƒÂ§a login para sincronizar.');
         return;
       }
       await pushCloud(true);
@@ -758,7 +711,7 @@
     }
 
     if (!window.firebase) {
-      setSyncStatus('SDK Firebase não carregado', 'err');
+      setSyncStatus('SDK Firebase nÃƒÂ£o carregado', 'err');
       return;
     }
 
@@ -783,7 +736,7 @@
         conflictInProgress = false;
         pendingRemoteConflict = null;
         hasUnsyncedLocalChanges = false;
-        setUserLabel('Não autenticado');
+        setUserLabel('NÃƒÂ£o autenticado');
         setSyncStatus('Modo local (sem login)', 'warn');
         return;
       }
@@ -820,7 +773,6 @@
   }
 
   function init() {
-    ensureDiaryMemoryMode();
     overrideStorageFunctions();
 
     if (document.readyState === 'loading') {
