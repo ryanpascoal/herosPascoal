@@ -47,6 +47,17 @@ function bindManyById(eventName, handlersById) {
   Object.entries(handlersById).forEach(([id, handler]) => bindById(id, eventName, handler));
 }
 
+function openBookActivityForm() {
+  const activitiesSection = document.getElementById('atividades');
+  if (!activitiesSection) return;
+  switchTab('atividades');
+  switchSubTab('atividades-gerenciar', activitiesSection);
+  const categorySelect = document.getElementById('activity-category');
+  if (categorySelect) categorySelect.value = 'book';
+  if (typeof updateActivityForm === 'function') updateActivityForm();
+  document.getElementById('activity-name')?.focus();
+}
+
 function initSelectAllDays(containerSelector) {
   const container = document.querySelector(containerSelector);
   if (!container) return;
@@ -155,7 +166,7 @@ function initEvents() {
   bindManyById('click', {
     'hydration-add-btn': addHydrationGlass,
     'hydration-remove-btn': removeHydrationGlass,
-    'add-book-btn': () => showBookModal(),
+    'add-book-btn': () => openBookActivityForm(),
     'save-stats-goals-btn': saveStatisticsGoals,
     'reset-foods-btn': resetNutritionFoods,
     'reset-btn': resetProgress,
@@ -444,6 +455,13 @@ function initEvents() {
       return;
     }
 
+    const unifiedCompleteBookBtn = e.target.closest('.unified-complete-book-btn');
+    if (unifiedCompleteBookBtn) {
+      const bookId = parseInt(unifiedCompleteBookBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(bookId)) completeBook(bookId);
+      return;
+    }
+
     const unifiedSkipStudyBtn = e.target.closest('.unified-skip-study-btn');
     if (unifiedSkipStudyBtn) {
       const studyDayId = parseInt(unifiedSkipStudyBtn.getAttribute('data-id'), 10);
@@ -460,6 +478,7 @@ function initEvents() {
       else if (category === 'work') editWork(id);
       else if (category === 'workout') editWorkout(id);
       else if (category === 'study') editStudy(id);
+      else if (category === 'book') editBook(id);
       return;
     }
 
@@ -472,6 +491,7 @@ function initEvents() {
       else if (category === 'work') deleteWork(id);
       else if (category === 'workout') deleteWorkout(id);
       else if (category === 'study') deleteStudy(id);
+      else if (category === 'book') deleteBook(id);
       return;
     }
 
@@ -1751,6 +1771,7 @@ Object.assign(globalThis, {
   initUI,
   bindById,
   bindManyById,
+  openBookActivityForm,
   initEvents,
   updateUI,
   updateIntegratedHearts,

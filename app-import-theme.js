@@ -608,6 +608,12 @@ function deleteStudy(id) {
   });
 }
 
+function editBook(id) {
+  const book = appData.books.find((item) => Number(item.id) === Number(id));
+  if (!book) return;
+  showBookModal(book);
+}
+
 function editMission(id) {
   const mission = appData.missions.find((m) => m.id === id);
   if (!mission) return;
@@ -1126,6 +1132,7 @@ Object.assign(globalThis, {
   deleteWorkout,
   editStudy,
   deleteStudy,
+  editBook,
   editMission,
   deleteMission,
   editWork,

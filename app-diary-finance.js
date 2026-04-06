@@ -745,6 +745,19 @@ function createStudyPayload(name, emoji, type, days) {
     },
   };
 }
+
+function createBookPayload(name, emoji, status, author = '') {
+  return {
+    id: createUniqueId(appData.books),
+    name,
+    author: author || '',
+    emoji: emoji || '📖',
+    type: 'book',
+    status: status === 'lendo' ? 'lendo' : 'quero-ler',
+    completed: false,
+    dateAdded: getLocalDateString(),
+  };
+}
 // Renderizar calendário de missões
 // __appDiaryFinanceBridge: exposes diary/finance APIs for legacy scripts during module migration
 Object.assign(globalThis, {
@@ -774,4 +787,5 @@ Object.assign(globalThis, {
   getCheckedDays,
   createWorkoutPayload,
   createStudyPayload,
+  createBookPayload,
 });

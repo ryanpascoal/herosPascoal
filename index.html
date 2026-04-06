@@ -53,10 +53,6 @@
             <i class="fas fa-layer-group"></i>
             <span>Atividades</span>
           </li>
-          <li class="nav-item" data-tab="biblioteca" data-mobile="primary">
-            <i class="fas fa-book-open"></i>
-            <span>Livros</span>
-          </li>
           <li class="nav-item" data-tab="calendarios" data-mobile="extra">
             <i class="fas fa-calendar-alt"></i>
             <span>Calendários</span>
@@ -339,6 +335,7 @@
           <div class="sub-nav">
             <button class="sub-nav-btn active" data-subtab="atividades-hoje">Hoje</button>
             <button class="sub-nav-btn" data-subtab="atividades-historico">Histórico</button>
+            <button class="sub-nav-btn" data-subtab="atividades-livros">Livros</button>
             <button class="sub-nav-btn" data-subtab="atividades-gerenciar">Gerenciar</button>
           </div>
 
@@ -349,6 +346,33 @@
 
             <div id="atividades-historico" class="sub-tab">
               <div class="missions-list history-list" id="completed-activities"></div>
+            </div>
+
+            <div id="atividades-livros" class="sub-tab">
+              <div class="books-section">
+                <h3>Biblioteca</h3>
+                <div class="books-toolbar">
+                  <input
+                    type="search"
+                    id="books-search"
+                    class="books-search-input"
+                    placeholder="Buscar por nome, autor ou status"
+                  />
+                </div>
+                <div class="items-list" id="books-list">
+                  <!-- Livros serão carregados aqui -->
+                </div>
+                <br />
+                <button class="add-btn" id="add-book-btn">
+                  <i class="fas fa-plus"></i> Adicionar Livro
+                </button>
+              </div>
+              <div class="books-section books-history-section">
+                <h3>Histórico de Livros Concluídos</h3>
+                <div class="items-list history-list" id="books-history-list">
+                  <!-- Histórico de livros concluídos -->
+                </div>
+              </div>
             </div>
 
             <div id="atividades-gerenciar" class="sub-tab">
@@ -362,6 +386,7 @@
                       <option value="work">Trabalho</option>
                       <option value="workout">Treino</option>
                       <option value="study">Estudo</option>
+                      <option value="book">Livro</option>
                     </select>
                   </div>
 
@@ -399,6 +424,19 @@
                     <select id="activity-study-type">
                       <option value="logico">Lógico</option>
                       <option value="criativo">Criativo</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group" id="activity-book-author-container" style="display: none">
+                    <label for="activity-book-author">Autor (opcional)</label>
+                    <input type="text" id="activity-book-author" placeholder="Ex: C. S. Lewis" />
+                  </div>
+
+                  <div class="form-group" id="activity-book-status-container" style="display: none">
+                    <label for="activity-book-status">Status</label>
+                    <select id="activity-book-status">
+                      <option value="quero-ler">Quero ler</option>
+                      <option value="lendo">Lendo</option>
                     </select>
                   </div>
 
@@ -477,38 +515,6 @@
                 <h3>Atividades Cadastradas</h3>
                 <div class="items-list" id="activities-list"></div>
               </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Aba Biblioteca -->
-        <section id="biblioteca" class="tab-content">
-          <div class="page-header">
-            <h2><i class="fas fa-book-open"></i> Livros</h2>
-          </div>
-
-          <div class="books-section">
-            <h3>Biblioteca</h3>
-            <div class="books-toolbar">
-              <input
-                type="search"
-                id="books-search"
-                class="books-search-input"
-                placeholder="Buscar por nome, autor ou status"
-              />
-            </div>
-            <div class="items-list" id="books-list">
-              <!-- Livros serão carregados aqui -->
-            </div>
-            <br />
-            <button class="add-btn" id="add-book-btn">
-              <i class="fas fa-plus"></i> Adicionar Livro
-            </button>
-          </div>
-          <div class="books-section books-history-section">
-            <h3>Histórico de Livros Concluídos</h3>
-            <div class="items-list history-list" id="books-history-list">
-              <!-- Histórico de livros concluídos -->
             </div>
           </div>
         </section>

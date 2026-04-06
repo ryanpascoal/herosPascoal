@@ -8,9 +8,16 @@
       return { label: 'Treino', emoji: '💪', className: 'workout' };
     case 'study':
       return { label: 'Estudo', emoji: '📚', className: 'study' };
+    case 'book':
+      return { label: 'Livro', emoji: '📖', className: 'study' };
     default:
       return { label: 'Atividade', emoji: '⭐', className: 'kind' };
   }
+}
+
+function getBookActivityStatusLabel(book) {
+  if (book?.completed || book?.status === 'concluido') return 'Concluído';
+  return book?.status === 'lendo' ? 'Lendo' : 'Quero ler';
 }
 
 function getUnifiedTodayActivities() {
@@ -67,6 +74,11 @@ function getUnifiedTodayActivities() {
       });
   }
 
+  (appData.books || []).forEach((book) => {
+    if (!book || book.completed || book.status === 'concluido') return;
+    if (book.status === 'lendo') items.push({ category: 'book', item: book });
+  });
+
   return items.sort((a, b) => {
     if (a.category === 'work' && a.item.urgent && !(b.category === 'work' && b.item.urgent)) return -1;
     if (b.category === 'work' && b.item.urgent && !(a.category === 'work' && a.item.urgent)) return 1;
@@ -80,6 +92,9 @@ function getUnifiedHistoryActivities() {
     ...(appData.completedWorks || []).map((item) => ({ category: 'work', item })),
     ...(appData.completedWorkouts || []).map((item) => ({ category: 'workout', item })),
     ...(appData.completedStudies || []).map((item) => ({ category: 'study', item })),
+    ...(appData.books || [])
+      .filter((item) => item && (item.completed || item.status === 'concluido'))
+      .map((item) => ({ category: 'book', item })),
   ].sort((a, b) => {
     const dateA = getEventDateKey(a.item);
     const dateB = getEventDateKey(b.item);
@@ -93,6 +108,7 @@ function getUnifiedManagedActivities() {
     ...(appData.works || []).map((item) => ({ category: 'work', item })),
     ...(appData.workouts || []).map((item) => ({ category: 'workout', item })),
     ...(appData.studies || []).map((item) => ({ category: 'study', item })),
+    ...(appData.books || []).map((item) => ({ category: 'book', item })),
   ].sort((a, b) => String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR'));
 }
 
@@ -117,6 +133,8 @@ function renderUnifiedTodayActivities() {
           ? item.type === 'logico'
             ? 'L�gico'
             : 'Criativo'
+          : category === 'book'
+            ? 'Leitura'
           : getMissionTypeName(item.type);
     const dueValue =
       category === 'mission' || category === 'work'
@@ -141,6 +159,10 @@ function renderUnifiedTodayActivities() {
         `<label class="applied-checkbox compact"><input type="checkbox" class="apply-study-checkbox" data-id="${dailyEntry.id}" ${dailyEntry.applied ? 'checked' : ''}> Aplicado</label>`
       );
     }
+    if (category === 'book') {
+      subtitleParts.push(`<span>Status: ${escapeHtml(getBookActivityStatusLabel(item))}</span>`);
+      if (item.author) subtitleParts.push(`Autor: ${escapeHtml(item.author)}`);
+    }
 
     const actionId = dailyEntry ? dailyEntry.id : item.id;
     const completeClass =
@@ -150,7 +172,9 @@ function renderUnifiedTodayActivities() {
           ? 'unified-complete-work-btn'
           : category === 'workout'
             ? 'unified-complete-workout-btn'
-            : 'unified-complete-study-btn';
+            : category === 'study'
+              ? 'unified-complete-study-btn'
+              : 'unified-complete-book-btn';
     const skipClass =
       category === 'mission'
         ? 'unified-skip-mission-btn'
@@ -179,7 +203,7 @@ function renderUnifiedTodayActivities() {
           <i class="fas fa-check"></i> ${category === 'workout' || category === 'study' ? 'Registrar' : 'Concluir'}
         </button>
         ${
-          skipCount > 0
+          category !== 'book' && skipCount > 0
             ? `<button class="skip-btn ${skipClass}" data-id="${actionId}">
                 <i class="fas fa-forward"></i> Pular (x${skipCount})
               </button>`
@@ -208,14 +232,16 @@ function renderUnifiedActivitiesHistory() {
         : item.skipped
           ? 'skipped-status'
           : 'completed-status';
-      const typeLabel =
-        category === 'workout'
-          ? getWorkoutTypeName(item.type)
-          : category === 'study'
-            ? item.type === 'logico'
-              ? 'L�gico'
-              : 'Criativo'
-            : getMissionTypeName(item.type);
+        const typeLabel =
+          category === 'workout'
+            ? getWorkoutTypeName(item.type)
+            : category === 'study'
+              ? item.type === 'logico'
+                ? 'L�gico'
+                : 'Criativo'
+              : category === 'book'
+                ? getBookActivityStatusLabel(item)
+              : getMissionTypeName(item.type);
       const eventDate = getEventDateKey(item);
       card.innerHTML = `
         <div class="mission-header">
@@ -229,6 +255,7 @@ function renderUnifiedActivitiesHistory() {
         <div class="mission-details">
           <p>Tipo: ${typeLabel}</p>
           <p>Data: ${formatDate(eventDate)}</p>
+          ${category === 'book' && item.author ? `<p>Autor: ${escapeHtml(item.author)}</p>` : ''}
           ${item.reason ? `<p class="mission-reason">Motivo: ${escapeHtml(item.reason)}</p>` : ''}
           ${item.feedback ? `<p class="mission-feedback">Feedback: ${escapeHtml(item.feedback)}</p>` : ''}
         </div>
@@ -259,6 +286,8 @@ function renderUnifiedActivitiesList() {
           ? item.type === 'logico'
             ? 'L�gico'
             : 'Criativo'
+          : category === 'book'
+            ? getBookActivityStatusLabel(item)
           : getMissionTypeName(item.type);
     const card = document.createElement('div');
     card.className = 'item-card';
@@ -268,6 +297,7 @@ function renderUnifiedActivitiesList() {
         <div>
           <div class="item-name">${escapeHtml(item.name || 'Atividade')}</div>
           <div class="item-type">${categoryMeta.label} � ${secondary}</div>
+          ${category === 'book' && item.author ? `<div class="item-author">${escapeHtml(item.author)}</div>` : ''}
         </div>
       </div>
       <div class="item-actions">

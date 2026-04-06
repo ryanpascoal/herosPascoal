@@ -195,6 +195,7 @@ function ensureCriticalDataShape() {
   if (!Array.isArray(appData.workOffDays)) appData.workOffDays = [];
   if (!Array.isArray(appData.shopItems)) appData.shopItems = [];
   if (!Array.isArray(appData.inventory)) appData.inventory = [];
+  if (!Array.isArray(appData.books)) appData.books = [];
   normalizeEntityIds(appData.shopItems);
   if (!appData.statisticsGoals || typeof appData.statisticsGoals !== 'object') {
     appData.statisticsGoals = {};
@@ -410,6 +411,41 @@ function normalizeActivityDays() {
   normalizeListDays(appData.works);
 }
 
+function normalizeBooksData() {
+  if (!Array.isArray(appData.books)) {
+    appData.books = [];
+    return;
+  }
+
+  appData.books = appData.books
+    .filter((book) => book && typeof book === 'object')
+    .map((book) => {
+      const completed = book.completed === true || book.status === 'concluido';
+      const rawStatus = String(book.status || '').trim();
+      const status = completed ? 'concluido' : rawStatus === 'lendo' ? 'lendo' : 'quero-ler';
+      return {
+        id: Number.isFinite(Number(book.id)) ? Number(book.id) : createUniqueId(appData.books),
+        name: String(book.name || '').trim(),
+        author: String(book.author || '').trim(),
+        emoji: String(book.emoji || '').trim() || '📖',
+        type: 'book',
+        status,
+        completed,
+        dateAdded:
+          typeof book.dateAdded === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(book.dateAdded)
+            ? book.dateAdded
+            : getLocalDateString(),
+        dateCompleted:
+          typeof book.dateCompleted === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(book.dateCompleted)
+            ? book.dateCompleted
+            : '',
+      };
+    })
+    .filter((book) => book.name);
+
+  normalizeEntityIds(appData.books);
+}
+
 function normalizeClassIds() {
   const validClassIds = new Set((appData.classes || []).map((c) => Number(c.id)));
   const normalizeList = (list) => {
@@ -433,6 +469,7 @@ function ensureDataIntegrity() {
   ensureCoreAttributes();
   ensureClasses();
   ensureStartingLevels();
+  normalizeBooksData();
   normalizeClassIds();
 }
 

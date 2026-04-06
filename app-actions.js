@@ -24,6 +24,10 @@
       handleNewBook();
       break;
 
+    case 'edit-book':
+      handleEditBook();
+      break;
+
     case 'complete-workout':
       handleWorkoutCompletion();
       break;
@@ -127,19 +131,35 @@ function handleNewBook() {
   const emoji = document.getElementById('book-emoji').value;
   const status = document.getElementById('book-status')?.value || 'quero-ler';
 
-  const newBook = {
-    id: createUniqueId(appData.books),
-    name,
-    author: author || '',
-    emoji: emoji || '📖',
-    status,
-    completed: false,
-    dateAdded: getLocalDateString(),
-  };
-
-  appData.books.push(newBook);
+  appData.books.push(createBookPayload(name, emoji, status, author));
   updateUI();
   showFeedback('Livro cadastrado com sucesso!', 'success');
+}
+
+function handleEditBook() {
+  const id = parseInt(document.getElementById('modal-item-id').value, 10);
+  const book = appData.books.find((item) => item.id === id);
+  if (!book) return;
+
+  const name = document.getElementById('book-name').value.trim();
+  const author = document.getElementById('book-author').value.trim();
+  const emoji = document.getElementById('book-emoji').value.trim();
+  const status = document.getElementById('book-status')?.value || 'quero-ler';
+
+  if (!name) {
+    showFeedback('Informe um nome válido para o livro.', 'warn');
+    return;
+  }
+
+  book.name = name;
+  book.author = author;
+  book.emoji = emoji || '📖';
+  if (!book.completed) {
+    book.status = status === 'lendo' ? 'lendo' : 'quero-ler';
+  }
+
+  updateUI({ mode: 'activity' });
+  showFeedback('Livro atualizado com sucesso!', 'success');
 }
 
 // Manipular conclusão de treino
@@ -507,6 +527,8 @@ function updateActivityForm() {
   const attributesContainer = document.getElementById('activity-attributes-container');
   const classContainer = document.getElementById('activity-class-container');
   const urgentContainer = document.getElementById('activity-urgent-container');
+  const bookAuthorContainer = document.getElementById('activity-book-author-container');
+  const bookStatusContainer = document.getElementById('activity-book-status-container');
 
   if (!scheduleContainer) return;
 
@@ -514,11 +536,14 @@ function updateActivityForm() {
   const isWork = category === 'work';
   const isWorkout = category === 'workout';
   const isStudy = category === 'study';
+  const isBook = category === 'book';
   const supportsScheduleType = isMission || isWork;
 
   scheduleContainer.style.display = supportsScheduleType ? 'block' : 'none';
   workoutTypeContainer.style.display = isWorkout ? 'block' : 'none';
   studyTypeContainer.style.display = isStudy ? 'block' : 'none';
+  if (bookAuthorContainer) bookAuthorContainer.style.display = isBook ? 'block' : 'none';
+  if (bookStatusContainer) bookStatusContainer.style.display = isBook ? 'block' : 'none';
   attributesContainer.style.display = isMission || isWork ? 'block' : 'none';
   classContainer.style.display = isWork ? 'block' : 'none';
   urgentContainer.style.display = isWork ? 'block' : 'none';
@@ -621,6 +646,10 @@ function handleActivitySubmit(e) {
   } else if (category === 'study') {
     const studyType = document.getElementById('activity-study-type')?.value || 'logico';
     appData.studies.push(createStudyPayload(name, emoji, studyType, selectedDays));
+  } else if (category === 'book') {
+    const author = document.getElementById('activity-book-author')?.value?.trim() || '';
+    const status = document.getElementById('activity-book-status')?.value || 'quero-ler';
+    appData.books.push(createBookPayload(name, emoji, status, author));
   }
 
   e.target.reset();
@@ -1385,6 +1414,7 @@ Object.assign(globalThis, {
   handleNewWorkout,
   handleNewStudy,
   handleNewBook,
+  handleEditBook,
   handleWorkoutCompletion,
   handleStudyCompletion,
   handleMissionCompletion,
