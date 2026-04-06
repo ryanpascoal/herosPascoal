@@ -6,8 +6,8 @@ const appData = {
     level: 1,
     xp: 0,
     maxXp: 100,
-    lives: 7,
-    maxLives: 7,
+    lives: 10,
+    maxLives: 10,
     coins: 0,
     protection: {
       shield: false,
