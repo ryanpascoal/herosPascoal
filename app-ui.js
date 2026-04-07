@@ -89,6 +89,23 @@ function initSelectAllDays(containerSelector) {
 
 // Inicializar eventos
 function initEvents() {
+  // Toggle do calendário
+  document.getElementById('calendar-collapse-toggle')?.addEventListener('click', function () {
+    const panel = document.getElementById('calendar-panel');
+    if (!panel) return;
+    panel.classList.toggle('collapsed');
+    const icon = this.querySelector('.fa-chevron-down');
+    if (icon)
+      icon.style.transform = panel.classList.contains('collapsed')
+        ? 'rotate(-90deg)'
+        : 'rotate(0deg)';
+  });
+
+  // Filtro de atividades
+  document.getElementById('activity-filter')?.addEventListener('change', function () {
+    renderUnifiedTodayActivities();
+  });
+
   document.querySelectorAll('.nav-item').forEach((item) => {
     item.addEventListener('click', function () {
       const tab = this.getAttribute('data-tab');

@@ -1196,6 +1196,102 @@ body {
   font-size: 0.92rem;
 }
 
+.activity-progress-bar {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.activity-progress-bar .progress-text {
+  font-size: 0.85rem;
+  color: var(--gray-color);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.activity-header-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.activity-header-row .activity-progress-bar {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.activity-filter {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--light-color);
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-width: 110px;
+}
+
+.activity-filter:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.activity-filter option {
+  background: var(--bg-color);
+  color: var(--light-color);
+}
+
+.activity-progress-bar .progress-fill {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.activity-progress-bar .progress-fill-inner {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50, #8bc34a);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.collapse-toggle {
+  width: 100%;
+  padding: 12px 16px;
+  margin: 16px 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: var(--light-color);
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.collapse-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.collapse-toggle .fa-chevron-down {
+  transition: transform 0.2s ease;
+}
+
+.calendar-panel.collapsed {
+  display: none;
+}
+
+.calendar-panel.collapsed + .collapse-toggle .fa-chevron-down {
+  transform: rotate(-90deg);
+}
+
 .calendar-today-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

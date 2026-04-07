@@ -315,113 +315,72 @@
             <div class="time-display">Hoje: <span id="activities-current-date"></span></div>
           </div>
 
-          <div class="sub-nav">
+<div class="sub-nav">
             <button class="sub-nav-btn active" data-subtab="atividades-hoje">Hoje</button>
             <button class="sub-nav-btn" data-subtab="atividades-historico">Histórico</button>
-
             <button class="sub-nav-btn" data-subtab="atividades-gerenciar">Gerenciar</button>
           </div>
 
           <div class="sub-content">
             <div id="atividades-hoje" class="sub-tab active">
-              <div class="missions-list" id="daily-activities"></div>
-              <div class="calendar-panel">
-                <div class="calendar-today-panel">
-                  <div class="calendar-today-header">
-                    <div>
-                      <h3 id="cal-today-title">Hoje</h3>
-                      <p id="cal-today-subtitle">Seu painel principal do dia.</p>
-                    </div>
-                    <button class="calendar-rest-btn" id="cal-go-today" type="button">
-                      Ir para hoje
-                    </button>
-                  </div>
-                  <div class="calendar-today-summary" id="cal-today-summary">
-                    <div class="calendar-today-stat">
-                      <span class="label">Pendentes</span>
-                      <strong id="cal-today-pending-count">0</strong>
-                    </div>
-                    <div class="calendar-today-stat">
-                      <span class="label">Concluídas</span>
-                      <strong id="cal-today-done-count">0</strong>
-                    </div>
-                    <div class="calendar-today-stat">
-                      <span class="label">Falhas/Pulos</span>
-                      <strong id="cal-today-failed-count">0</strong>
-                    </div>
-                  </div>
-                  <div class="calendar-today-list" id="cal-today-list">
-                    <p class="empty-message">Nenhuma atividade para hoje.</p>
-                  </div>
+              <div class="activity-header-row">
+                <div class="activity-progress-bar" id="activity-progress-bar">
+                  <div class="progress-text"><span id="activity-done-count">0</span>/<span id="activity-total-count">0</span> concluídas</div>
+                  <div class="progress-fill"><div class="progress-fill-inner" id="activity-progress-fill"></div></div>
                 </div>
+                <select id="activity-filter" class="activity-filter">
+                  <option value="all">Todas</option>
+                  <option value="mission">Missões</option>
+                  <option value="work">Trabalhos</option>
+                  <option value="workout">Treinos</option>
+                  <option value="study">Estudos</option>
+                  <option value="book">Livros</option>
+                </select>
+              </div>
+              <div class="missions-list" id="daily-activities"></div>
+              <button class="collapse-toggle" id="calendar-collapse-toggle">
+                <i class="fas fa-calendar-alt"></i> Calendário <i class="fas fa-chevron-down"></i>
+              </button>
+              <div class="calendar-panel collapsed" id="calendar-panel">
                 <div class="calendar-header">
-                  <button class="calendar-nav-btn" id="cal-prev-month">
-                    <i class="fas fa-chevron-left"></i>
-                  </button>
+                  <button class="calendar-nav-btn" id="cal-prev-month"><i class="fas fa-chevron-left"></i></button>
                   <div class="calendar-title" id="cal-month-title">Mês/Ano</div>
-                  <button class="calendar-nav-btn" id="cal-next-month">
-                    <i class="fas fa-chevron-right"></i>
-                  </button>
+                  <button class="calendar-nav-btn" id="cal-next-month"><i class="fas fa-chevron-right"></i></button>
                 </div>
                 <div class="calendar-weekdays">
-                  <div>Dom</div>
-                  <div>Seg</div>
-                  <div>Ter</div>
-                  <div>Qua</div>
-                  <div>Qui</div>
-                  <div>Sex</div>
-                  <div>Sáb</div>
+                  <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
                 </div>
-                <div class="calendar-grid" id="cal-missions-grid">
-                  <!-- Dias do calendário -->
-                </div>
-                <div class="calendar-legend">
-                  <div class="legend-item"><span class="legend-dot mission"></span> Missões</div>
-                  <div class="legend-item"><span class="legend-dot work"></span> Trabalhos</div>
-                  <div class="legend-item"><span class="legend-dot workout"></span> Treinos</div>
-                  <div class="legend-item"><span class="legend-dot study"></span> Estudos</div>
-                  <div class="legend-item"><span class="legend-dot rest"></span> Descanso</div>
-                  <div class="legend-item">
-                    <span class="legend-dot work-off"></span> Folga (trabalho)
-                  </div>
-                  <div class="legend-item">
-                    <span class="legend-border streak"></span> Borda: streak
-                  </div>
-                  <div class="legend-item">
-                    <span class="legend-border failure"></span> Borda: falha
-                  </div>
-                  <div class="legend-item">
-                    <span class="legend-border death"></span> Borda: morte
-                  </div>
-                </div>
+                <div class="calendar-grid" id="cal-missions-grid"></div>
                 <div class="calendar-details">
                   <h3 id="cal-details-title">Detalhes do dia</h3>
                   <div class="calendar-details-filter">
-                    <label for="cal-details-filter">Filtrar por tipo:</label>
+                    <label for="cal-details-filter">Filtrar:</label>
                     <select id="cal-details-filter">
                       <option value="all">Todos</option>
                       <option value="routine">Rotinas</option>
-                      <option value="eventual">Missões eventuais</option>
-                      <option value="epic">Missões épicas</option>
                       <option value="workout">Treinos</option>
                       <option value="study">Estudos</option>
                     </select>
                   </div>
-                  <div class="calendar-rest-control" id="cal-rest-control">
-                    <span class="calendar-rest-status" id="cal-rest-status">Dia normal</span>
-                    <button class="calendar-rest-btn" id="cal-rest-toggle">Marcar descanso</button>
-                  </div>
-                  <div class="calendar-rest-control" id="cal-work-off-control">
-                    <span class="calendar-rest-status" id="cal-work-off-status"
-                      >Sem folga de trabalho</span
-                    >
-                    <button class="calendar-rest-btn" id="cal-work-off-toggle">Marcar folga</button>
-                  </div>
                   <div class="calendar-details-list" id="cal-details-list">
-                    <p class="empty-message">Selecione um dia para ver as missões.</p>
+                    <p class="empty-message">Selecione um dia.</p>
                   </div>
                 </div>
               </div>
+            </div>
+
+          <div class="sub-content">
+            <div id="atividades-hoje" class="sub-tab active">
+              <div class="activity-progress-bar" id="activity-progress-bar">
+                <div class="progress-text">
+                  <span id="activity-done-count">0</span>/<span id="activity-total-count">0</span>
+                  concluídas
+                </div>
+                <div class="progress-fill">
+                  <div class="progress-fill-inner" id="activity-progress-fill"></div>
+                </div>
+              </div>
+              <div class="missions-list" id="daily-activities"></div>
             </div>
 
             <div id="atividades-historico" class="sub-tab">

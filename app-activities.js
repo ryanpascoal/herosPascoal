@@ -15,6 +15,33 @@
   }
 }
 
+function updateActivityProgressBar() {
+  const totalCount = document.getElementById('activity-total-count');
+  const doneCount = document.getElementById('activity-done-count');
+  const progressFill = document.getElementById('activity-progress-fill');
+  if (!totalCount || !doneCount || !progressFill) return;
+
+  const filter = document.getElementById('activity-filter')?.value || 'all';
+  const allItems = getUnifiedTodayActivities();
+  const filteredItems = filter === 'all' ? allItems : allItems.filter((i) => i.category === filter);
+
+  const total = filteredItems.length;
+  totalCount.textContent = String(total);
+
+  const done = filteredItems.filter(({ category, item, dailyEntry }) => {
+    if (category === 'mission') return item.completed;
+    if (category === 'work') return item.completed;
+    if (category === 'workout') return dailyEntry?.completed;
+    if (category === 'study') return dailyEntry?.completed;
+    if (category === 'book') return item.completed || item.status === 'concluido';
+    return false;
+  }).length;
+  doneCount.textContent = String(done);
+
+  const percent = total > 0 ? (done / total) * 100 : 0;
+  progressFill.style.width = `${percent}%`;
+}
+
 function getBookActivityStatusLabel(book) {
   if (book?.completed || book?.status === 'concluido') return 'Concluído';
   return book?.status === 'lendo' ? 'Lendo' : 'Quero ler';
@@ -121,7 +148,10 @@ function getUnifiedManagedActivities() {
 function renderUnifiedTodayActivities() {
   const container = document.getElementById('daily-activities');
   if (!container) return;
-  const items = getUnifiedTodayActivities();
+  const filter = document.getElementById('activity-filter')?.value || 'all';
+  const items = getUnifiedTodayActivities().filter(
+    (i) => filter === 'all' || i.category === filter
+  );
   const skipCount = getSkipItemCount();
 
   container.innerHTML = '';
@@ -220,6 +250,8 @@ function renderUnifiedTodayActivities() {
     `;
     container.appendChild(card);
   });
+
+  updateActivityProgressBar();
 }
 
 function renderUnifiedActivitiesHistory() {
@@ -1205,8 +1237,8 @@ function updateProductiveDays() {
             <td class="col-workout">${day.workouts || 0}</td>
             <td class="col-study">${day.studies || 0}</td>
             <td>${day.totalXP || 0}</td>
-        `;
-    tbody.appendChild(row);
+`;
+    container.appendChild(card);
   });
 }
 
