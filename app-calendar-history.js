@@ -1024,7 +1024,7 @@ function switchTab(tabName) {
   // Atualizar a interface específica da aba
   if (tabName === 'estatisticas') {
     updateCharts();
-  } else if (tabName === 'calendarios') {
+  } else if (tabName === 'atividades') {
     renderMissionsCalendar();
   } else if (tabName === 'alimentacao') {
     updateNutritionView();

@@ -53,10 +53,6 @@
             <i class="fas fa-layer-group"></i>
             <span>Atividades</span>
           </li>
-          <li class="nav-item" data-tab="calendarios" data-mobile="extra">
-            <i class="fas fa-calendar-alt"></i>
-            <span>Calendários</span>
-          </li>
           <li class="nav-item" data-tab="gestao" data-mobile="extra">
             <i class="fas fa-wallet"></i>
             <span>Gestão</span>
@@ -76,20 +72,7 @@
         </ul>
       </nav>
 
-      <div class="mobile-more-menu" id="mobile-more-menu">
-        <button class="mobile-more-item" data-tab="calendarios">
-          <i class="fas fa-calendar-alt"></i> Calendários
-        </button>
-        <button class="mobile-more-item" data-tab="gestao">
-          <i class="fas fa-wallet"></i> Gestão
-        </button>
-        <button class="mobile-more-item" data-tab="alimentacao">
-          <i class="fas fa-utensils"></i> Alimentação
-        </button>
-        <button class="mobile-more-item" data-tab="estatisticas">
-          <i class="fas fa-chart-bar"></i> Estatísticas
-        </button>
-      </div>
+      <div class="mobile-more-menu" id="mobile-more-menu"></div>
 
       <!-- Conteúdo principal -->
       <main class="main-content">
@@ -342,6 +325,103 @@
           <div class="sub-content">
             <div id="atividades-hoje" class="sub-tab active">
               <div class="missions-list" id="daily-activities"></div>
+              <div class="calendar-panel">
+                <div class="calendar-today-panel">
+                  <div class="calendar-today-header">
+                    <div>
+                      <h3 id="cal-today-title">Hoje</h3>
+                      <p id="cal-today-subtitle">Seu painel principal do dia.</p>
+                    </div>
+                    <button class="calendar-rest-btn" id="cal-go-today" type="button">
+                      Ir para hoje
+                    </button>
+                  </div>
+                  <div class="calendar-today-summary" id="cal-today-summary">
+                    <div class="calendar-today-stat">
+                      <span class="label">Pendentes</span>
+                      <strong id="cal-today-pending-count">0</strong>
+                    </div>
+                    <div class="calendar-today-stat">
+                      <span class="label">Concluídas</span>
+                      <strong id="cal-today-done-count">0</strong>
+                    </div>
+                    <div class="calendar-today-stat">
+                      <span class="label">Falhas/Pulos</span>
+                      <strong id="cal-today-failed-count">0</strong>
+                    </div>
+                  </div>
+                  <div class="calendar-today-list" id="cal-today-list">
+                    <p class="empty-message">Nenhuma atividade para hoje.</p>
+                  </div>
+                </div>
+                <div class="calendar-header">
+                  <button class="calendar-nav-btn" id="cal-prev-month">
+                    <i class="fas fa-chevron-left"></i>
+                  </button>
+                  <div class="calendar-title" id="cal-month-title">Mês/Ano</div>
+                  <button class="calendar-nav-btn" id="cal-next-month">
+                    <i class="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+                <div class="calendar-weekdays">
+                  <div>Dom</div>
+                  <div>Seg</div>
+                  <div>Ter</div>
+                  <div>Qua</div>
+                  <div>Qui</div>
+                  <div>Sex</div>
+                  <div>Sáb</div>
+                </div>
+                <div class="calendar-grid" id="cal-missions-grid">
+                  <!-- Dias do calendário -->
+                </div>
+                <div class="calendar-legend">
+                  <div class="legend-item"><span class="legend-dot mission"></span> Missões</div>
+                  <div class="legend-item"><span class="legend-dot work"></span> Trabalhos</div>
+                  <div class="legend-item"><span class="legend-dot workout"></span> Treinos</div>
+                  <div class="legend-item"><span class="legend-dot study"></span> Estudos</div>
+                  <div class="legend-item"><span class="legend-dot rest"></span> Descanso</div>
+                  <div class="legend-item">
+                    <span class="legend-dot work-off"></span> Folga (trabalho)
+                  </div>
+                  <div class="legend-item">
+                    <span class="legend-border streak"></span> Borda: streak
+                  </div>
+                  <div class="legend-item">
+                    <span class="legend-border failure"></span> Borda: falha
+                  </div>
+                  <div class="legend-item">
+                    <span class="legend-border death"></span> Borda: morte
+                  </div>
+                </div>
+                <div class="calendar-details">
+                  <h3 id="cal-details-title">Detalhes do dia</h3>
+                  <div class="calendar-details-filter">
+                    <label for="cal-details-filter">Filtrar por tipo:</label>
+                    <select id="cal-details-filter">
+                      <option value="all">Todos</option>
+                      <option value="routine">Rotinas</option>
+                      <option value="eventual">Missões eventuais</option>
+                      <option value="epic">Missões épicas</option>
+                      <option value="workout">Treinos</option>
+                      <option value="study">Estudos</option>
+                    </select>
+                  </div>
+                  <div class="calendar-rest-control" id="cal-rest-control">
+                    <span class="calendar-rest-status" id="cal-rest-status">Dia normal</span>
+                    <button class="calendar-rest-btn" id="cal-rest-toggle">Marcar descanso</button>
+                  </div>
+                  <div class="calendar-rest-control" id="cal-work-off-control">
+                    <span class="calendar-rest-status" id="cal-work-off-status"
+                      >Sem folga de trabalho</span
+                    >
+                    <button class="calendar-rest-btn" id="cal-work-off-toggle">Marcar folga</button>
+                  </div>
+                  <div class="calendar-details-list" id="cal-details-list">
+                    <p class="empty-message">Selecione um dia para ver as missões.</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div id="atividades-historico" class="sub-tab">
@@ -502,107 +582,6 @@
               <div class="existing-items">
                 <h3>Atividades Cadastradas</h3>
                 <div class="items-list" id="activities-list"></div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="calendarios" class="tab-content">
-          <div class="page-header">
-            <h2><i class="fas fa-calendar-alt"></i> Calendários</h2>
-          </div>
-          <div class="calendar-panel">
-            <div class="calendar-today-panel">
-              <div class="calendar-today-header">
-                <div>
-                  <h3 id="cal-today-title">Hoje</h3>
-                  <p id="cal-today-subtitle">Seu painel principal do dia.</p>
-                </div>
-                <button class="calendar-rest-btn" id="cal-go-today" type="button">
-                  Ir para hoje
-                </button>
-              </div>
-              <div class="calendar-today-summary" id="cal-today-summary">
-                <div class="calendar-today-stat">
-                  <span class="label">Pendentes</span>
-                  <strong id="cal-today-pending-count">0</strong>
-                </div>
-                <div class="calendar-today-stat">
-                  <span class="label">Concluídas</span>
-                  <strong id="cal-today-done-count">0</strong>
-                </div>
-                <div class="calendar-today-stat">
-                  <span class="label">Falhas/Pulos</span>
-                  <strong id="cal-today-failed-count">0</strong>
-                </div>
-              </div>
-              <div class="calendar-today-list" id="cal-today-list">
-                <p class="empty-message">Nenhuma atividade para hoje.</p>
-              </div>
-            </div>
-            <div class="calendar-header">
-              <button class="calendar-nav-btn" id="cal-prev-month">
-                <i class="fas fa-chevron-left"></i>
-              </button>
-              <div class="calendar-title" id="cal-month-title">Mês/Ano</div>
-              <button class="calendar-nav-btn" id="cal-next-month">
-                <i class="fas fa-chevron-right"></i>
-              </button>
-            </div>
-            <div class="calendar-weekdays">
-              <div>Dom</div>
-              <div>Seg</div>
-              <div>Ter</div>
-              <div>Qua</div>
-              <div>Qui</div>
-              <div>Sex</div>
-              <div>Sáb</div>
-            </div>
-            <div class="calendar-grid" id="cal-missions-grid">
-              <!-- Dias do calendário -->
-            </div>
-            <div class="calendar-legend">
-              <div class="legend-item"><span class="legend-dot mission"></span> Missões</div>
-              <div class="legend-item"><span class="legend-dot work"></span> Trabalhos</div>
-              <div class="legend-item"><span class="legend-dot workout"></span> Treinos</div>
-              <div class="legend-item"><span class="legend-dot study"></span> Estudos</div>
-              <div class="legend-item"><span class="legend-dot rest"></span> Descanso</div>
-              <div class="legend-item">
-                <span class="legend-dot work-off"></span> Folga (trabalho)
-              </div>
-              <div class="legend-item">
-                <span class="legend-border streak"></span> Borda: streak
-              </div>
-              <div class="legend-item">
-                <span class="legend-border failure"></span> Borda: falha
-              </div>
-              <div class="legend-item"><span class="legend-border death"></span> Borda: morte</div>
-            </div>
-            <div class="calendar-details">
-              <h3 id="cal-details-title">Detalhes do dia</h3>
-              <div class="calendar-details-filter">
-                <label for="cal-details-filter">Filtrar por tipo:</label>
-                <select id="cal-details-filter">
-                  <option value="all">Todos</option>
-                  <option value="routine">Rotinas</option>
-                  <option value="eventual">Missões eventuais</option>
-                  <option value="epic">Missões épicas</option>
-                  <option value="workout">Treinos</option>
-                  <option value="study">Estudos</option>
-                </select>
-              </div>
-              <div class="calendar-rest-control" id="cal-rest-control">
-                <span class="calendar-rest-status" id="cal-rest-status">Dia normal</span>
-                <button class="calendar-rest-btn" id="cal-rest-toggle">Marcar descanso</button>
-              </div>
-              <div class="calendar-rest-control" id="cal-work-off-control">
-                <span class="calendar-rest-status" id="cal-work-off-status"
-                  >Sem folga de trabalho</span
-                >
-                <button class="calendar-rest-btn" id="cal-work-off-toggle">Marcar folga</button>
-              </div>
-              <div class="calendar-details-list" id="cal-details-list">
-                <p class="empty-message">Selecione um dia para ver as missões.</p>
               </div>
             </div>
           </div>

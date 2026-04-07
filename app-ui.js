@@ -501,7 +501,7 @@ function updateUI(options = {}) {
   const shouldUpdateNutrition =
     (isFull || isActivity || options.forceNutrition) && isTabActive('alimentacao');
   const shouldUpdateCalendar =
-    (isFull || isActivity || options.forceCalendar) && isTabActive('calendarios');
+    (isFull || isActivity || options.forceCalendar) && isTabActive('atividades');
 
   const levelEl = document.getElementById('level');
   if (levelEl) levelEl.textContent = appData.hero.level;
