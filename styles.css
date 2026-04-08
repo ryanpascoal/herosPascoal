@@ -3076,17 +3076,26 @@ tr:hover {
   }
 
   .nav-item {
-    min-width: 60px;
+    min-width: 50px;
+    padding: 8px 4px;
+  }
+
+  .nav-item span {
+    font-size: 0.65rem;
+  }
+
+  .nav-item i {
+    font-size: 1.1rem;
   }
 }
 
 @media (max-width: 768px) {
   .nav-item[data-mobile='extra'] {
-    display: none;
+    display: flex !important;
   }
 
   .nav-item.nav-more {
-    display: flex !important;
+    display: none !important;
   }
 }
 
