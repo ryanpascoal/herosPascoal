@@ -11,12 +11,16 @@
   min-height: 44px;
 }
 
+.compact-activity-card > * {
+  flex-shrink: 0;
+}
+
 .activity-color-bar {
   width: 4px;
   height: 100%;
   min-height: 28px;
   border-radius: 2px;
-  flex-shrink: 0;
+  align-self: stretch;
 }
 
 .activity-color-mission {
@@ -41,11 +45,11 @@
 
 .activity-emoji {
   font-size: 1.2rem;
-  flex-shrink: 0;
 }
 
 .activity-name {
   flex: 1;
+  min-width: 50px;
   font-size: 0.95rem;
   color: var(--light-color, #f2f7ff);
   white-space: nowrap;
@@ -53,11 +57,27 @@
   text-overflow: ellipsis;
 }
 
+.activity-due-date {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--gray-color, #9aa8bf);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.activity-due-date.urgent {
+  background: rgba(255, 77, 109, 0.2);
+  color: #ff4d6d;
+}
+
 .activity-actions {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .activity-actions .complete-btn {
@@ -99,6 +119,7 @@
   color: var(--light-color, #f2f7ff);
   font-size: 0.85rem;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .workout-entries-input::placeholder {
@@ -119,15 +140,51 @@
 
 @media (max-width: 480px) {
   .compact-activity-card {
-    padding: 6px 10px;
+    padding: 6px 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-height: 40px;
   }
 
   .activity-name {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    order: 2;
+    flex: 1 1 100%;
+    margin-left: 10px;
+  }
+
+  .activity-due-date {
+    order: 3;
+    font-size: 0.7rem;
+    padding: 2px 5px;
+  }
+
+  .activity-actions {
+    order: 3;
+    gap: 4px;
+  }
+
+  .activity-color-bar {
+    min-height: 20px;
+  }
+
+  .activity-emoji {
+    font-size: 1rem;
   }
 
   .workout-entries-input {
-    width: 60px;
-    padding: 4px 6px;
+    width: 50px;
+    padding: 4px 4px;
+    font-size: 0.8rem;
+  }
+
+  .activity-actions .complete-btn {
+    padding: 5px 8px;
+    font-size: 0.8rem;
+  }
+
+  .activity-actions .skip-btn {
+    padding: 5px 6px;
+    font-size: 0.8rem;
   }
 }

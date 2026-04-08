@@ -246,6 +246,21 @@ function renderUnifiedTodayActivities() {
 
     const isWorkout = category === 'workout';
     const isStudy = category === 'study';
+    const isMissionOrWork = category === 'mission' || category === 'work';
+    let dueDateHtml = '';
+    if (isMissionOrWork && (item.type === 'eventual' || item.type === 'epica')) {
+      const dueValue = item.type === 'epica' ? item.deadline : item.date;
+      if (dueValue) {
+        const dueDate = parseLocalDateString(dueValue);
+        const today = new Date();
+        const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+        let dateLabel = formatDate(dueValue);
+        if (diffDays >= 0 && diffDays <= 7) {
+          dateLabel = diffDays === 0 ? 'Hoje' : diffDays === 1 ? 'Amanhã' : `Em ${diffDays}d`;
+          dueDateHtml = `<span class="activity-due-date ${diffDays <= 2 ? 'urgent' : ''}">${dateLabel}</span>`;
+        }
+      }
+    }
     const actionId = dailyEntry ? dailyEntry.id : item.id;
     const completeClass =
       category === 'mission'
@@ -270,7 +285,7 @@ function renderUnifiedTodayActivities() {
     if (isWorkout && dailyEntry) {
       actionContent = `
         <input type="number" class="workout-entries-input" data-id="${dailyEntry.id}" 
-          value="${dailyEntry.entries || ''}" placeholder="Entradas" min="0" step="1">
+          value="${dailyEntry.entries || ''}" placeholder="Reps" min="0" step="1">
         <button class="complete-btn ${completeClass}" data-id="${actionId}">
           <i class="fas fa-check"></i>
         </button>
@@ -303,6 +318,7 @@ function renderUnifiedTodayActivities() {
       <div class="activity-color-bar ${leftColorClass}"></div>
       <span class="activity-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
       <span class="activity-name">${escapeHtml(item.name || 'Atividade')}</span>
+      ${dueDateHtml}
       <div class="activity-actions">
         ${actionContent}
         ${skipButton}
