@@ -1210,6 +1210,7 @@ body {
   margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
+  width: 100%;
 }
 
 .activity-header-row {
