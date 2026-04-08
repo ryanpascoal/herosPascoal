@@ -41,6 +41,10 @@ function startApp() {
   initEvents();
   initHydrationUI();
   updateUI();
+  if (typeof switchTab === 'function') {
+    const activeTab = document.querySelector('.tab-content.active')?.id || 'atividades';
+    switchTab(activeTab);
+  }
   if (
     appData.hero?.pendingGameOverNotice === true &&
     typeof globalThis.showGameOverModal === 'function'

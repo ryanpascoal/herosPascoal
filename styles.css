@@ -470,6 +470,46 @@ body {
   display: block;
 }
 
+/* Seções recolhíveis do perfil */
+.section-collapse-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: var(--light-color);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: var(--transition);
+}
+
+.section-collapse-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.section-collapse-toggle i {
+  transition: transform 0.3s ease;
+}
+
+.section-collapse-toggle .fa-chevron-down {
+  transform: rotate(-90deg);
+}
+
+.section-panel {
+  display: none;
+}
+
+.section-panel.collapsed {
+  display: block;
+  padding-top: 8px;
+}
+
 /* Atributos */
 .attributes-grid {
   display: grid;
@@ -2381,6 +2421,45 @@ body.light-theme .calendar-day.death-day {
 .study-card.with-side-actions .study-actions .skip-btn {
   width: 100%;
   justify-content: center;
+}
+
+/* Atividades compactas (todas) */
+.mission-card.with-side-actions .mission-header {
+  padding: 8px 12px;
+  gap: 8px;
+}
+
+.mission-card.with-side-actions .mission-header .mission-name {
+  font-size: 14px;
+}
+
+.mission-card.with-side-actions .mission-header .mission-type {
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+.mission-card.with-side-actions .mission-details {
+  padding: 4px 12px 8px;
+}
+
+.mission-card.with-side-actions .mission-details p {
+  margin: 2px 0;
+  font-size: 12px;
+}
+
+.mission-card.with-side-actions .mission-details .applied-checkbox {
+  font-size: 11px;
+}
+
+.mission-card.with-side-actions .mission-actions {
+  padding: 8px;
+  min-width: 90px;
+}
+
+.mission-card.with-side-actions .mission-actions .complete-btn,
+.mission-card.with-side-actions .mission-actions .skip-btn {
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 .complete-btn {

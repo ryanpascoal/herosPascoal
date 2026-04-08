@@ -126,6 +126,22 @@ function initEvents() {
         : 'rotate(0deg)';
   });
 
+  // Toggle das seções do perfil
+  document.querySelectorAll('.section-collapse-toggle').forEach((btn) => {
+    btn.addEventListener('click', function () {
+      const section = this.getAttribute('data-section');
+      const panel = document.getElementById(section);
+      if (!panel) return;
+      panel.classList.toggle('collapsed');
+      const icon = this.querySelector('.fa-chevron-down');
+      if (icon) {
+        icon.style.transform = panel.classList.contains('collapsed')
+          ? 'rotate(-90deg)'
+          : 'rotate(0deg)';
+      }
+    });
+  });
+
   // Filtro de atividades
   document.getElementById('activity-filter')?.addEventListener('change', function () {
     renderUnifiedTodayActivities();

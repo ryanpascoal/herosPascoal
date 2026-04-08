@@ -15,6 +15,75 @@
   }
 }
 
+function getAllTodayActivities() {
+  const today = getGameNow();
+  const todayStr = getLocalDateString(today);
+  const dayOfWeek = today.getDay();
+  const items = [];
+
+  (appData.missions || []).forEach((mission) => {
+    if (mission.failed) return;
+    let visible = false;
+    if (isRoutineType(mission.type)) {
+      visible = getRoutineDays(mission).includes(dayOfWeek);
+    } else if (mission.type === 'eventual' && mission.date) {
+      visible = getLocalDateString(parseLocalDateString(mission.date)) >= todayStr;
+    } else if (mission.type === 'epica' && mission.deadline) {
+      visible = getLocalDateString(parseLocalDateString(mission.deadline)) >= todayStr;
+    }
+    if (visible) items.push({ category: 'mission', item: mission });
+  });
+
+  if (!isWorkOffDay(todayStr)) {
+    (appData.works || []).forEach((work) => {
+      if (work.failed) return;
+      let visible = false;
+      if (isRoutineType(work.type)) {
+        visible = getRoutineDays(work).includes(dayOfWeek);
+      } else if (work.type === 'eventual' && work.date) {
+        visible = getLocalDateString(parseLocalDateString(work.date)) >= todayStr;
+      } else if (work.type === 'epica' && work.deadline) {
+        visible = getLocalDateString(parseLocalDateString(work.deadline)) >= todayStr;
+      }
+      if (visible) items.push({ category: 'work', item: work });
+    });
+  }
+
+  if (!isRestDay(todayStr)) {
+    (appData.dailyWorkouts || [])
+      .filter((entry) => entry && entry.date === todayStr)
+      .forEach((entry) => {
+        const workout = (appData.workouts || []).find(
+          (item) => String(item.id) === String(entry.workoutId)
+        );
+        if (workout) items.push({ category: 'workout', item: workout, dailyEntry: entry });
+      });
+
+    (appData.dailyStudies || [])
+      .filter((entry) => entry && entry.date === todayStr)
+      .forEach((entry) => {
+        const study = (appData.studies || []).find(
+          (item) => String(item.id) === String(entry.studyId)
+        );
+        if (study) items.push({ category: 'study', item: study, dailyEntry: entry });
+      });
+  }
+
+  (appData.books || []).forEach((book) => {
+    if (!book || book.status === 'concluido') return;
+    if (book.status === 'lendo' || book.status === 'quero ler')
+      items.push({ category: 'book', item: book });
+  });
+
+  return items.sort((a, b) => {
+    if (a.category === 'work' && a.item.urgent && !(b.category === 'work' && b.item.urgent))
+      return -1;
+    if (b.category === 'work' && b.item.urgent && !(a.category === 'work' && a.item.urgent))
+      return 1;
+    return String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR');
+  });
+}
+
 function updateActivityProgressBar() {
   const totalCount = document.getElementById('activity-total-count');
   const doneCount = document.getElementById('activity-done-count');
@@ -22,15 +91,22 @@ function updateActivityProgressBar() {
   if (!totalCount || !doneCount || !progressFill) return;
 
   const filter = document.getElementById('activity-filter')?.value || 'all';
-  const allItems = getUnifiedTodayActivities();
+  const allItems = getAllTodayActivities();
   const filteredItems = filter === 'all' ? allItems : allItems.filter((i) => i.category === filter);
 
   const total = filteredItems.length;
   totalCount.textContent = String(total);
 
   const done = filteredItems.filter(({ category, item, dailyEntry }) => {
-    if (category === 'mission') return item.completed;
-    if (category === 'work') return item.completed;
+    if (category === 'mission')
+      return (
+        item.completed ||
+        wasItemLoggedForDate(item, appData.completedMissions, getLocalDateString())
+      );
+    if (category === 'work')
+      return (
+        item.completed || wasItemLoggedForDate(item, appData.completedWorks, getLocalDateString())
+      );
     if (category === 'workout') return dailyEntry?.completed;
     if (category === 'study') return dailyEntry?.completed;
     if (category === 'book') return item.completed || item.status === 'concluido';
@@ -1041,6 +1117,7 @@ function updateProductiveDays() {
 Object.assign(globalThis, {
   getActivityCategoryMeta,
   getUnifiedTodayActivities,
+  getAllTodayActivities,
   getUnifiedHistoryActivities,
   getUnifiedManagedActivities,
   updateUnifiedActivities,
