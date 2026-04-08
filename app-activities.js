@@ -238,45 +238,14 @@ function renderUnifiedTodayActivities() {
 
   items.forEach(({ category, item, dailyEntry }) => {
     const categoryMeta = getActivityCategoryMeta(category);
-    const scheduleLabel =
-      category === 'workout'
-        ? getWorkoutTypeName(item.type)
-        : category === 'study'
-          ? item.type === 'logico'
-            ? 'Lógico'
-            : 'Criativo'
-          : category === 'book'
-            ? 'Leitura'
-            : getMissionTypeName(item.type);
-    const dueValue =
-      category === 'mission' || category === 'work'
-        ? item.type === 'epica'
-          ? item.deadline
-          : item.type === 'eventual'
-            ? item.date
-            : ''
-        : '';
-    const dueBadge =
-      dueValue && (category === 'mission' || category === 'work')
-        ? getDueBadgeHtml(dueValue, getLocalDateString(), item.type)
-        : '';
-    const subtitleParts = [];
-    if (dueBadge) subtitleParts.push(dueBadge);
-    if (category === 'work' && item.classId)
-      subtitleParts.push(`Classe: ${escapeHtml(getClassNameById(item.classId))}`);
-    if ((category === 'mission' || category === 'work') && isRoutineType(item.type)) {
-      subtitleParts.push(`Dias: ${escapeHtml(getDaysNames(getRoutineDays(item)))}`);
-    }
-    if (category === 'study' && dailyEntry) {
-      subtitleParts.push(
-        `<label class="applied-checkbox compact"><input type="checkbox" class="apply-study-checkbox" data-id="${dailyEntry.id}" ${dailyEntry.applied ? 'checked' : ''}> Aplicado</label>`
-      );
-    }
-    if (category === 'book') {
-      subtitleParts.push(`<span>Status: ${escapeHtml(getBookActivityStatusLabel(item))}</span>`);
-      if (item.author) subtitleParts.push(`Autor: ${escapeHtml(item.author)}`);
-    }
+    let leftColorClass = 'activity-color-mission';
+    if (category === 'work') leftColorClass = 'activity-color-work';
+    else if (category === 'workout') leftColorClass = 'activity-color-workout';
+    else if (category === 'study') leftColorClass = 'activity-color-study';
+    else if (category === 'book') leftColorClass = 'activity-color-book';
 
+    const isWorkout = category === 'workout';
+    const isStudy = category === 'study';
     const actionId = dailyEntry ? dailyEntry.id : item.id;
     const completeClass =
       category === 'mission'
@@ -297,31 +266,46 @@ function renderUnifiedTodayActivities() {
             ? 'unified-skip-workout-btn'
             : 'unified-skip-study-btn';
 
-    const card = document.createElement('div');
-    card.className = 'mission-card with-side-actions';
-    card.innerHTML = `
-      <div class="mission-header">
-        <div class="mission-name">
-          <span class="mission-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
-          <span>${escapeHtml(item.name || 'Atividade')}</span>
-        </div>
-        <span class="mission-type ${categoryMeta.className}">${categoryMeta.label}</span>
-      </div>
-      <div class="mission-details">
-        <p>${scheduleLabel}</p>
-        ${subtitleParts.map((part) => `<p>${part}</p>`).join('')}
-      </div>
-      <div class="mission-actions">
+    let actionContent = '';
+    if (isWorkout && dailyEntry) {
+      actionContent = `
+        <input type="number" class="workout-entries-input" data-id="${dailyEntry.id}" 
+          value="${dailyEntry.entries || ''}" placeholder="Entradas" min="0" step="1">
+        <button class="complete-btn ${completeClass}" data-id="${actionId}">
+          <i class="fas fa-check"></i>
+        </button>
+      `;
+    } else if (isStudy && dailyEntry) {
+      actionContent = `
+        <input type="checkbox" class="study-checkbox" data-id="${dailyEntry.id}" ${dailyEntry.completed ? 'checked' : ''}>
+        <button class="complete-btn ${completeClass}" data-id="${actionId}">
+          <i class="fas fa-check"></i>
+        </button>
+      `;
+    } else {
+      actionContent = `
         <button class="complete-btn ${completeClass}" data-id="${actionId}">
           <i class="fas fa-check"></i> ${category === 'workout' || category === 'study' ? 'Registrar' : 'Concluir'}
         </button>
-        ${
-          category !== 'book' && skipCount > 0
-            ? `<button class="skip-btn ${skipClass}" data-id="${actionId}">
-                <i class="fas fa-forward"></i> Pular (x${skipCount})
-              </button>`
-            : ''
-        }
+      `;
+    }
+
+    const skipButton =
+      category !== 'book' && skipCount > 0
+        ? `<button class="skip-btn ${skipClass}" data-id="${actionId}">
+          <i class="fas fa-forward"></i>
+        </button>`
+        : '';
+
+    const card = document.createElement('div');
+    card.className = 'compact-activity-card';
+    card.innerHTML = `
+      <div class="activity-color-bar ${leftColorClass}"></div>
+      <span class="activity-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
+      <span class="activity-name">${escapeHtml(item.name || 'Atividade')}</span>
+      <div class="activity-actions">
+        ${actionContent}
+        ${skipButton}
       </div>
     `;
     container.appendChild(card);
