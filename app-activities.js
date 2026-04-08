@@ -348,7 +348,7 @@ function renderUnifiedActivitiesList() {
         </button>
       </div>
 `;
-    tbody.appendChild(row);
+    container.appendChild(card);
   });
 }
 
