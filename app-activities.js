@@ -1238,7 +1238,7 @@ function updateProductiveDays() {
             <td class="col-study">${day.studies || 0}</td>
             <td>${day.totalXP || 0}</td>
 `;
-    container.appendChild(card);
+    tbody.appendChild(row);
   });
 }
 
