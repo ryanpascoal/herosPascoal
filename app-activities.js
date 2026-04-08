@@ -251,7 +251,9 @@ function renderUnifiedTodayActivities() {
     container.appendChild(card);
   });
 
-  updateActivityProgressBar();
+  if (typeof updateActivityProgressBar === 'function') {
+    updateActivityProgressBar();
+  }
 }
 
 function renderUnifiedActivitiesHistory() {

@@ -104,7 +104,9 @@ function initEvents() {
   // Filtro de atividades
   document.getElementById('activity-filter')?.addEventListener('change', function () {
     renderUnifiedTodayActivities();
-    updateActivityProgressBar();
+    if (typeof updateActivityProgressBar === 'function') {
+      updateActivityProgressBar();
+    }
   });
 
   document.querySelectorAll('.nav-item').forEach((item) => {
@@ -587,8 +589,10 @@ function updateUI(options = {}) {
     // Atualizar logs do herói
     generateHeroLogs();
 
-    // Atualizar barra de progresso
-    updateActivityProgressBar();
+    // Atualizar barra de progresso (verifica se já está definida)
+    if (typeof updateActivityProgressBar === 'function') {
+      updateActivityProgressBar();
+    }
   }
 
   if (shouldUpdateShop) {
