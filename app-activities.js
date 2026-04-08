@@ -985,10 +985,11 @@ function updateRecords() {
   const container = document.getElementById('personal-records');
   if (!container) return;
 
-  container.innerHTML = '';
+  try {
+    container.innerHTML = '';
 
-  // Records de treinos
-  appData.workouts.forEach((workout) => {
+    // Records de treinos
+    appData.workouts.forEach((workout) => {
     if (workout.stats) {
       let recordText = '';
 
@@ -1217,20 +1218,24 @@ function updateRecords() {
 // Atualizar dias produtivos
 function updateProductiveDays() {
   const tbody = document.querySelector('#productive-days-table tbody');
-  if (!tbody) return;
+  if (!tbody) {
+    console.warn('tbody não encontrado para productive-days-table');
+    return;
+  }
 
-  tbody.innerHTML = '';
+  try {
+    tbody.innerHTML = '';
 
-  // Ordenar dias por total XP
-  const productiveDays = Object.entries(appData.statistics.productiveDays || {})
-    .filter(([date]) => !isRestDay(date))
-    .map(([date, data]) => ({ date, ...data }))
-    .sort((a, b) => b.totalXP - a.totalXP)
-    .slice(0, 10); // Top 10 dias
+    // Ordenar dias por total XP
+    const productiveDays = Object.entries(appData.statistics.productiveDays || {})
+      .filter(([date]) => !isRestDay(date))
+      .map(([date, data]) => ({ date, ...data }))
+      .sort((a, b) => b.totalXP - a.totalXP)
+      .slice(0, 10); // Top 10 dias
 
-  productiveDays.forEach((day) => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
+    productiveDays.forEach((day) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
             <td>${formatDate(day.date)}</td>
             <td class="col-mission">${day.missions || 0}</td>
             <td class="col-work">${day.works || 0}</td>
@@ -1238,8 +1243,11 @@ function updateProductiveDays() {
             <td class="col-study">${day.studies || 0}</td>
             <td>${day.totalXP || 0}</td>
 `;
-    tbody.appendChild(row);
-  });
+      tbody.appendChild(row);
+    });
+  } catch (e) {
+    console.error('Erro em updateProductiveDays:', e);
+  }
 }
 
 // Atualizar diário
