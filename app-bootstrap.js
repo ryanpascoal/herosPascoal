@@ -33,8 +33,8 @@ async function loadCoreScripts() {
   await import(new URL('./app-state.js', import.meta.url).href);
   await import(new URL('./app-rules.js', import.meta.url).href);
   await import(new URL('./app-core.js', import.meta.url).href);
-  await import(new URL('./app-ui.js', import.meta.url).href);
   await import(new URL('./app-activities.js', import.meta.url).href);
+  await import(new URL('./app-ui.js', import.meta.url).href);
   await import(new URL('./app-diary-finance.js', import.meta.url).href);
   await import(new URL('./app-calendar-history.js', import.meta.url).href);
   await import(new URL('./app-actions.js', import.meta.url).href);

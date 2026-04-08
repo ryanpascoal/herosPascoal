@@ -588,11 +588,6 @@ function updateUI(options = {}) {
 
     // Atualizar logs do herói
     generateHeroLogs();
-
-    // Atualizar barra de progresso (verifica se já está definida)
-    if (typeof updateActivityProgressBar === 'function') {
-      updateActivityProgressBar();
-    }
   }
 
   if (shouldUpdateShop) {
