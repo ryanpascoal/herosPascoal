@@ -347,8 +347,8 @@ function renderUnifiedActivitiesList() {
           <i class="fas fa-trash"></i>
         </button>
       </div>
-    `;
-    container.appendChild(card);
+`;
+    tbody.appendChild(row);
   });
 }
 
