@@ -11,6 +11,9 @@
     currentDateActivitiesElement.textContent = formattedNow;
   }
 
+  // Popular menu "Mais" no mobile
+  populateMobileMoreMenu();
+
   // Inicializar os seletores de atributos
   initAttributesSelectors();
   initClassSelectors();
@@ -36,6 +39,28 @@
   if (typeof Chart !== 'undefined') {
     initCharts();
   }
+}
+
+function populateMobileMoreMenu() {
+  const menu = document.getElementById('mobile-more-menu');
+  if (!menu) return;
+
+  const extraTabs = [
+    { tab: 'gestao', icon: 'fa-wallet', label: 'Gestão' },
+    { tab: 'alimentacao', icon: 'fa-utensils', label: 'Alimentação' },
+    { tab: 'estatisticas', icon: 'fa-chart-bar', label: 'Estatísticas' },
+  ];
+
+  menu.innerHTML = extraTabs
+    .map(
+      (t) => `
+    <button class="mobile-more-item" data-tab="${t.tab}">
+      <i class="fas ${t.icon}"></i>
+      <span>${t.label}</span>
+    </button>
+  `
+    )
+    .join('');
 }
 
 function bindById(id, eventName, handler) {
