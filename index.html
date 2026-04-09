@@ -45,13 +45,13 @@
       <!-- Navegação principal -->
       <nav class="main-nav">
         <ul class="nav-list">
-          <li class="nav-item" data-tab="perfil" data-mobile="primary">
-            <i class="fas fa-user"></i>
-            <span>Perfil</span>
-          </li>
           <li class="nav-item active" data-tab="atividades" data-mobile="primary">
             <i class="fas fa-layer-group"></i>
             <span>Atividades</span>
+          </li>
+          <li class="nav-item" data-tab="perfil" data-mobile="primary">
+            <i class="fas fa-user"></i>
+            <span>Perfil</span>
           </li>
           <li class="nav-item" data-tab="gestao" data-mobile="extra">
             <i class="fas fa-wallet"></i>
@@ -76,255 +76,16 @@
 
       <!-- Conteúdo principal -->
       <main class="main-content">
-        <!-- Aba Perfil - Seção de informações do herói -->
-        <section id="perfil" class="tab-content">
-          <div class="profile-header">
-            <div class="profile-pic-container">
-              <img src="perfil.png" alt="Perfil" class="profile-pic" />
-              <button class="edit-profile-btn"><i class="fas fa-camera"></i></button>
-            </div>
-            <div class="profile-info">
-              <h2 class="hero-name">Ryan Pascoal</h2>
-
-              <!-- Vidas integradas aqui -->
-              <div class="lives-integrated">
-                <span class="lives-label"><i class="fas fa-heart"></i> Vidas:</span>
-                <div class="hearts-integrated" id="hearts-container">
-                  <!-- Vidas serão adicionadas via JavaScript -->
-                </div>
-                <span class="lives-count" id="lives-count-text">4/4</span>
-              </div>
-
-              <!-- Nível e XP Geral com barra -->
-              <div class="level-xp-integrated">
-                <div class="level-xp-header">
-                  <span class="level-label">Nível <span id="level">1</span></span>
-                  <span class="xp-text"
-                    ><span id="current-xp">30</span>/<span id="max-xp">100</span> XP</span
-                  >
-                </div>
-                <div class="xp-bar-integrated">
-                  <div class="xp-fill-integrated" id="xp-fill" style="width: 30%"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Streaks -->
-          <div class="streaks-container">
-            <h3><i class="fas fa-fire"></i> Streaks</h3>
-            <div class="streaks-grid">
-              <div class="streak-card">
-                <div class="streak-header">
-                  <i class="fas fa-fire streak-icon general"></i>
-                  <span class="streak-title">Geral</span>
-                </div>
-                <div class="streak-count" id="streak-general">0 dias</div>
-                <div class="streak-record" id="streak-general-record">Recorde: 0 dias</div>
-                <div class="streak-desc">Reseta se qualquer atividade falhar</div>
-              </div>
-              <div class="streak-card">
-                <div class="streak-header">
-                  <i class="fas fa-dumbbell streak-icon physical"></i>
-                  <span class="streak-title">Físico</span>
-                </div>
-                <div class="streak-count" id="streak-physical">0 dias</div>
-                <div class="streak-record" id="streak-physical-record">Recorde: 0 dias</div>
-                <div class="streak-desc">Reseta se treino falhar</div>
-              </div>
-              <div class="streak-card">
-                <div class="streak-header">
-                  <i class="fas fa-brain streak-icon mental"></i>
-                  <span class="streak-title">Mental</span>
-                </div>
-                <div class="streak-count" id="streak-mental">0 dias</div>
-                <div class="streak-record" id="streak-mental-record">Recorde: 0 dias</div>
-                <div class="streak-desc">Reseta se estudo falhar</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Seções colapsáveis -->
-          <div class="profile-tabs">
-            <div class="sub-content">
-              <!-- Atributos (mantido como está) -->
-              <button class="section-collapse-toggle" data-section="atributos">
-                <span>Atributos</span>
-                <i class="fas fa-chevron-down"></i>
-              </button>
-              <div id="atributos" class="sub-tab section-panel collapsed">
-                <div class="attributes-grid" id="attributes-container">
-                  <!-- Atributos serão adicionados via JavaScript -->
-                </div>
-              </div>
-
-              <!-- Treinos - Visualização apenas -->
-              <button class="section-collapse-toggle" data-section="treinos">
-                <span>Treinos</span>
-                <i class="fas fa-chevron-down"></i>
-              </button>
-              <div id="treinos" class="sub-tab section-panel collapsed">
-                <div class="workouts-display">
-                  <h3>Meus Treinos</h3>
-                  <div class="workouts-grid" id="workouts-display">
-                    <!-- Treinos serão adicionados via JavaScript -->
-                  </div>
-                </div>
-              </div>
-
-              <!-- Estudos - Visualização apenas -->
-              <button class="section-collapse-toggle" data-section="estudos">
-                <span>Estudos</span>
-                <i class="fas fa-chevron-down"></i>
-              </button>
-              <div id="estudos" class="sub-tab section-panel collapsed">
-                <div class="studies-display">
-                  <h3>Meus Estudos</h3>
-                  <div class="studies-grid" id="studies-display">
-                    <!-- Estudos serão adicionados via JavaScript -->
-                  </div>
-                </div>
-              </div>
-
-              <button class="section-collapse-toggle" data-section="classes">
-                <span>Classes</span>
-                <i class="fas fa-chevron-down"></i>
-              </button>
-              <div id="classes" class="sub-tab section-panel collapsed">
-                <div class="existing-items">
-                  <h3>Classes Cadastradas</h3>
-                  <div class="items-list" id="classes-list">
-                    <!-- Lista de classes cadastradas -->
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Loja e Inventário -->
-          <div class="shop-inventory">
-            <div class="sub-nav">
-              <button class="sub-nav-btn active" data-subtab="loja">Loja</button>
-              <button class="sub-nav-btn" data-subtab="inventario">Inventário</button>
-              <button class="sub-nav-btn" data-subtab="gerenciar-loja">Gerenciar Loja</button>
-            </div>
-
-            <div class="sub-content">
-              <!-- Loja -->
-              <div id="loja" class="sub-tab active">
-                <div class="items-grid" id="shop-items">
-                  <!-- Itens da loja serão adicionados via JavaScript -->
-                </div>
-              </div>
-
-              <!-- Inventário -->
-              <div id="inventario" class="sub-tab">
-                <div class="inventory-grid" id="inventory-items">
-                  <!-- Itens do inventário serão adicionados via JavaScript -->
-                </div>
-              </div>
-
-              <!-- Gerenciar Loja -->
-              <div id="gerenciar-loja" class="sub-tab">
-                <div class="form-container">
-                  <h3>Cadastrar Novo Item</h3>
-                  <form id="shop-item-form">
-                    <div class="form-group">
-                      <label for="item-name">Nome do Item</label>
-                      <input
-                        type="text"
-                        id="item-name"
-                        placeholder="Ex: Espada Lendária"
-                        required
-                      />
-                    </div>
-
-                    <div class="form-group">
-                      <label for="item-emoji">Emoji (opcional)</label>
-                      <input type="text" id="item-emoji" placeholder="⚔️" />
-                    </div>
-
-                    <div class="form-group">
-                      <label for="item-price">Preço (moedas)</label>
-                      <input type="number" id="item-price" min="1" required />
-                    </div>
-
-                    <div class="form-group">
-                      <label for="item-level">Nível Mínimo</label>
-                      <input type="number" id="item-level" min="0" value="0" />
-                    </div>
-
-                    <button type="submit" class="submit-btn">Cadastrar Item</button>
-                  </form>
-                </div>
-
-                <div class="existing-items">
-                  <h3>Itens Cadastrados</h3>
-                  <div class="items-list" id="shop-items-list">
-                    <!-- Itens da loja para gerenciamento -->
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Adicione esta seção ANTES da seção de Configurações na aba Perfil -->
-          <div class="hero-logs-section">
-            <h3><i class="fas fa-scroll"></i> Logs do Herói</h3>
-            <div class="logs-container" id="hero-logs">
-              <!-- Logs serão adicionados via JavaScript -->
-            </div>
-          </div>
-          <br />
-          <!-- Configurações (mantido) -->
-          <div class="settings-section">
-            <h3><i class="fas fa-cog"></i> Configurações</h3>
-            <br />
-            <div class="settings-options">
-              <button class="settings-btn" id="reset-btn">
-                <i class="fas fa-redo"></i> Resetar Progresso
-              </button>
-              <button class="settings-btn" id="export-btn">
-                <i class="fas fa-download"></i> Exportar Dados
-              </button>
-              <button class="settings-btn" id="import-btn">
-                <i class="fas fa-upload"></i> Importar Dados
-              </button>
-              <button class="settings-btn" onclick="toggleTheme()">Alternar Tema</button>
-            </div>
-            <div class="cloud-sync-card">
-              <h4><i class="fas fa-cloud"></i> Sincronização na Nuvem</h4>
-              <div class="cloud-sync-grid">
-                <input id="cloud-email" type="email" placeholder="Email" />
-                <input id="cloud-password" type="password" placeholder="Senha" />
-                <button class="settings-btn" id="cloud-login-btn" type="button">
-                  <i class="fas fa-sign-in-alt"></i> Entrar
-                </button>
-                <button class="settings-btn" id="cloud-register-btn" type="button">
-                  <i class="fas fa-user-plus"></i> Criar Conta
-                </button>
-                <button class="settings-btn" id="cloud-logout-btn" type="button">
-                  <i class="fas fa-sign-out-alt"></i> Sair
-                </button>
-                <button class="settings-btn" id="cloud-sync-now-btn" type="button">
-                  <i class="fas fa-sync-alt"></i> Sincronizar Agora
-                </button>
-              </div>
-              <div class="cloud-sync-meta">
-                <span id="cloud-user-label" class="cloud-user-label">Não autenticado</span>
-                <span id="cloud-sync-status" class="cloud-status warn">Modo local</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
+        <!-- Aba Atividades - Seção de atividades do dia -->
         <section id="atividades" class="tab-content active">
           <div class="page-header">
             <h2><i class="fas fa-layer-group"></i> Atividades</h2>
             <div class="time-display">Hoje: <span id="activities-current-date"></span></div>
           </div>
 
-<div class="sub-nav">
+          <div class="sub-nav">
             <button class="sub-nav-btn active" data-subtab="atividades-hoje">Hoje</button>
+            <button class="sub-nav-btn" data-subtab="atividades-calendario">Calendário</button>
             <button class="sub-nav-btn" data-subtab="atividades-historico">Histórico</button>
             <button class="sub-nav-btn" data-subtab="atividades-gerenciar">Gerenciar</button>
           </div>
@@ -334,9 +95,12 @@
               <div class="activity-header-row">
                 <div class="activity-progress-bar" id="activity-progress-bar">
                   <div class="progress-text">
-                    <span id="activity-done-count">0</span>/<span id="activity-total-count">0</span> concluídas
+                    <span id="activity-done-count">0</span>/<span id="activity-total-count">0</span>
+                    concluídas
                   </div>
-                  <div class="progress-fill"><div class="progress-fill-inner" id="activity-progress-fill"></div></div>
+                  <div class="progress-fill">
+                    <div class="progress-fill-inner" id="activity-progress-fill"></div>
+                  </div>
                 </div>
                 <select id="activity-filter" class="activity-filter">
                   <option value="all">Todas</option>
@@ -348,17 +112,27 @@
                 </select>
               </div>
               <div class="missions-list" id="daily-activities"></div>
-              <button class="collapse-toggle" id="calendar-collapse-toggle">
-                <i class="fas fa-calendar-alt"></i> Calendário <i class="fas fa-chevron-down"></i>
-              </button>
-              <div class="calendar-panel collapsed" id="calendar-panel">
+            </div>
+
+            <div id="atividades-calendario" class="sub-tab">
+              <div class="calendar-panel" id="calendar-panel">
                 <div class="calendar-header">
-                  <button class="calendar-nav-btn" id="cal-prev-month"><i class="fas fa-chevron-left"></i></button>
+                  <button class="calendar-nav-btn" id="cal-prev-month">
+                    <i class="fas fa-chevron-left"></i>
+                  </button>
                   <div class="calendar-title" id="cal-month-title">Mês/Ano</div>
-                  <button class="calendar-nav-btn" id="cal-next-month"><i class="fas fa-chevron-right"></i></button>
+                  <button class="calendar-nav-btn" id="cal-next-month">
+                    <i class="fas fa-chevron-right"></i>
+                  </button>
                 </div>
                 <div class="calendar-weekdays">
-                  <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+                  <div>Dom</div>
+                  <div>Seg</div>
+                  <div>Ter</div>
+                  <div>Qua</div>
+                  <div>Qui</div>
+                  <div>Sex</div>
+                  <div>Sáb</div>
                 </div>
                 <div class="calendar-grid" id="cal-missions-grid"></div>
                 <div class="calendar-details">
@@ -379,7 +153,6 @@
               </div>
             </div>
 
-          <div class="sub-content">
             <div id="atividades-historico" class="sub-tab">
               <div class="missions-list history-list" id="completed-activities"></div>
             </div>
@@ -538,6 +311,195 @@
               <div class="existing-items">
                 <h3>Atividades Cadastradas</h3>
                 <div class="items-list" id="activities-list"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Aba Perfil - Seção de informações do herói -->
+        <section id="perfil" class="tab-content">
+          <div class="profile-header">
+            <div class="profile-pic-container">
+              <img src="perfil.png" alt="Perfil" class="profile-pic" />
+              <button class="edit-profile-btn"><i class="fas fa-camera"></i></button>
+            </div>
+            <div class="profile-info">
+              <h2 class="hero-name">Ryan Pascoal</h2>
+              <div class="lives-integrated">
+                <span class="lives-label"><i class="fas fa-heart"></i> Vidas:</span>
+                <div class="hearts-integrated" id="hearts-container"></div>
+                <span class="lives-count" id="lives-count-text">4/4</span>
+              </div>
+              <div class="level-xp-integrated">
+                <div class="level-xp-header">
+                  <span class="level-label">Nível <span id="level">1</span></span>
+                  <span class="xp-text"
+                    ><span id="current-xp">30</span>/<span id="max-xp">100</span> XP</span
+                  >
+                </div>
+                <div class="xp-bar-integrated">
+                  <div class="xp-fill-integrated" id="xp-fill" style="width: 30%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="streaks-container">
+            <h3><i class="fas fa-fire"></i> Streaks</h3>
+            <div class="streaks-grid">
+              <div class="streak-card">
+                <div class="streak-header">
+                  <i class="fas fa-fire streak-icon general"></i>
+                  <span class="streak-title">Geral</span>
+                </div>
+                <div class="streak-count" id="streak-general">0 dias</div>
+                <div class="streak-record" id="streak-general-record">Recorde: 0 dias</div>
+              </div>
+              <div class="streak-card">
+                <div class="streak-header">
+                  <i class="fas fa-dumbbell streak-icon physical"></i>
+                  <span class="streak-title">Físico</span>
+                </div>
+                <div class="streak-count" id="streak-physical">0 dias</div>
+                <div class="streak-record" id="streak-physical-record">Recorde: 0 dias</div>
+              </div>
+              <div class="streak-card">
+                <div class="streak-header">
+                  <i class="fas fa-brain streak-icon mental"></i>
+                  <span class="streak-title">Mental</span>
+                </div>
+                <div class="streak-count" id="streak-mental">0 dias</div>
+                <div class="streak-record" id="streak-mental-record">Recorde: 0 dias</div>
+              </div>
+            </div>
+          </div>
+          <div class="profile-tabs">
+            <div class="sub-nav">
+              <button class="sub-nav-btn" data-subtab="atributos" data-parent="perfil">
+                Atributos
+              </button>
+              <button class="sub-nav-btn" data-subtab="treinos" data-parent="perfil">
+                Treinos
+              </button>
+              <button class="sub-nav-btn" data-subtab="estudos" data-parent="perfil">
+                Estudos
+              </button>
+              <button class="sub-nav-btn" data-subtab="classes" data-parent="perfil">
+                Classes
+              </button>
+            </div>
+            <div class="sub-content">
+              <div id="perfil-atributos" class="sub-tab">
+                <div class="attributes-grid" id="attributes-container"></div>
+              </div>
+              <div id="perfil-treinos" class="sub-tab">
+                <div class="workouts-display">
+                  <h3>Meus Treinos</h3>
+                  <div class="workouts-grid" id="workouts-display"></div>
+                </div>
+              </div>
+              <div id="perfil-estudos" class="sub-tab">
+                <div class="studies-display">
+                  <h3>Meus Estudos</h3>
+                  <div class="studies-grid" id="studies-display"></div>
+                </div>
+              </div>
+              <div id="perfil-classes" class="sub-tab">
+                <div class="existing-items">
+                  <h3>Classes Cadastradas</h3>
+                  <div class="items-list" id="classes-list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="shop-inventory">
+            <div class="sub-nav">
+              <button class="sub-nav-btn active" data-subtab="loja">Loja</button>
+              <button class="sub-nav-btn" data-subtab="inventario">Inventário</button>
+              <button class="sub-nav-btn" data-subtab="gerenciar-loja">Gerenciar Loja</button>
+            </div>
+            <div class="sub-content">
+              <div id="loja" class="sub-tab active">
+                <div class="items-grid" id="shop-items"></div>
+              </div>
+              <div id="inventario" class="sub-tab">
+                <div class="inventory-grid" id="inventory-items"></div>
+              </div>
+              <div id="gerenciar-loja" class="sub-tab">
+                <div class="form-container">
+                  <h3>Cadastrar Novo Item</h3>
+                  <form id="shop-item-form">
+                    <div class="form-group">
+                      <label for="item-name">Nome do Item</label>
+                      <input
+                        type="text"
+                        id="item-name"
+                        placeholder="Ex: Espada Lendária"
+                        required
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="item-emoji">Emoji (opcional)</label>
+                      <input type="text" id="item-emoji" placeholder="⚔️" />
+                    </div>
+                    <div class="form-group">
+                      <label for="item-price">Preço (moedas)</label>
+                      <input type="number" id="item-price" min="1" required />
+                    </div>
+                    <div class="form-group">
+                      <label for="item-level">Nível Mínimo</label>
+                      <input type="number" id="item-level" min="0" value="0" />
+                    </div>
+                    <button type="submit" class="submit-btn">Cadastrar Item</button>
+                  </form>
+                </div>
+                <div class="existing-items">
+                  <h3>Itens Cadastrados</h3>
+                  <div class="items-list" id="shop-items-list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="hero-logs-section">
+            <h3><i class="fas fa-scroll"></i> Logs do Herói</h3>
+            <div class="logs-container" id="hero-logs"></div>
+          </div>
+          <br />
+          <div class="settings-section">
+            <h3><i class="fas fa-cog"></i> Configurações</h3>
+            <br />
+            <div class="settings-options">
+              <button class="settings-btn" id="reset-btn">
+                <i class="fas fa-redo"></i> Resetar Progresso
+              </button>
+              <button class="settings-btn" id="export-btn">
+                <i class="fas fa-download"></i> Exportar Dados
+              </button>
+              <button class="settings-btn" id="import-btn">
+                <i class="fas fa-upload"></i> Importar Dados
+              </button>
+              <button class="settings-btn" onclick="toggleTheme()">Alternar Tema</button>
+            </div>
+            <div class="cloud-sync-card">
+              <h4><i class="fas fa-cloud"></i> Sincronização na Nuvem</h4>
+              <div class="cloud-sync-grid">
+                <input id="cloud-email" type="email" placeholder="Email" />
+                <input id="cloud-password" type="password" placeholder="Senha" />
+                <button class="settings-btn" id="cloud-login-btn" type="button">
+                  <i class="fas fa-sign-in-alt"></i> Entrar
+                </button>
+                <button class="settings-btn" id="cloud-register-btn" type="button">
+                  <i class="fas fa-user-plus"></i> Criar Conta
+                </button>
+                <button class="settings-btn" id="cloud-logout-btn" type="button">
+                  <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+                <button class="settings-btn" id="cloud-sync-now-btn" type="button">
+                  <i class="fas fa-sync-alt"></i> Sincronizar Agora
+                </button>
+              </div>
+              <div class="cloud-sync-meta">
+                <span id="cloud-user-label" class="cloud-user-label">Não autenticado</span>
+                <span id="cloud-sync-status" class="cloud-status warn">Modo local</span>
               </div>
             </div>
           </div>

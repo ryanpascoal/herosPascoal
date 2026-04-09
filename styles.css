@@ -431,6 +431,23 @@ body {
   border: 1px solid var(--card-border);
 }
 
+.profile-tabs:not(:has(.sub-tab.active)) {
+  padding: 8px;
+}
+
+.profile-tabs:not(:has(.sub-tab.active)) .sub-nav {
+  margin-bottom: 0;
+}
+
+.profile-tabs:not(:has(.sub-tab.active)) .sub-nav .sub-nav-btn {
+  padding: 6px 12px;
+  font-size: 0.85em;
+}
+
+.profile-tabs:not(:has(.sub-tab.active)) .sub-content {
+  display: none;
+}
+
 .sub-nav {
   display: flex;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);

@@ -1028,33 +1028,70 @@ function switchTab(tabName) {
     renderMissionsCalendar();
   } else if (tabName === 'alimentacao') {
     updateNutritionView();
+  } else if (tabName === 'perfil') {
+    if (typeof updateAttributes === 'function') updateAttributes();
+    if (typeof updateWorkoutsDisplay === 'function') updateWorkoutsDisplay();
+    if (typeof updateStudiesDisplay === 'function') updateStudiesDisplay();
+    if (typeof updateClassesList === 'function') updateClassesList();
   }
 }
 
 // Trocar entre abas secundárias
 function switchSubTab(subTabName, parentElement) {
-  // Encontrar o container de conteúdo
-  const subContent = parentElement.querySelector('.sub-content');
+  // Encontrar o container de conteúdo - pode ser o próprio elemento ou procurar .sub-content
+  const subContent = parentElement.classList.contains('sub-content')
+    ? parentElement
+    : parentElement.querySelector('.sub-content');
+
   if (!subContent) return;
 
   // Remover a classe active de todas as sub-abas
   subContent.querySelectorAll('.sub-tab').forEach((tab) => {
     tab.classList.remove('active');
+    tab.style.display = '';
   });
 
-  parentElement.querySelectorAll('.sub-nav-btn').forEach((btn) => {
-    btn.classList.remove('active');
-  });
+  // Encontrar o .sub-nav relacionado (pode ser irmão ou ancestral)
+  const subNav = parentElement.classList.contains('sub-content')
+    ? parentElement.parentElement.querySelector('.sub-nav')
+    : parentElement.querySelector('.sub-nav');
 
-  // Adicionar a classe active à sub-aba selecionada
-  subContent.querySelector(`#${subTabName}`)?.classList.add('active');
+  if (subNav) {
+    subNav.querySelectorAll('.sub-nav-btn').forEach((btn) => {
+      btn.classList.remove('active');
+    });
+  }
+
+  // Determinar o ID alvo baseado no nome da sub-aba
+  // Se contém hífen (ex: "atividades-hoje"), usa direto
+  // Caso contrário, tenta construir com prefixo do parent (perfil-atributos)
+  let targetId = subTabName;
+  if (!targetId.includes('-')) {
+    // Pegar o ID da section pai
+    const sectionParent = subContent.closest('section');
+    const sectionId = sectionParent?.id;
+    if (sectionId) {
+      targetId = `${sectionId}-${subTabName}`;
+    }
+  }
+
+  const targetTab = subContent.querySelector(`#${targetId}`);
+
+  if (targetTab) {
+    targetTab.classList.add('active');
+  }
 
   // Ativar o botão correspondente
-  parentElement.querySelector(`.sub-nav-btn[data-subtab="${subTabName}"]`)?.classList.add('active');
+  if (subNav) {
+    subNav.querySelector(`.sub-nav-btn[data-subtab="${subTabName}"]`)?.classList.add('active');
+  }
+
   if (subTabName === 'graficos') {
     updateCharts();
   } else if (typeof subTabName === 'string' && subTabName.startsWith('nutricao-')) {
     updateNutritionView();
+  } else if (subTabName === 'atividades-calendario') {
+    renderMissionsCalendar();
   }
 }
 
