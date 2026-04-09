@@ -6055,7 +6055,6 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   white-space: nowrap;
   overflow: hidden;
   position: relative;
-  border: 1px solid rgba(20, 184, 166, 0.3);
 }
 
 .hydration-bar-fill {
