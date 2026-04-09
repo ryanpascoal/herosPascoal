@@ -1266,7 +1266,7 @@ body {
   color: var(--gray-color);
   margin-bottom: 8px;
   display: flex;
-  justify-content: space-between;
+  justify-content: space-evenly;
   width: 100%;
 }
 
