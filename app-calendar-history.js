@@ -1077,19 +1077,20 @@ function switchSubTab(subTabName, parentElement) {
   }
 
   // Determinar o ID alvo baseado no nome da sub-aba
-  // Se contém hífen (ex: "atividades-hoje"), usa direto
-  // Caso contrário, tenta construir com prefixo do parent (perfil-atributos)
+  // Primeiro tenta o ID direto (ex: "loja", "inventario")
+  // Se não encontrar, tenta construção com prefixo (ex: "perfil-atributos")
   let targetId = subTabName;
-  if (!targetId.includes('-')) {
+  let targetTab = subContent.querySelector(`#${targetId}`) || document.getElementById(targetId);
+  
+  if (!targetTab && !targetId.includes('-')) {
     // Pegar o ID da section pai
     const sectionParent = subContent.closest('section');
     const sectionId = sectionParent?.id;
     if (sectionId) {
       targetId = `${sectionId}-${subTabName}`;
+      targetTab = subContent.querySelector(`#${targetId}`) || document.getElementById(targetId);
     }
   }
-
-  const targetTab = subContent.querySelector(`#${targetId}`) || document.getElementById(subTabName);
 
   if (targetTab) {
     targetTab.classList.add('active');
