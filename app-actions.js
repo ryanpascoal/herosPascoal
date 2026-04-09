@@ -191,7 +191,9 @@ function handleWorkoutCompletion() {
     workout.stats.completed = (workout.stats.completed || 0) + 1;
   } else if (workout.type === 'distancia') {
     const distance = parseFloat(document.querySelector('input[name="distance"]')?.value || 0);
-    const time = parseFloat(document.querySelector('input[name="time"]')?.value || 0);
+    const timeMin = parseFloat(document.querySelector('input[name="time-min"]')?.value || 0);
+    const timeSec = parseFloat(document.querySelector('input[name="time-sec"]')?.value || 0);
+    const time = (timeMin * 60) + timeSec;
     workoutDay.distance = distance;
     workoutDay.time = time;
 
@@ -206,7 +208,9 @@ function handleWorkoutCompletion() {
     }
     workout.stats.completed = (workout.stats.completed || 0) + 1;
   } else if (workout.type === 'maior-tempo' || workout.type === 'menor-tempo') {
-    const time = parseFloat(document.querySelector('input[name="time"]')?.value || 0);
+    const timeMin = parseFloat(document.querySelector('input[name="time-min"]')?.value || 0);
+    const timeSec = parseFloat(document.querySelector('input[name="time-sec"]')?.value || 0);
+    const time = (timeMin * 60) + timeSec;
     workoutDay.time = time;
 
     if (!workout.stats) workout.stats = {};

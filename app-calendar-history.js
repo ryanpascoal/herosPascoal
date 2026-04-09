@@ -1225,55 +1225,57 @@ function showWorkoutCompletionModal(workoutDayId) {
   modalTitle.textContent = `Concluir ${workout.name}`;
 
   let inputFields = '';
-  const workoutCard =
-    document
-      .querySelector(`.complete-workout-btn[data-id="${workoutDayId}"]`)
-      ?.closest('.workout-card') || null;
-
+  
+  // Obter valores do workoutDay diretamente (não precisa procurar no DOM)
   if (workout.type === 'repeticao') {
-    // Obter valores dos campos de série
-    const seriesInputs = workoutCard ? workoutCard.querySelectorAll('.series-input-field') : [];
-    const seriesValues =
-      seriesInputs.length > 0
-        ? Array.from(seriesInputs).map((input) => input.value || '0')
-        : (workoutDay.series || [0, 0, 0]).map((v) => v || 0);
+    const series = workoutDay.series || [0, 0, 0];
+    const seriesValues = [series[0] || 0, series[1] || 0, series[2] || 0];
 
     inputFields = seriesValues
       .map(
         (value, index) => `
-            <div class="form-group">
-                <label>Série ${index + 1}: ${value} repetições</label>
-                <input type="hidden" name="series-${index}" value="${value}">
-            </div>
+          <div class="form-group">
+            <label>Série ${index + 1}:</label>
+            <input type="number" name="series-${index}" value="${value}" min="0">
+          </div>
         `
       )
       .join('');
   } else if (workout.type === 'distancia') {
-    const distanceInput = workoutCard ? workoutCard.querySelector('.distance-input-field') : null;
-    const distanceValue = distanceInput ? distanceInput.value : (workoutDay.distance ?? '0');
-    const timeInput = workoutCard ? workoutCard.querySelector('.time-input-field') : null;
-    const timeValue = timeInput ? timeInput.value : (workoutDay.time ?? '0');
+    const distance = workoutDay.distance ?? 0;
+    const time = workoutDay.time ?? 0;
+    const timeMin = Math.floor(time / 60);
+    const timeSec = time % 60;
 
     inputFields = `
-            <div class="form-group">
-                <label>Distância: ${distanceValue} km</label>
-                <input type="hidden" name="distance" value="${distanceValue}">
-            </div>
-            <div class="form-group">
-                <label>Tempo: ${timeValue} minutos</label>
-                <input type="hidden" name="time" value="${timeValue}">
-            </div>
-        `;
+        <div class="form-group">
+          <label>Distância (km):</label>
+          <input type="number" name="distance" value="${distance}" min="0" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>Tempo (min):</label>
+          <input type="number" name="time-min" value="${timeMin}" min="0">
+        </div>
+        <div class="form-group">
+          <label>Tempo (seg):</label>
+          <input type="number" name="time-sec" value="${timeSec}" min="0">
+        </div>
+    `;
   } else if (workout.type === 'maior-tempo' || workout.type === 'menor-tempo') {
-    const timeInput = workoutCard ? workoutCard.querySelector('.time-input-field') : null;
-    const timeValue = timeInput ? timeInput.value : (workoutDay.time ?? '0');
+    const time = workoutDay.time ?? 0;
+    const timeMin = Math.floor(time / 60);
+    const timeSec = time % 60;
 
     inputFields = `
-            <div class="form-group">
-                <label>Tempo: ${timeValue} minutos</label>
-                <input type="hidden" name="time" value="${timeValue}">
-            </div>
-        `;
+        <div class="form-group">
+          <label>Tempo (min):</label>
+          <input type="number" name="time-min" value="${timeMin}" min="0">
+        </div>
+        <div class="form-group">
+          <label>Tempo (seg):</label>
+          <input type="number" name="time-sec" value="${timeSec}" min="0">
+        </div>
+    `;
   }
 
   form.innerHTML = `

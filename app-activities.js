@@ -284,10 +284,8 @@ function renderUnifiedTodayActivities() {
     let actionContent = '';
     if (isWorkout && dailyEntry) {
       actionContent = `
-        <input type="number" class="workout-entries-input" data-id="${dailyEntry.id}" 
-          value="${dailyEntry.entries || ''}" placeholder="Reps" min="0" step="1">
         <button class="complete-btn ${completeClass}" data-id="${actionId}">
-          <i class="fas fa-check"></i>
+          <i class="fas fa-check"></i> Registrar
         </button>
       `;
     } else if (isStudy && dailyEntry) {
