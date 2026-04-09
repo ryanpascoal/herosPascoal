@@ -1058,12 +1058,29 @@ function switchSubTab(subTabName, parentElement) {
     tab.style.display = 'none';
   });
 
-  // Encontra o elemento de destino pelo ID
+// Encontra o elemento de destino pelo ID
   let targetTab = subContent.querySelector(`#${subTabName}`);
   
-  // Se não encontrou em subContent, tenta no documento todo
+  // Se não encontrou, tenta construir o ID com base no section pai
+  if (!targetTab) {
+    const sectionParent = subContent.closest('section');
+    const sectionId = sectionParent?.id;
+    if (sectionId) {
+      targetTab = subContent.querySelector(`#${sectionId}-${subTabName}`);
+    }
+  }
+  
+  // Se ainda não encontrou, tenta no documento todo
   if (!targetTab) {
     targetTab = document.getElementById(subTabName);
+    // Se não encontrou direto, tenta com prefixo
+    if (!targetTab) {
+      const sectionParent = subContent.closest('section');
+      const sectionId = sectionParent?.id;
+      if (sectionId) {
+        targetTab = document.getElementById(`${sectionId}-${subTabName}`);
+      }
+    }
   }
 
   if (targetTab) {
