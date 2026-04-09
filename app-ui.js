@@ -191,13 +191,11 @@ function initEvents() {
   document.querySelectorAll('.sub-nav-btn').forEach((btn) => {
     btn.addEventListener('click', function () {
       const subtab = this.getAttribute('data-subtab');
-      // Encontrar o elemento .sub-content mais próximo no DOM
-      // Pode estar em diferentes estruturas: .profile-tabs > .sub-content, ou section > .sub-content
-      const subContent =
-        this.closest('.tab-content')?.querySelector('.sub-content') ||
-        this.closest('.profile-tabs, .shop-inventory, .stats-tabs')?.querySelector('.sub-content');
-      if (subContent) {
-        switchSubTab(subtab, subContent);
+      const parentElement =
+        this.closest('.tab-content') ||
+        this.closest('.profile-tabs, .shop-inventory, .stats-tabs');
+      if (parentElement) {
+        switchSubTab(subtab, parentElement);
       }
     });
   });

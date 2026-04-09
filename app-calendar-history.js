@@ -1039,22 +1039,36 @@ function switchTab(tabName) {
 // Trocar entre abas secundárias
 function switchSubTab(subTabName, parentElement) {
   // Encontrar o container de conteúdo - pode ser o próprio elemento ou procurar .sub-content
-  const subContent = parentElement.classList.contains('sub-content')
-    ? parentElement
-    : parentElement.querySelector('.sub-content');
+  // Se o parentElement já contém .sub-tab diretamente, usa ele mesmo
+  // Caso contrário, procura .sub-content dentro do parentElement
+  let subContent;
+  if (parentElement.classList.contains('sub-content') || parentElement.classList.contains('sub-tab')) {
+    subContent = parentElement.closest('.sub-content') || parentElement;
+  } else {
+    subContent = parentElement.querySelector('.sub-content') || parentElement;
+  }
 
   if (!subContent) return;
 
-  // Remover a classe active de todas as sub-abas
+  // Remover a classe active de todas as sub-abas e inner-tabs
   subContent.querySelectorAll('.sub-tab').forEach((tab) => {
+    tab.classList.remove('active');
+    tab.style.display = '';
+  });
+  subContent.querySelectorAll('.inner-tab').forEach((tab) => {
     tab.classList.remove('active');
     tab.style.display = '';
   });
 
   // Encontrar o .sub-nav relacionado (pode ser irmão ou ancestral)
-  const subNav = parentElement.classList.contains('sub-content')
-    ? parentElement.parentElement.querySelector('.sub-nav')
-    : parentElement.querySelector('.sub-nav');
+  let subNav;
+  if (parentElement.classList.contains('sub-content')) {
+    subNav = parentElement.parentElement?.querySelector('.sub-nav');
+  } else if (parentElement.classList.contains('sub-tab')) {
+    subNav = parentElement.closest('.tab-content, .profile-tabs, .shop-inventory, .stats-tabs')?.querySelector('.sub-nav');
+  } else {
+    subNav = parentElement.querySelector('.sub-nav');
+  }
 
   if (subNav) {
     subNav.querySelectorAll('.sub-nav-btn').forEach((btn) => {
@@ -1079,6 +1093,7 @@ function switchSubTab(subTabName, parentElement) {
 
   if (targetTab) {
     targetTab.classList.add('active');
+    targetTab.style.display = '';
   }
 
   // Ativar o botão correspondente
