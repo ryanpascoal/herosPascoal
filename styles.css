@@ -6437,7 +6437,7 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   border: none;
   cursor: pointer;
   background: var(--success-color, rgba(34, 197, 94, 0.2));
-  color: var(--success-color, #22c55e);
+  color: white;
   transition: all 0.2s ease;
 }
 
