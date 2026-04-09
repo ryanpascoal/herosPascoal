@@ -5205,7 +5205,7 @@ textarea:focus {
   .action-btn,
   .calendar-nav-btn,
   .calendar-rest-btn {
-    min-height: 38px;
+    min-height: 24px;
   }
 }
 
