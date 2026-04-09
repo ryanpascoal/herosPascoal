@@ -1065,12 +1065,105 @@ function updateRecords() {
 
   try {
     container.innerHTML = '';
-    if (appData.statistics?.maxStreakGeneral) {
+    const stats = appData.statistics || {};
+    const records = [];
+
+    if (stats.maxStreakGeneral) {
+      records.push({
+        emoji: '🏆',
+        label: 'Maior streak geral',
+        value: `${stats.maxStreakGeneral} dias`,
+      });
+    }
+    if (stats.maxStreakPhysical) {
+      records.push({
+        emoji: '💪',
+        label: 'Maior streak físico',
+        value: `${stats.maxStreakPhysical} dias`,
+      });
+    }
+    if (stats.maxStreakMental) {
+      records.push({
+        emoji: '🧠',
+        label: 'Maior streak mental',
+        value: `${stats.maxStreakMental} dias`,
+      });
+    }
+    if (stats.maxXpDay) {
+      records.push({ emoji: '⭐', label: 'Mais XP em um dia', value: `${stats.maxXpDay} XP` });
+    }
+    if (stats.maxMissionsDay) {
+      records.push({
+        emoji: '🎯',
+        label: 'Mais missões em um dia',
+        value: `${stats.maxMissionsDay}`,
+      });
+    }
+    if (stats.maxWorksDay) {
+      records.push({
+        emoji: '💼',
+        label: 'Mais trabalhos em um dia',
+        value: `${stats.maxWorksDay}`,
+      });
+    }
+    if (stats.maxWorkoutsDay) {
+      records.push({
+        emoji: '🏋️',
+        label: 'Mais treinos em um dia',
+        value: `${stats.maxWorkoutsDay}`,
+      });
+    }
+    if (stats.maxStudiesDay) {
+      records.push({
+        emoji: '📚',
+        label: 'Mais estudos em um dia',
+        value: `${stats.maxStudiesDay}`,
+      });
+    }
+    if (stats.booksRead) {
+      records.push({ emoji: '📖', label: 'Livros lidos no total', value: `${stats.booksRead}` });
+    }
+    if (stats.workoutsDone) {
+      records.push({
+        emoji: '💪',
+        label: 'Treinos realizados no total',
+        value: `${stats.workoutsDone}`,
+      });
+    }
+    if (stats.studiesDone) {
+      records.push({
+        emoji: '📚',
+        label: 'Estudos realizados no total',
+        value: `${stats.studiesDone}`,
+      });
+    }
+    if (stats.worksDone) {
+      records.push({
+        emoji: '💼',
+        label: 'Trabalhos concluídos no total',
+        value: `${stats.worksDone}`,
+      });
+    }
+    if (stats.missionsDone) {
+      records.push({
+        emoji: '🎯',
+        label: 'Missões concluídas no total',
+        value: `${stats.missionsDone}`,
+      });
+    }
+
+    if (records.length === 0) {
+      container.innerHTML =
+        '<p class="empty-message">Nenhum record ainda. Complete atividades para estabeleccer records!</p>';
+      return;
+    }
+
+    records.forEach((record) => {
       const recordItem = document.createElement('div');
       recordItem.className = 'record-item';
-      recordItem.textContent = `🏆 Maior streak geral: ${appData.statistics.maxStreakGeneral} dias`;
+      recordItem.innerHTML = `<span class="record-emoji">${record.emoji}</span> <span class="record-label">${record.label}:</span> <span class="record-value">${record.value}</span>`;
       container.appendChild(recordItem);
-    }
+    });
   } catch (e) {
     console.error('Erro em updateRecords:', e);
   }

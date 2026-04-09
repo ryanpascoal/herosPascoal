@@ -1075,7 +1075,7 @@ function switchSubTab(subTabName, parentElement) {
     }
   }
 
-  const targetTab = subContent.querySelector(`#${targetId}`);
+  const targetTab = subContent.querySelector(`#${targetId}`) || document.getElementById(subTabName);
 
   if (targetTab) {
     targetTab.classList.add('active');
@@ -1088,6 +1088,9 @@ function switchSubTab(subTabName, parentElement) {
 
   if (subTabName === 'graficos') {
     updateCharts();
+  } else if (subTabName === 'records') {
+    updateRecords();
+    updateProductiveDays();
   } else if (typeof subTabName === 'string' && subTabName.startsWith('nutricao-')) {
     updateNutritionView();
   } else if (subTabName === 'atividades-calendario') {
