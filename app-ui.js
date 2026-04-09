@@ -192,8 +192,8 @@ function initEvents() {
     btn.addEventListener('click', function () {
       const subtab = this.getAttribute('data-subtab');
       const parentElement =
-        this.closest('.tab-content') ||
-        this.closest('.profile-tabs, .shop-inventory, .stats-tabs');
+        this.closest('.shop-inventory, .profile-tabs, .stats-tabs') ||
+        this.closest('.tab-content');
       if (parentElement) {
         switchSubTab(subtab, parentElement);
       }
