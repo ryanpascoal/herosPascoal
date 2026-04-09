@@ -1038,13 +1038,14 @@ function switchTab(tabName) {
 
 // Trocar entre abas secundárias
 function switchSubTab(subTabName, parentElement) {
-  // Encontrar o .sub-content mais próximo do botão clicado
-  // Pode estar em: .tab-content > .sub-content, ou .shop-inventory > .sub-content, etc.
-  let subContent = parentElement.querySelector('.sub-content');
+  // Se o parentElement já é um sub-content, usá-lo diretamente
+  // Caso contrário, procurar o sub-content dentro dele
+  let subContent = parentElement.classList.contains('sub-content') 
+    ? parentElement 
+    : parentElement.querySelector('.sub-content');
   
   if (!subContent) {
-    // Se não encontrou como filho, ver se o próprio parentElement é um .sub-content
-    subContent = parentElement.classList.contains('sub-content') ? parentElement : null;
+    subContent = parentElement;
   }
   
   if (!subContent) {
@@ -1058,38 +1059,34 @@ function switchSubTab(subTabName, parentElement) {
     tab.style.display = 'none';
   });
 
-// Encontra o elemento de destino pelo ID
+  // Encontra o elemento de destino pelo ID (dentro de subContent primero)
   let targetTab = subContent.querySelector(`#${subTabName}`);
   
-  // Se não encontrou, tenta construir o ID com base no section pai
+  // Se não encontrou, tenta no documento todo
+  if (!targetTab) {
+    targetTab = document.getElementById(subTabName);
+  }
+  
+  // Se ainda não encontrou, tenta com prefixo
   if (!targetTab) {
     const sectionParent = subContent.closest('section');
     const sectionId = sectionParent?.id;
     if (sectionId) {
-      targetTab = subContent.querySelector(`#${sectionId}-${subTabName}`);
-    }
-  }
-  
-  // Se ainda não encontrou, tenta no documento todo
-  if (!targetTab) {
-    targetTab = document.getElementById(subTabName);
-    // Se não encontrou direto, tenta com prefixo
-    if (!targetTab) {
-      const sectionParent = subContent.closest('section');
-      const sectionId = sectionParent?.id;
-      if (sectionId) {
-        targetTab = document.getElementById(`${sectionId}-${subTabName}`);
-      }
+      targetTab = document.getElementById(`${sectionId}-${subTabName}`) || 
+                subContent.querySelector(`#${sectionId}-${subTabName}`);
     }
   }
 
   if (targetTab) {
     targetTab.classList.add('active');
-    targetTab.style.display = '';
+    targetTab.style.display = 'block';
   }
 
-  // Atualiza os botões do sub-nav
-  const subNav = parentElement.querySelector('.sub-nav');
+  // Atualiza os botões.active do sub-nav relacionado
+  const subNav = parentElement.classList.contains('sub-content')
+    ? parentElement.parentElement?.querySelector('.sub-nav')
+    : parentElement.querySelector('.sub-nav');
+    
   if (subNav) {
     subNav.querySelectorAll('.sub-nav-btn').forEach((btn) => {
       btn.classList.remove('active');

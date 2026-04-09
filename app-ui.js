@@ -191,7 +191,9 @@ function initEvents() {
   document.querySelectorAll('.sub-nav-btn').forEach((btn) => {
     btn.addEventListener('click', function () {
       const subtab = this.getAttribute('data-subtab');
-      const parentElement =
+      // Encontrar o sub-content mais próximo do botão
+      const parentElement = 
+        this.closest('.sub-content') ||
         this.closest('.shop-inventory, .profile-tabs, .stats-tabs') ||
         this.closest('.tab-content');
       if (parentElement) {
@@ -211,8 +213,12 @@ function initEvents() {
       this.classList.add('active');
 
       // Atualizar painéis visíveis
-      parent.querySelectorAll('.inner-tab').forEach((panel) => panel.classList.remove('active'));
+      parent.querySelectorAll('.inner-tab').forEach((panel) => {
+        panel.classList.remove('active');
+        panel.style.display = 'none';
+      });
       parent.querySelector(`#${innerTab}`)?.classList.add('active');
+      parent.querySelector(`#${innerTab}`)?.style.setProperty('display', 'block');
     });
   });
 
