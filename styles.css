@@ -5205,7 +5205,7 @@ textarea:focus {
   .action-btn,
   .calendar-nav-btn,
   .calendar-rest-btn {
-    min-height: 38px;
+    min-height: 24px;
   }
 }
 
@@ -6055,7 +6055,6 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   white-space: nowrap;
   overflow: hidden;
   position: relative;
-  border: 1px solid rgba(20, 184, 166, 0.3);
 }
 
 .hydration-bar-fill {
@@ -6437,7 +6436,7 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   border: none;
   cursor: pointer;
   background: var(--success-color, rgba(34, 197, 94, 0.2));
-  color: var(--success-color, #22c55e);
+  color: white;
   transition: all 0.2s ease;
 }
 
@@ -6492,7 +6491,6 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   .compact-activity-card {
     padding: 6px 8px;
     gap: 6px;
-    flex-wrap: wrap;
     min-height: 40px;
   }
 
