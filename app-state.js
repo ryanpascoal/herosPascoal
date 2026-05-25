@@ -6,12 +6,7 @@ const appData = {
     level: 1,
     xp: 0,
     maxXp: 100,
-    lives: 10,
-    maxLives: 10,
     coins: 0,
-    protection: {
-      shield: false,
-    },
     streak: {
       general: 0,
       physical: 0,
@@ -43,24 +38,6 @@ const appData = {
   works: [],
   books: [],
   shopItems: [
-    {
-      id: 1,
-      name: 'Poção',
-      emoji: '🧪',
-      cost: 50,
-      level: 0,
-      description: 'Restaura 1 vida',
-      effect: 'heal',
-    },
-    {
-      id: 2,
-      name: 'Escudo',
-      emoji: '🛡️',
-      cost: 100,
-      level: 0,
-      description: 'Protege de 1 dano e de uma quebra de streak',
-      effect: 'shield',
-    },
     {
       id: 4,
       name: 'Pulo',
@@ -98,7 +75,6 @@ const appData = {
     booksRead: 0,
     missionsDone: 0,
     missionsFailed: 0,
-    deaths: 0,
     justiceDone: 0,
     maxStreakGeneral: 0,
     maxStreakPhysical: 0,
@@ -106,7 +82,6 @@ const appData = {
     workoutDetails: {},
     studyDetails: {},
     productiveDays: {},
-    deathDates: [],
   },
   feedbacks: [],
   dailyWorkouts: [],

@@ -231,6 +231,7 @@ function initEvents() {
     'reset-btn': resetProgress,
     'export-btn': exportData,
     'import-btn': importData,
+    'theme-toggle-btn': toggleTheme,
   });
   bindManyById('submit', {
     'activity-form': handleActivitySubmit,
@@ -596,23 +597,6 @@ function updateUI(options = {}) {
   if (coinEl) coinEl.textContent = appData.hero.coins;
   const streakEl = document.getElementById('streak-count');
   if (streakEl) streakEl.textContent = appData.hero.streak.general;
-  const lifeEl = document.getElementById('life-count');
-  if (lifeEl) lifeEl.textContent = `${appData.hero.lives}/${appData.hero.maxLives}`;
-
-  // Atualizar status do escudo
-  const shieldStatus = document.getElementById('shield-status');
-  if (shieldStatus) {
-    const hasShield = appData.hero.protection?.shield === true;
-    shieldStatus.classList.toggle('active', hasShield);
-    shieldStatus.classList.toggle('inactive', !hasShield);
-    const shieldText = shieldStatus.querySelector('.shield-text');
-    if (shieldText) {
-      shieldText.textContent = hasShield ? 'Escudo ativo' : 'Sem escudo';
-    }
-  }
-
-  // Atualizar vidas integradas
-  updateIntegratedHearts();
 
   // Atualizar streaks
   updateStreaksDisplay();
@@ -667,36 +651,6 @@ function updateUI(options = {}) {
 
   // Salvar dados
   saveToLocalStorage();
-}
-
-// Atualizar vidas integradas
-function updateIntegratedHearts() {
-  const container = document.getElementById('hearts-container');
-  const countText = document.getElementById('lives-count-text');
-
-  if (!container) return;
-
-  // Validação segura para vidas
-  const maxHearts =
-    Number.isFinite(appData.hero.maxLives) && appData.hero.maxLives > 0
-      ? appData.hero.maxLives
-      : 10;
-  const currentHearts = Number.isFinite(appData.hero.lives)
-    ? Math.max(0, Math.min(appData.hero.lives, maxHearts))
-    : maxHearts;
-
-  container.innerHTML = '';
-
-  for (let i = 0; i < maxHearts; i++) {
-    const heart = document.createElement('div');
-    heart.className = `heart-integrated ${i < currentHearts ? 'full' : 'empty'}`;
-    heart.innerHTML = '<i class="fas fa-heart"></i>';
-    container.appendChild(heart);
-  }
-
-  if (countText) {
-    countText.textContent = `${currentHearts}/${maxHearts}`;
-  }
 }
 
 // Atualizar atributos
@@ -763,14 +717,16 @@ function updateClassesList() {
     const currentXp = cls.xp % 100;
     const percentage = (currentXp / 100) * 100;
     const isPrimary = appData.hero?.primaryClassId === cls.id;
+    const safeEmoji = escapeHtml(cls.emoji || '💼');
+    const safeName = escapeHtml(cls.name || 'Classe');
 
     const classCard = document.createElement('div');
     classCard.className = 'item-card';
     classCard.innerHTML = `
             <div class="item-info">
-                <span class="item-emoji">${cls.emoji || '💼'}</span>
+                <span class="item-emoji">${safeEmoji}</span>
                 <div>
-                    <div class="item-name">${cls.name}${isPrimary ? ' (Principal)' : ''}</div>
+                    <div class="item-name">${safeName}${isPrimary ? ' (Principal)' : ''}</div>
                     <div class="item-level">Nível ${level} - ${currentXp}/100 XP</div>
                     <div class="item-type">Progresso: ${percentage.toFixed(0)}%</div>
                     <div class="attribute-bar">
@@ -978,19 +934,22 @@ function updateShop() {
 
   availableItems.forEach((item) => {
     const canAfford = appData.hero.coins >= item.cost;
+    const safeEmoji = escapeHtml(item.emoji || '🎁');
+    const safeName = escapeHtml(item.name || 'Item');
+    const safeDescription = escapeHtml(item.description || '');
 
     const shopItem = document.createElement('div');
     shopItem.className = 'shop-item';
     shopItem.innerHTML = `
             <div class="shop-item-header">
                 <div class="shop-item-name">
-                    <span class="item-emoji">${item.emoji}</span>
-                    <span>${item.name}</span>
+                    <span class="item-emoji">${safeEmoji}</span>
+                    <span>${safeName}</span>
                 </div>
                 <div class="shop-item-level">Nível ${item.level}+</div>
             </div>
             <div class="shop-item-body">
-                <p class="shop-item-desc">${item.description}</p>
+                <p class="shop-item-desc">${safeDescription}</p>
                 <div class="shop-item-footer">
                     <div class="shop-item-cost">
                         <i class="fas fa-coins"></i>
@@ -1050,18 +1009,21 @@ function updateInventory() {
       item.effect === 'skip'
         ? '<div class="inventory-item-meta">Consumido automaticamente ao clicar em Pular.</div>'
         : `<button class="use-btn" data-id="${item.id}">Usar</button>`;
+    const safeEmoji = escapeHtml(item.emoji || '🎁');
+    const safeName = escapeHtml(item.name || 'Item');
+    const safeDescription = escapeHtml(item.description || '');
     const inventoryItem = document.createElement('div');
     inventoryItem.className = 'inventory-item';
     inventoryItem.innerHTML = `
             <div class="inventory-item-header">
                 <div class="inventory-item-name">
-                    <span class="item-emoji">${item.emoji}</span>
-                    <span>${item.name}</span>
+                    <span class="item-emoji">${safeEmoji}</span>
+                    <span>${safeName}</span>
                 </div>
                 <div class="inventory-item-quantity">x${item.count}</div>
             </div>
             <div class="inventory-item-body">
-                <p class="inventory-item-desc">${item.description}</p>
+                <p class="inventory-item-desc">${safeDescription}</p>
                 ${itemActionHtml}
             </div>
         `;
@@ -1238,7 +1200,9 @@ function checkDailyActivity(dateStr) {
   const targetDateStr = dateStr || getLocalDateString();
 
   // Verificar miss??es
-  const hasMission = appData.completedMissions.some((m) => m.completedDate === targetDateStr);
+  const hasMission = appData.completedMissions.some(
+    (m) => m.completedDate === targetDateStr && !m.failed && !m.skipped
+  );
 
   // Verificar trabalhos
   const hasWork = appData.completedWorks.some(
@@ -1307,13 +1271,15 @@ function updateShopItemsList() {
   }
 
   appData.shopItems.forEach((item) => {
+    const safeEmoji = escapeHtml(item.emoji || '🎁');
+    const safeName = escapeHtml(item.name || 'Item');
     const itemCard = document.createElement('div');
     itemCard.className = 'item-card';
     itemCard.innerHTML = `
             <div class="item-info">
-                <span class="item-emoji">${item.emoji}</span>
+                <span class="item-emoji">${safeEmoji}</span>
                 <div>
-                    <div class="item-name">${item.name}</div>
+                    <div class="item-name">${safeName}</div>
                     <div class="item-details">
                         <div class="item-price"><i class="fas fa-coins"></i> ${item.cost}</div>
                         <div class="item-level">Nível mínimo: ${item.level}</div>
@@ -1661,7 +1627,6 @@ Object.assign(globalThis, {
   bindManyById,
   initEvents,
   updateUI,
-  updateIntegratedHearts,
   updateAttributes,
   getPrimaryClass,
   getClassNameById,

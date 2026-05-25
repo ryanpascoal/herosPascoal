@@ -135,13 +135,15 @@ function renderCalendarTodayPanel() {
     const statusMeta = getCalendarStatusMeta(item.status);
     const row = document.createElement('div');
     row.className = `calendar-today-item ${item.status}`;
+    const safeEmoji = escapeHtml(item.emoji || '🎯');
+    const safeName = escapeHtml(item.name || 'Atividade');
 
     const meta = document.createElement('div');
     meta.className = 'calendar-today-main';
     meta.innerHTML = `
       <div class="calendar-today-title">
-        <span>${item.emoji || '🎯'}</span>
-        <span>${item.name}</span>
+        <span>${safeEmoji}</span>
+        <span>${safeName}</span>
       </div>
       <div class="calendar-today-meta">
         <span class="calendar-tag kind ${item.kindClass}">${item.kindLabel}</span>
@@ -255,8 +257,6 @@ function createCalendarCell(year, monthIndex, dayNumber, isOtherMonth) {
   if (hasCompletedActivities(dateStr) && !hasFailedActivities(dateStr))
     cell.classList.add('streak-day');
   if (hasFailedActivities(dateStr)) cell.classList.add('failure-day');
-  if (appData.statistics?.deathDates?.includes(dateStr)) cell.classList.add('death-day');
-
   const markers = getCalendarMarkersForDate(date);
   const markersHtml = markers.map((type) => `<span class="marker ${type}"></span>`).join('');
 
@@ -370,11 +370,13 @@ function renderCalendarDetails(dateStr) {
     row.className = `calendar-details-item ${isPending ? 'pending' : 'completed'}`;
 
     const statusMeta = getCalendarStatusMeta(item.status);
+    const safeEmoji = escapeHtml(item.emoji || '🎯');
+    const safeName = escapeHtml(item.name || 'Atividade');
 
     row.innerHTML = `
             <div class="calendar-details-title">
-                <span>${item.emoji || '🎯'}</span>
-                <span>${item.name}</span>
+                <span>${safeEmoji}</span>
+                <span>${safeName}</span>
             </div>
             <div class="calendar-details-tags">
                 <span class="calendar-tag kind ${item.kindClass}">${item.kindLabel}</span>
@@ -425,6 +427,7 @@ function getCalendarItemsForDate(dateStr) {
   appData.missions.forEach((mission) => {
     const typeInfo = getMissionTypeInfo(mission.type);
     if (!typeInfo) return;
+    if (mission.completed || mission.failed) return;
 
     if (isRoutineType(mission.type) && getRoutineDays(mission).includes(dayOfWeek)) {
       items.push({
@@ -483,6 +486,7 @@ function getCalendarItemsForDate(dateStr) {
     if (isWorkOffDay(dateStr)) return;
     const typeInfo = getWorkTypeInfo(work.type);
     if (!typeInfo) return;
+    if (work.completed || work.failed) return;
 
     if (isRoutineType(work.type) && getRoutineDays(work).includes(dayOfWeek)) {
       items.push({ ...typeInfo, ...work, entryKind: 'work', actionId: work.id, status: 'pending' });
@@ -885,17 +889,19 @@ function updateWorkoutHistory() {
         details.push(`<p>Tempo: ${entry.time} min</p>`);
       }
       if (entry.reason && !entry.failed) {
-        details.push(`<p class="mission-reason">Motivo: ${entry.reason}</p>`);
+        details.push(`<p class="mission-reason">Motivo: ${escapeHtml(entry.reason)}</p>`);
       }
       if (entry.feedback) {
-        details.push(`<p>Feedback: ${entry.feedback}</p>`);
+        details.push(`<p>Feedback: ${escapeHtml(entry.feedback)}</p>`);
       }
+      const safeEmoji = escapeHtml(entry.emoji || '💪');
+      const safeName = escapeHtml(entry.name || 'Treino');
 
       card.innerHTML = `
             <div class="mission-header">
                 <div class="mission-name">
-                    <span class="mission-emoji">${entry.emoji || '💪'}</span>
-                    <span>${entry.name}</span>
+                    <span class="mission-emoji">${safeEmoji}</span>
+                    <span>${safeName}</span>
                 </div>
                 <span class="mission-status ${statusClass}">
                     ${statusText}
@@ -946,17 +952,19 @@ function updateStudyHistory() {
         details.push(`<p>Aplicado: ${entry.applied ? 'Sim' : 'Não'}</p>`);
       }
       if (entry.reason && !entry.failed) {
-        details.push(`<p class="mission-reason">Motivo: ${entry.reason}</p>`);
+        details.push(`<p class="mission-reason">Motivo: ${escapeHtml(entry.reason)}</p>`);
       }
       if (entry.feedback) {
-        details.push(`<p>Feedback: ${entry.feedback}</p>`);
+        details.push(`<p>Feedback: ${escapeHtml(entry.feedback)}</p>`);
       }
+      const safeEmoji = escapeHtml(entry.emoji || '📚');
+      const safeName = escapeHtml(entry.name || 'Estudo');
 
       card.innerHTML = `
             <div class="mission-header">
                 <div class="mission-name">
-                    <span class="mission-emoji">${entry.emoji || '📚'}</span>
-                    <span>${entry.name}</span>
+                    <span class="mission-emoji">${safeEmoji}</span>
+                    <span>${safeName}</span>
                 </div>
                 <span class="mission-status ${statusClass}">
                     ${statusText}
@@ -1123,6 +1131,8 @@ function showItemModal(itemType, existingItem = null) {
     Array.isArray(existingItem?.days) ? existingItem.days.map((day) => String(day)) : []
   );
   const isEditing = !!existingItem;
+  const safeExistingName = escapeHtml(existingItem?.name || '');
+  const safeExistingEmoji = escapeHtml(existingItem?.emoji || '');
 
   switch (itemType) {
     case 'treino':
@@ -1130,11 +1140,11 @@ function showItemModal(itemType, existingItem = null) {
       formHTML = `
                 <div class="form-group">
                     <label for="modal-item-name">Nome do Treino</label>
-                    <input type="text" id="modal-item-name" value="${existingItem?.name || ''}" required>
+                    <input type="text" id="modal-item-name" value="${safeExistingName}" required>
                 </div>
                 <div class="form-group">
                     <label for="modal-item-emoji">Emoji (opcional)</label>
-                    <input type="text" id="modal-item-emoji" placeholder="💪" value="${existingItem?.emoji || ''}">
+                    <input type="text" id="modal-item-emoji" placeholder="💪" value="${safeExistingEmoji}">
                 </div>
                 <div class="form-group">
                     <label for="modal-item-type">Tipo de Treino</label>
@@ -1167,11 +1177,11 @@ function showItemModal(itemType, existingItem = null) {
       formHTML = `
                 <div class="form-group">
                     <label for="modal-item-name">Nome do Estudo</label>
-                    <input type="text" id="modal-item-name" value="${existingItem?.name || ''}" required>
+                    <input type="text" id="modal-item-name" value="${safeExistingName}" required>
                 </div>
                 <div class="form-group">
                     <label for="modal-item-emoji">Emoji (opcional)</label>
-                    <input type="text" id="modal-item-emoji" placeholder="📚" value="${existingItem?.emoji || ''}">
+                    <input type="text" id="modal-item-emoji" placeholder="📚" value="${safeExistingEmoji}">
                 </div>
                 <div class="form-group">
                     <label for="modal-item-type">Tipo de Estudo</label>
@@ -1412,85 +1422,6 @@ function resetAllXpKeepLevels() {
   }
 }
 
-function showGameOverModal() {
-  const modal = document.getElementById('item-modal');
-  const modalTitle = document.getElementById('modal-title');
-  const form = document.getElementById('item-form');
-  if (!modal || !modalTitle || !form) return;
-
-  modal.dataset.locked = 'true';
-  modal.dataset.gameOverShown = 'true';
-  modalTitle.textContent = 'Game Over';
-  form.innerHTML = `
-        <div class="form-group">
-            <p>Suas vidas chegaram a 0. O game over foi aplicado automaticamente: 3 vidas foram restauradas e moedas e XP foram zerados, mantendo os níveis.</p>
-        </div>
-        <button type="button" id="gameover-continue-btn" class="submit-btn">Continuar</button>
-    `;
-
-  form.querySelector('#gameover-continue-btn')?.addEventListener('click', function () {
-    if (appData.hero) {
-      appData.hero.pendingGameOverNotice = false;
-    }
-    modal.dataset.locked = 'false';
-    modal.dataset.gameOverShown = 'false';
-    closeModal();
-    saveToLocalStorage();
-  });
-
-  modal.classList.add('active');
-}
-
-function handleGameOverIfNeeded(options = {}) {
-  if (!appData.hero) return;
-
-  // Garantir que maxLives seja válido
-  if (!Number.isFinite(appData.hero.maxLives) || appData.hero.maxLives < 1) {
-    appData.hero.maxLives = 10;
-  }
-
-  // Se tem vida, garantir que gameOverCounted está como false
-  if (appData.hero.lives > 0) {
-    // Só resetar gameOverCounted se não for a verificação inicial
-    if (!options.isInitialCheck) {
-      appData.hero.gameOverCounted = false;
-    }
-    return;
-  }
-
-  // Se lives <= 0, verificar se já tratamos isso
-  if (appData.hero.lives <= 0) {
-    const todayStr = getLocalDateString();
-    const maxLives = Math.max(1, appData.hero.maxLives || 10);
-    appData.hero.maxLives = maxLives;
-    appData.hero.coins = 0;
-    const modal = document.getElementById('item-modal');
-
-    if (!appData.statistics) appData.statistics = {};
-    appData.statistics.deaths = (appData.statistics.deaths || 0) + 1;
-    if (!appData.statistics.deathDates) appData.statistics.deathDates = [];
-    appData.statistics.deathDates.push(todayStr);
-    resetAllXpKeepLevels();
-    appData.hero.lives = Math.min(3, maxLives);
-    appData.hero.gameOverCounted = false;
-    appData.hero.lastRestoreDate = todayStr;
-    const deathsEl = document.getElementById('stat-deaths');
-    if (deathsEl) {
-      deathsEl.textContent = appData.statistics.deaths;
-    }
-    addHeroLog(
-      'system',
-      'Game Over',
-      'Vidas chegaram a 0. 3 vidas foram restauradas automaticamente e moedas e XP foram zerados (níveis mantidos).'
-    );
-    saveToLocalStorage();
-    updateUI({ mode: 'activity' });
-    if (modal?.dataset.gameOverShown !== 'true') {
-      showGameOverModal();
-    }
-  }
-}
-
 // Manipular envio do formulário de item
 
 // __appCalendarHistoryBridge: exposes calendar/history APIs for legacy scripts during module migration
@@ -1527,6 +1458,4 @@ Object.assign(globalThis, {
   showWorkCompletionModal,
   closeModal,
   resetAllXpKeepLevels,
-  showGameOverModal,
-  handleGameOverIfNeeded,
 });

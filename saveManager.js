@@ -20,7 +20,6 @@ function serializeAppData() {
   return JSON.stringify(payload);
 }
 
-// Wrapper com error recovery
 function safeLocalStorageSet(key, value) {
   try {
     localStorage.setItem(key, value);
@@ -41,11 +40,10 @@ function safeLocalStorageGet(key, fallback = null) {
     return JSON.parse(value);
   } catch (e) {
     console.error('Erro ao carregar localStorage:', e);
-    // Recovery automático com defaults
     if (typeof showFeedback === 'function') {
-      showFeedback('Dados corrompidos restaurados com configurações padrão.', 'warn');
+      showFeedback('Falha ao carregar dados salvos. O app iniciará com o estado padrão.', 'warn');
     }
-    return fallback || APP_DEFAULTS;
+    return fallback;
   }
 }
 
@@ -72,9 +70,9 @@ window.loadFromLocalStorage = function () {
   // Verificar se existe dados locais (fallback)
   const saved = safeLocalStorageGet(LOCAL_PROGRESS_KEY, null);
   if (saved && typeof saved === 'object') {
-    mergeData(appData, saved);
+    replaceAppState(saved);
   }
-  ensureDataIntegrity();
+  finalizeLoadedState();
   console.log('Dados carregados');
 };
 

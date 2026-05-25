@@ -554,20 +554,6 @@ function wasItemLoggedForDate(item, completedList, dateStr) {
 function checkOverdueWorks(options = {}) {
   const skipWeekly = options.skipWeekly === true;
 
-  // Se for verificação inicial e lives <= 3, pode ser que o usuário acabou de restaurar
-  // Neste caso, pular falhas automáticas para evitar loop de game over
-  if (options.isInitialCheck && appData.hero.lives <= 3 && appData.hero.gameOverCounted === false) {
-    // Verificar se há flag de "recentemente restaurado"
-    const lastRestore = appData.hero.lastRestoreDate;
-    if (lastRestore) {
-      const today = getLocalDateString();
-      if (lastRestore === today) {
-        console.log('Verificação inicial: pulando falhas automáticas (usuário restaurou hoje)');
-        return;
-      }
-    }
-  }
-
   const today = getGameNow();
   const todayStr = getLocalDateString();
   const yesterday = new Date(today);
@@ -638,20 +624,6 @@ function checkOverdueWorks(options = {}) {
 // Verificar missões atrasadas diariamente (função ajustada)
 function checkOverdueMissions(options = {}) {
   const skipWeekly = options.skipWeekly === true;
-
-  // Se for verificação inicial e lives <= 3, pode ser que o usuário acabou de restaurar
-  // Neste caso, pular falhas automáticas para evitar loop de game over
-  if (options.isInitialCheck && appData.hero.lives <= 3 && appData.hero.gameOverCounted === false) {
-    // Verificar se há flag de "recentemente restaurado"
-    const lastRestore = appData.hero.lastRestoreDate;
-    if (lastRestore) {
-      const today = getLocalDateString();
-      if (lastRestore === today) {
-        console.log('Verificação inicial: pulando falhas automáticas (usuário restaurou hoje)');
-        return;
-      }
-    }
-  }
 
   const today = getGameNow();
   const todayStr = getLocalDateString();
@@ -781,8 +753,6 @@ function updateStatistics() {
   if (statMissionsDone) statMissionsDone.textContent = appData.statistics.missionsDone || 0;
   const statMissionsFailed = document.getElementById('stat-missions-failed');
   if (statMissionsFailed) statMissionsFailed.textContent = appData.statistics.missionsFailed || 0;
-  const statDeaths = document.getElementById('stat-deaths');
-  if (statDeaths) statDeaths.textContent = appData.statistics.deaths || 0;
   const statJusticeDone = document.getElementById('stat-justice-done');
   if (statJusticeDone) statJusticeDone.textContent = appData.statistics.justiceDone || 0;
 

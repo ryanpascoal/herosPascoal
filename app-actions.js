@@ -2,57 +2,65 @@
   e.preventDefault();
 
   const category = document.getElementById('modal-item-category').value;
+  let shouldClose = true;
 
   switch (category) {
     case 'workout':
-      handleNewWorkout();
+      shouldClose = handleNewWorkout();
       break;
 
     case 'study':
-      handleNewStudy();
+      shouldClose = handleNewStudy();
       break;
 
     case 'edit-workout':
-      handleEditWorkout();
+      shouldClose = handleEditWorkout();
       break;
 
     case 'edit-study':
-      handleEditStudy();
+      shouldClose = handleEditStudy();
       break;
 
     case 'book':
-      handleNewBook();
+      shouldClose = handleNewBook();
       break;
 
     case 'edit-book':
-      handleEditBook();
+      shouldClose = handleEditBook();
       break;
 
     case 'complete-workout':
-      handleWorkoutCompletion();
+      shouldClose = handleWorkoutCompletion();
       break;
 
     case 'complete-study':
-      handleStudyCompletion();
+      shouldClose = handleStudyCompletion();
       break;
 
     case 'complete-mission':
-      handleMissionCompletion();
+      shouldClose = handleMissionCompletion();
       break;
 
     case 'complete-work':
-      handleWorkCompletion();
+      shouldClose = handleWorkCompletion();
       break;
   }
 
-  closeModal();
+  if (shouldClose !== false) {
+    closeModal();
+  }
 }
 
 // Manipular novo treino
 function handleNewWorkout() {
-  const name = document.getElementById('modal-item-name').value;
+  const name = document.getElementById('modal-item-name').value.trim();
   const emoji = document.getElementById('modal-item-emoji').value;
   const type = document.getElementById('modal-item-type').value;
+
+  if (!name) {
+    showFeedback('Informe um nome válido para o treino.', 'warn');
+    return false;
+  }
 
   const days = getCheckedDays('#item-form .days-selector input[type="checkbox"]:checked');
   const newWorkout = createWorkoutPayload(name, emoji, type, days);
@@ -60,13 +68,19 @@ function handleNewWorkout() {
   appData.workouts.push(newWorkout);
   updateUI();
   showFeedback('Treino cadastrado com sucesso!', 'success');
+  return true;
 }
 
 // Manipular novo estudo
 function handleNewStudy() {
-  const name = document.getElementById('modal-item-name').value;
+  const name = document.getElementById('modal-item-name').value.trim();
   const emoji = document.getElementById('modal-item-emoji').value;
   const type = document.getElementById('modal-item-type').value;
+
+  if (!name) {
+    showFeedback('Informe um nome válido para o estudo.', 'warn');
+    return false;
+  }
 
   const days = getCheckedDays('#item-form .days-selector input[type="checkbox"]:checked');
   const newStudy = createStudyPayload(name, emoji, type, days);
@@ -74,12 +88,13 @@ function handleNewStudy() {
   appData.studies.push(newStudy);
   updateUI();
   showFeedback('Estudo cadastrado com sucesso!', 'success');
+  return true;
 }
 
 function handleEditWorkout() {
   const id = parseInt(document.getElementById('modal-item-id').value, 10);
   const workout = appData.workouts.find((item) => item.id === id);
-  if (!workout) return;
+  if (!workout) return false;
 
   const name = document.getElementById('modal-item-name').value.trim();
   const emoji = document.getElementById('modal-item-emoji').value.trim();
@@ -88,7 +103,7 @@ function handleEditWorkout() {
 
   if (!name) {
     showFeedback('Informe um nome válido para o treino.', 'warn');
-    return;
+    return false;
   }
 
   workout.name = name;
@@ -98,12 +113,13 @@ function handleEditWorkout() {
 
   updateUI({ mode: 'activity' });
   showFeedback('Treino atualizado com sucesso!', 'success');
+  return true;
 }
 
 function handleEditStudy() {
   const id = parseInt(document.getElementById('modal-item-id').value, 10);
   const study = appData.studies.find((item) => item.id === id);
-  if (!study) return;
+  if (!study) return false;
 
   const name = document.getElementById('modal-item-name').value.trim();
   const emoji = document.getElementById('modal-item-emoji').value.trim();
@@ -112,7 +128,7 @@ function handleEditStudy() {
 
   if (!name) {
     showFeedback('Informe um nome válido para o estudo.', 'warn');
-    return;
+    return false;
   }
 
   study.name = name;
@@ -122,6 +138,7 @@ function handleEditStudy() {
 
   updateUI({ mode: 'activity' });
   showFeedback('Estudo atualizado com sucesso!', 'success');
+  return true;
 }
 
 // Manipular novo livro
@@ -134,12 +151,13 @@ function handleNewBook() {
   appData.books.push(createBookPayload(name, emoji, status, author));
   updateUI();
   showFeedback('Livro cadastrado com sucesso!', 'success');
+  return true;
 }
 
 function handleEditBook() {
   const id = parseInt(document.getElementById('modal-item-id').value, 10);
   const book = appData.books.find((item) => item.id === id);
-  if (!book) return;
+  if (!book) return false;
 
   const name = document.getElementById('book-name').value.trim();
   const author = document.getElementById('book-author').value.trim();
@@ -148,7 +166,7 @@ function handleEditBook() {
 
   if (!name) {
     showFeedback('Informe um nome válido para o livro.', 'warn');
-    return;
+    return false;
   }
 
   book.name = name;
@@ -160,6 +178,7 @@ function handleEditBook() {
 
   updateUI({ mode: 'activity' });
   showFeedback('Livro atualizado com sucesso!', 'success');
+  return true;
 }
 
 // Manipular conclusão de treino
@@ -168,10 +187,11 @@ function handleWorkoutCompletion() {
   const feedback = document.getElementById('workout-feedback')?.value || '';
 
   const workoutDay = appData.dailyWorkouts.find((dw) => dw.id === workoutDayId);
-  if (!workoutDay) return;
+  if (!workoutDay) return false;
+  if (workoutDay.completed || workoutDay.skipped || workoutDay.failed) return false;
 
   const workout = appData.workouts.find((w) => w.id === workoutDay.workoutId);
-  if (!workout) return;
+  if (!workout) return false;
 
   // Atualizar valores
   if (workout.type === 'repeticao') {
@@ -311,6 +331,7 @@ function handleWorkoutCompletion() {
     message: 'Treino concluído com sucesso!',
   });
   saveToLocalStorage();
+  return true;
 }
 
 // Manipular conclusão de estudo via modal
@@ -318,7 +339,7 @@ function handleStudyCompletion() {
   const studyDayId = parseInt(document.getElementById('study-day-id').value);
   const feedback = document.getElementById('study-feedback')?.value || '';
 
-  completeStudy(studyDayId, feedback);
+  return completeStudy(studyDayId, feedback);
 }
 
 // Manipular conclusão de missão via modal
@@ -326,22 +347,23 @@ function handleMissionCompletion() {
   const missionId = parseInt(document.getElementById('mission-id').value);
   const feedback = document.getElementById('mission-feedback')?.value || '';
 
-  completeMission(missionId, feedback);
+  return completeMission(missionId, feedback);
 }
 
 function handleWorkCompletion() {
   const workId = parseInt(document.getElementById('work-id').value, 10);
   const feedback = document.getElementById('work-feedback')?.value || '';
-  completeWork(workId, feedback);
+  return completeWork(workId, feedback);
 }
 
 // Concluir estudo
 function completeStudy(studyDayId, feedbackText = '') {
   const studyDay = appData.dailyStudies.find((ds) => ds.id === studyDayId);
-  if (!studyDay) return;
+  if (!studyDay) return false;
+  if (studyDay.completed || studyDay.skipped || studyDay.failed) return false;
 
   const study = appData.studies.find((s) => s.id === studyDay.studyId);
-  if (!study) return;
+  if (!study) return false;
 
   // Marcar como concluído
   studyDay.completed = true;
@@ -438,6 +460,7 @@ function completeStudy(studyDayId, feedbackText = '') {
     message: 'Estudo concluído com sucesso!',
   });
   saveToLocalStorage();
+  return true;
 }
 
 // Concluir livro
@@ -686,13 +709,22 @@ function handleActivitySubmit(e) {
 // Completar uma missão (função corrigida - VERSÃO FINAL)
 function completeMission(missionId, feedbackText = '') {
   const missionIndex = appData.missions.findIndex((m) => m.id === missionId);
-  if (missionIndex === -1) return;
+  if (missionIndex === -1) return false;
 
   const mission = appData.missions[missionIndex];
   const todayStr = getLocalDateString();
   const isRoutine = isRoutineType(mission.type);
+  const routineAlreadyResolvedToday =
+    isRoutine &&
+    appData.completedMissions.some(
+      (entry) =>
+        String(entry.originalId || entry.id) === String(mission.originalId || mission.id) &&
+        (entry.completedDate === todayStr ||
+          entry.failedDate === todayStr ||
+          entry.skippedDate === todayStr)
+    );
+  if (routineAlreadyResolvedToday) return false;
 
-  // Marcar como concluída (sem remover itens semanais da lista)
   if (!isRoutine) {
     mission.completed = true;
     mission.completedDate = todayStr;
@@ -768,15 +800,26 @@ function completeMission(missionId, feedbackText = '') {
     message: missionDoneMessage,
   });
   saveToLocalStorage();
+  return true;
 }
 
 function completeWork(workId, feedbackText = '') {
   const workIndex = appData.works.findIndex((w) => w.id === workId);
-  if (workIndex === -1) return;
+  if (workIndex === -1) return false;
 
   const work = appData.works[workIndex];
   const todayStr = getLocalDateString();
   const isRoutine = isRoutineType(work.type);
+  const routineAlreadyResolvedToday =
+    isRoutine &&
+    appData.completedWorks.some(
+      (entry) =>
+        String(entry.originalId || entry.id) === String(work.originalId || work.id) &&
+        (entry.completedDate === todayStr ||
+          entry.failedDate === todayStr ||
+          entry.skippedDate === todayStr)
+    );
+  if (routineAlreadyResolvedToday) return false;
 
   if (!isRoutine) {
     work.completed = true;
@@ -843,6 +886,7 @@ function completeWork(workId, feedbackText = '') {
     }`,
   });
   saveToLocalStorage();
+  return true;
 }
 
 // Recriar rotinas para o dia atual
@@ -924,6 +968,7 @@ function cleanupOldDailyMissions() {
           failed: true,
           reason: 'Não concluída no dia',
         });
+        applyPenalties(failedDate, { onlyTypes: ['mission'] });
       }
       console.log(`Removendo rotina antiga: ${mission.name} (adicionada em ${mission.dateAdded})`);
       missionsToRemove.push(index);
@@ -1010,6 +1055,7 @@ function cleanupOldDailyWorks() {
           failed: true,
           reason: 'Não concluído no dia',
         });
+        applyPenalties(failedDate, { onlyTypes: ['work'] });
       }
       worksToRemove.push(index);
     }
@@ -1086,19 +1132,6 @@ function rebuildProductiveDaysFromHistory() {
   if (!appData.statistics) appData.statistics = {};
 
   const rebuilt = {};
-  const previousProductiveDays = appData.statistics.productiveDays || {};
-
-  Object.entries(previousProductiveDays).forEach(([dateKey, data]) => {
-    if (!dateKey) return;
-    rebuilt[dateKey] = ensureProductiveDaySnapshot({
-      totalXP: data?.totalXP || 0,
-      xpMission: data?.xpMission || 0,
-      xpWork: data?.xpWork || 0,
-      xpWorkout: data?.xpWorkout || 0,
-      xpStudy: data?.xpStudy || 0,
-      xpBook: data?.xpBook || 0,
-    });
-  });
 
   const registerEntry = (entry, counts) => {
     const dateKey =
@@ -1215,33 +1248,8 @@ async function useItem(itemId) {
   // Aplicar efeito
   switch (item.effect) {
     case 'heal':
-      if (
-        Number.isFinite(appData.hero.lives) &&
-        Number.isFinite(appData.hero.maxLives) &&
-        appData.hero.lives < appData.hero.maxLives
-      ) {
-        appData.hero.lives++;
-        showToast('Poção usada! Vida restaurada.', 'success');
-        celebrateAction({ containerSelector: '#inventory-items', message: '+1 vida aplicada' });
-        addHeroLog('item', 'Poção usada', '+1 vida');
-      } else {
-        showToast('Você já está com vida máxima!', 'warn');
-        // Devolver ao inventário
-        appData.inventory.push({ id: itemId, purchaseDate: new Date().toISOString() });
-      }
-      break;
-
-    case 'shield':
-      showToast(
-        'Escudo ativado! Você está protegido contra o próximo dano e quebra de streak.',
-        'success'
-      );
-      celebrateAction({ containerSelector: '#inventory-items', message: 'Escudo equipado' });
-      // Aqui você precisaria implementar a lógica de escudo
-      // Por exemplo, adicionar uma flag de proteção ao herói
-      if (!appData.hero.protection) appData.hero.protection = {};
-      appData.hero.protection.shield = true;
-      addHeroLog('item', 'Escudo ativado', 'O próximo dano e quebra de streak serão evitados.');
+      showToast('Esse item legado não tem mais efeito porque o sistema de vidas foi removido.', 'info');
+      addHeroLog('item', 'Item legado sem efeito', 'A antiga poção de vida foi desativada.');
       break;
 
     case 'skip':

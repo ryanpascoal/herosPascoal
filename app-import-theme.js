@@ -10,12 +10,12 @@ function handleNutritionFoodSubmit(event) {
   const fiber = Number(document.getElementById('nutrition-food-fiber')?.value || 0);
 
   if (!name || !Number.isFinite(portionGrams) || portionGrams <= 0) {
-    showFeedback('Informe nome e porção base válidos.', 'warn');
+    showFeedback('Informe nome e por\u00e7\u00e3o base v\u00e1lidos.', 'warn');
     return;
   }
   const numbers = [kcal, protein, carbs, fat, fiber];
   if (numbers.some((value) => !Number.isFinite(value) || value < 0)) {
-    showFeedback('Macros inválidos. Use apenas números positivos.', 'warn');
+    showFeedback('Macros inv\u00e1lidos. Use apenas n\u00fameros positivos.', 'warn');
     return;
   }
 
@@ -45,7 +45,7 @@ function handleImportFoods(event) {
   if (!file) return;
 
   if (!file.name.endsWith('.json')) {
-    showFeedback('Por favor, selecione um arquivo JSON válido.', 'warn');
+    showFeedback('Por favor, selecione um arquivo JSON v\u00e1lido.', 'warn');
     event.target.value = '';
     return;
   }
@@ -64,9 +64,9 @@ function handleImportFoods(event) {
       jsonData.forEach((item) => {
         const name = (item.name || item.nome || '').trim();
         const brand = (item.brand || item.marca || '').trim();
-        const portionGrams = Number(item.portionGrams || item.porcao || item.porção || 100);
+        const portionGrams = Number(item.portionGrams || item.porcao || item['por\u00e7\u00e3o'] || 100);
         const kcal = Number(item.kcal || item.calorias || 0);
-        const protein = Number(item.protein || item.proteina || item.proteína || 0);
+        const protein = Number(item.protein || item.proteina || item['prote\u00edna'] || 0);
         const carbs = Number(item.carbs || item.carboidratos || 0);
         const fat = Number(item.fat || item.gordura || 0);
         const fiber = Number(item.fiber || item.fibra || 0);
@@ -105,7 +105,7 @@ function handleImportFoods(event) {
           'success'
         );
       } else {
-        showFeedback('Nenhum alimento válido foi encontrado no arquivo.', 'warn');
+        showFeedback('Nenhum alimento v\u00e1lido foi encontrado no arquivo.', 'warn');
       }
     } catch (error) {
       console.error('Erro ao importar alimentos:', error);
@@ -132,11 +132,11 @@ function handleNutritionEntrySubmit(event) {
   const food = (appData.foodItems || []).find((item) => Number(item.id) === foodId);
 
   if (!food) {
-    showFeedback('Selecione um alimento válido.', 'warn');
+    showFeedback('Selecione um alimento v\u00e1lido.', 'warn');
     return;
   }
   if (!Number.isFinite(quantity) || quantity <= 0) {
-    showFeedback('Quantidade inválida.', 'warn');
+    showFeedback('Quantidade inv\u00e1lida.', 'warn');
     return;
   }
 
@@ -381,13 +381,8 @@ function importData() {
           throw new Error('Arquivo inválido');
         }
 
-        // Mesclar com defaults para evitar campos críticos ausentes
-        const mergedImport = JSON.parse(JSON.stringify(APP_DEFAULTS));
-        mergeData(mergedImport, importedData);
-        Object.keys(appData).forEach((key) => delete appData[key]);
-        Object.assign(appData, mergedImport);
-        ensureDataIntegrity();
-        populateFinanceMonthOptions();
+        replaceAppState(importedData);
+        finalizeLoadedState();
 
         // Salvar no localStorage
         saveToLocalStorage();
@@ -788,9 +783,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     return added;
   };
 
-  // Check for failed activities by type - only 1 life lost per type
-  let livesLost = 0;
-  let shieldUsed = false;
+  // Check for failed activities by type
   const failedTypes = [];
 
   // Check workouts - was there any failed workout on this day?
@@ -958,19 +951,8 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     }
   }
 
-  // Now apply penalties - 1 life per failed type
-  failedTypes.forEach((type) => {
-    if (appData.hero.protection?.shield) {
-      appData.hero.protection.shield = false;
-      shieldUsed = true;
-      return;
-    }
-    appData.hero.lives = Math.max(0, appData.hero.lives - 1);
-    livesLost++;
-  });
-
   // Apply streak and XP penalties based on the types that failed
-  if (livesLost > 0) {
+  if (failedTypes.length > 0) {
     // Reset streaks
     appData.hero.streak.general = 0;
 
@@ -1070,37 +1052,24 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       });
     }
 
-    // Build failure message
-    let failMessage = 'Você perdeu vidas por não completar atividades: ';
-    failMessage +=
+    const failedTypesLabel =
       failedTypes
         .map((t) => {
           if (t === 'workout') return 'treino';
           if (t === 'study') return 'estudo';
-          if (t === 'mission') return 'missão';
+          if (t === 'mission') return 'miss\u00e3o';
           if (t === 'work') return 'trabalho';
-          if (t === 'nutrition') return 'alimentação';
+          if (t === 'nutrition') return 'alimenta\u00e7\u00e3o';
           return t;
         })
-        .join(', ') + '.';
+        .join(', ');
 
-    showFeedback(failMessage, 'error');
-
-    // Log to hero log
-    addHeroLog(
-      'penalty',
-      'Atividades não concluídas',
-      `Você perdeu ${livesLost} vida(s). Tipos com falha: ${failedTypes.join(', ')}. Streaks resetados.`
-    );
-
-    handleGameOverIfNeeded();
-  } else if (shieldUsed) {
-    showFeedback('Escudo consumido! Você evitou perder vidas.', 'warn');
-    addHeroLog(
-      'penalty',
-      'Escudo consumido',
-      'Atividades não concluídas, penalidade evitada pelo escudo.'
-    );
+    applyCoinPenalty({
+      requestedAmount: failedTypes.length,
+      failMessage: `Atividades não concluídas: ${failedTypesLabel}.`,
+      failLogTitle: 'Atividades n\u00e3o conclu\u00eddas',
+      failLogContent: `Tipos com falha: ${failedTypes.join(', ')}. Streaks resetados e disciplina reduzida.`,
+    });
   }
 
   updateUI({ mode: 'activity' });
@@ -1158,3 +1127,5 @@ Object.assign(globalThis, {
   toggleTheme,
   applySavedTheme,
 });
+
+

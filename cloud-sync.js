@@ -95,17 +95,11 @@
   }
 
   function applyDataGuards() {
-    if (typeof ensureDataIntegrity === 'function') {
-      ensureDataIntegrity();
-    } else {
-      // Fallback if ensureDataIntegrity not yet defined
-      if (typeof ensureCriticalDataShape === 'function') ensureCriticalDataShape();
-      ensureCoreAttributes();
-      ensureClasses();
-      ensureStartingLevels();
-      normalizeClassIds();
+    if (typeof finalizeLoadedState === 'function') {
+      finalizeLoadedState();
+    } else if (typeof populateFinanceMonthOptions === 'function') {
+      populateFinanceMonthOptions();
     }
-    if (typeof populateFinanceMonthOptions === 'function') populateFinanceMonthOptions();
   }
 
   function buildSerializableData() {
@@ -222,7 +216,7 @@
       '<button id="cloud-register-btn" type="button">Criar conta</button>' +
       '<button id="cloud-logout-btn" type="button">Sair</button>' +
       '<button id="cloud-sync-now-btn" type="button">Sincronizar Agora</button>' +
-      '<span id="cloud-user-label">Nao autenticado</span>' +
+      '<span id="cloud-user-label">N\u00e3o autenticado</span>' +
       '<span id="cloud-sync-status" class="warn">Modo local</span>';
     document.body.appendChild(panel);
   }
@@ -239,7 +233,7 @@
   async function pushCloud(force) {
     if (!cloudReady || !currentUser) return;
     if (syncBlockedByConflict) {
-      setSyncStatus('Sincronizacao pausada por conflito', 'warn');
+      setSyncStatus('Sincroniza\u00e7\u00e3o pausada por conflito', 'warn');
       return;
     }
     if (saveInFlight) {
@@ -316,9 +310,9 @@
       const diffHours = Math.floor(diffMs / 3600000);
 
       let timeAgo;
-      if (diffMins < 1) timeAgo = 'Ha poucos segundos';
-      else if (diffMins < 60) timeAgo = 'Ha ' + diffMins + ' minuto' + (diffMins > 1 ? 's' : '');
-      else if (diffHours < 24) timeAgo = 'Ha ' + diffHours + ' hora' + (diffHours > 1 ? 's' : '');
+      if (diffMins < 1) timeAgo = 'H\u00e1 poucos segundos';
+      else if (diffMins < 60) timeAgo = 'H\u00e1 ' + diffMins + ' minuto' + (diffMins > 1 ? 's' : '');
+      else if (diffHours < 24) timeAgo = 'H\u00e1 ' + diffHours + ' hora' + (diffHours > 1 ? 's' : '');
       else timeAgo = remoteDate.toLocaleDateString('pt-BR');
 
       // Mostrar notificaÃƒÂ§ÃƒÂ£o
@@ -336,16 +330,19 @@
                 <span style="font-size: 1.5rem;">[!]</span>
                 <div style="flex: 1;">
                     <strong>Dados modificados em outro dispositivo</strong>
-                    <p style="margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9;">
-                        Ultima alteracao na nuvem: ${timeAgo}
+                    <p style="margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9;">                        \u00daltima altera\u00e7\u00e3o na nuvem: ${timeAgo}
                     </p>
                 </div>
-                <button onclick="this.parentElement.parentElement.remove()" style="
+                <button type="button" data-close-remote-change style="
                     background: none; border: none; color: inherit; 
                     font-size: 1.2rem; cursor: pointer; opacity: 0.7;
                 ">&times;</button>
             </div>
         `;
+
+    notification
+      .querySelector('[data-close-remote-change]')
+      ?.addEventListener('click', () => notification.remove());
 
     // Inserir no topo da pÃƒÂ¡gina
     document.body.insertBefore(notification, document.body.firstChild);
@@ -377,8 +374,12 @@
       return false;
     }
 
-    Object.keys(appData).forEach((key) => delete appData[key]);
-    Object.assign(appData, deepClone(remoteAppData));
+    if (typeof replaceAppState === 'function') {
+      replaceAppState(remoteAppData);
+    } else {
+      Object.keys(appData).forEach((key) => delete appData[key]);
+      Object.assign(appData, deepClone(remoteAppData));
+    }
 
     applyDataGuards();
     persistLocalCache();
@@ -535,7 +536,14 @@
   function overrideStorageFunctions() {
     window.loadFromLocalStorage = function () {
       const saved = parseJson(localStorage.getItem(CLOUD_CACHE_KEY), null);
-      if (saved && typeof saved === 'object') mergeData(appData, saved);
+      if (saved && typeof saved === 'object') {
+        if (typeof replaceAppState === 'function') {
+          replaceAppState(saved);
+        } else {
+          Object.keys(appData).forEach((key) => delete appData[key]);
+          Object.assign(appData, deepClone(saved));
+        }
+      }
       applyDataGuards();
       updateServerMetaFromLocal();
     };
@@ -551,7 +559,7 @@
       if (syncBlockedByConflict) {
         hasUnsyncedLocalChanges = true;
         persistLocalCache();
-        setSyncStatus('Sincronizacao pausada por conflito', 'warn');
+        setSyncStatus('Sincroniza\u00e7\u00e3o pausada por conflito', 'warn');
         return;
       }
       hasUnsyncedLocalChanges = true;
@@ -562,10 +570,6 @@
     window.checkDailyReset = function () {
       const today = getLocalDateString();
       const lastReset = serverMeta.lastDailyReset;
-      if (!Number.isFinite(appData.hero.maxLives) || appData.hero.maxLives <= 0)
-        appData.hero.maxLives = 10;
-      if (!Number.isFinite(appData.hero.lives) || appData.hero.lives < 0)
-        appData.hero.lives = appData.hero.maxLives;
 
       if (!lastReset) {
         serverMeta.lastDailyReset = today;
@@ -736,7 +740,7 @@
         conflictInProgress = false;
         pendingRemoteConflict = null;
         hasUnsyncedLocalChanges = false;
-        setUserLabel('Nao autenticado');
+        setUserLabel('N\u00e3o autenticado');
         setSyncStatus('Modo local (sem login)', 'warn');
         return;
       }
@@ -762,8 +766,6 @@
         if (typeof checkOverdueWorks === 'function') checkOverdueWorks({ isInitialCheck: true });
         if (typeof checkWeeklyReset === 'function') checkWeeklyReset();
         if (typeof updateStreaks === 'function') updateStreaks();
-        if (typeof handleGameOverIfNeeded === 'function')
-          handleGameOverIfNeeded({ isInitialCheck: true });
         if (typeof updateUI === 'function') updateUI({ mode: 'full', forceCalendar: true });
       } catch (err) {
         console.error('Erro ao carregar nuvem:', err);

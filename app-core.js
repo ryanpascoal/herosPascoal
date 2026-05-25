@@ -8,10 +8,6 @@ function startApp() {
   if (typeof globalThis.rebuildProductiveDaysFromHistory === 'function') {
     globalThis.rebuildProductiveDaysFromHistory();
   }
-  const recoveredGameOverOnLoad = recoverInvalidLivesStateOnLoad();
-  if (recoveredGameOverOnLoad && typeof saveToLocalStorage === 'function') {
-    saveToLocalStorage();
-  }
   normalizeActivityDays();
   const canRunCriticalResets =
     typeof window.shouldRunCriticalResets === 'function' ? window.shouldRunCriticalResets() : true;
@@ -45,21 +41,12 @@ function startApp() {
     const activeTab = document.querySelector('.tab-content.active')?.id || 'atividades';
     switchTab(activeTab);
   }
-  if (
-    appData.hero?.pendingGameOverNotice === true &&
-    typeof globalThis.showGameOverModal === 'function'
-  ) {
-    globalThis.showGameOverModal();
-  }
   updateMidnightCountdown();
   setInterval(updateMidnightCountdown, 1000);
   updateCurrentDate();
   setInterval(checkDailyReset, 60000);
   setInterval(checkWeeklyReset, 60000);
   setInterval(updateStreaks, 60000);
-  if (canRunCriticalResets) {
-    handleGameOverIfNeeded({ isInitialCheck: true });
-  }
 }
 
 // Carregar dados - agora delega para a nuvem quando disponÃƒÆ’Ã‚Â­vel
@@ -76,8 +63,8 @@ function loadFromLocalStorage() {
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
-        mergeData(appData, parsedData);
-        ensureDataIntegrity();
+        replaceAppState(parsedData);
+        finalizeLoadedState();
         console.log('Dados carregados do localStorage (modo offline)');
       } catch (e) {
         console.error('Erro ao carregar dados:', e);
@@ -86,310 +73,29 @@ function loadFromLocalStorage() {
   }
 }
 
-function ensureCoreAttributes() {
-  if (!Array.isArray(appData.attributes)) appData.attributes = [];
-}
-
-function ensureClasses() {
-  if (!Array.isArray(appData.classes)) appData.classes = [];
-  let nextId = 1;
-  appData.classes.forEach((cls) => {
-    if (!Number.isFinite(cls.id)) cls.id = nextId;
-    nextId = Math.max(nextId, cls.id + 1);
-    if (!cls.name) cls.name = 'Classe';
-    if (!cls.emoji) cls.emoji = '\uD83D\uDCBC';
-    if (!Number.isFinite(cls.xp) || cls.xp < 0) cls.xp = 0;
-    if (!Number.isFinite(cls.maxXp) || cls.maxXp <= 0) cls.maxXp = 100;
-    if (!Number.isFinite(cls.level) || cls.level < 0) cls.level = 0;
-  });
-  if (!appData.hero) appData.hero = {};
-  if (!Number.isFinite(appData.hero.primaryClassId)) {
-    appData.hero.primaryClassId = null;
-  }
-  if (
-    appData.hero.primaryClassId &&
-    !appData.classes.some((c) => c.id === appData.hero.primaryClassId)
-  ) {
-    appData.hero.primaryClassId = null;
-  }
-}
-
-function ensureStartingLevels() {
-  if (!Array.isArray(appData.attributes)) appData.attributes = [];
-  appData.attributes.forEach((attr) => {
-    if (!Number.isFinite(attr.level) || attr.level < 0) attr.level = 0;
-    if (!Number.isFinite(attr.xp) || attr.xp < 0) attr.xp = 0;
-    if (!Number.isFinite(attr.maxXp) || attr.maxXp <= 0) attr.maxXp = 100;
-  });
-  if (!Array.isArray(appData.classes)) appData.classes = [];
-  appData.classes.forEach((cls) => {
-    if (!Number.isFinite(cls.level) || cls.level < 0) cls.level = 0;
-    if (!Number.isFinite(cls.xp) || cls.xp < 0) cls.xp = 0;
-    if (!Number.isFinite(cls.maxXp) || cls.maxXp <= 0) cls.maxXp = 100;
-  });
-  if (!Array.isArray(appData.workouts)) appData.workouts = [];
-  appData.workouts.forEach((workout) => {
-    if (!Number.isFinite(workout.level) || workout.level < 0) workout.level = 0;
-    if (!Number.isFinite(workout.xp) || workout.xp < 0) workout.xp = 0;
-  });
-  if (!Array.isArray(appData.studies)) appData.studies = [];
-  appData.studies.forEach((study) => {
-    if (!Number.isFinite(study.level) || study.level < 0) study.level = 0;
-    if (!Number.isFinite(study.xp) || study.xp < 0) study.xp = 0;
-  });
-}
-
-function ensureCriticalDataShape() {
-  if (!appData.hero || typeof appData.hero !== 'object') appData.hero = {};
-  if (!Number.isFinite(appData.hero.maxXp) || appData.hero.maxXp <= 0) {
-    appData.hero.maxXp = 100;
-  }
-  if (!Number.isFinite(appData.hero.xp) || appData.hero.xp < 0) {
-    appData.hero.xp = 0;
-  }
-
-  if (!appData.hero.protection || typeof appData.hero.protection !== 'object') {
-    appData.hero.protection = { shield: false };
-  }
-  appData.hero.protection.shield = appData.hero.protection.shield === true;
-
-  if (!appData.hero.streak || typeof appData.hero.streak !== 'object') {
-    appData.hero.streak = {};
-  }
-  if (!Number.isFinite(appData.hero.streak.general)) appData.hero.streak.general = 0;
-  if (!Number.isFinite(appData.hero.streak.physical)) appData.hero.streak.physical = 0;
-  if (!Number.isFinite(appData.hero.streak.mental)) appData.hero.streak.mental = 0;
-  if (!appData.hero.streak.lastGeneralCheck) appData.hero.streak.lastGeneralCheck = null;
-  if (!appData.hero.streak.lastPhysicalCheck) appData.hero.streak.lastPhysicalCheck = null;
-  if (!appData.hero.streak.lastMentalCheck) appData.hero.streak.lastMentalCheck = null;
-
-  if (!appData.statistics || typeof appData.statistics !== 'object') appData.statistics = {};
-  const statsDefaults = {
-    workoutsDone: 0,
-    workoutsIgnored: 0,
-    studiesDone: 0,
-    studiesIgnored: 0,
-    worksDone: 0,
-    worksFailed: 0,
-    worksIgnored: 0,
-    booksRead: 0,
-    missionsDone: 0,
-    missionsFailed: 0,
-    deaths: 0,
-    justiceDone: 0,
-    maxStreakGeneral: 0,
-    maxStreakPhysical: 0,
-    maxStreakMental: 0,
-    workoutDetails: {},
-    studyDetails: {},
-    productiveDays: {},
-    deathDates: [],
-  };
-  Object.keys(statsDefaults).forEach((key) => {
-    if (appData.statistics[key] === undefined || appData.statistics[key] === null) {
-      appData.statistics[key] = statsDefaults[key];
-    }
-  });
-
-  if (!Array.isArray(appData.financeEntries)) appData.financeEntries = [];
-  if (!Array.isArray(appData.financeBudgets)) appData.financeBudgets = [];
-  if (!Array.isArray(appData.financeRecurring)) appData.financeRecurring = [];
-  if (!Array.isArray(appData.financeRecurringSkips)) appData.financeRecurringSkips = [];
-  if (!Array.isArray(appData.restDays)) appData.restDays = [];
-  if (!Array.isArray(appData.workOffDays)) appData.workOffDays = [];
-  if (!Array.isArray(appData.shopItems)) appData.shopItems = [];
-  if (!Array.isArray(appData.inventory)) appData.inventory = [];
-  if (!Array.isArray(appData.books)) appData.books = [];
-  normalizeEntityIds(appData.shopItems);
-  if (!appData.statisticsGoals || typeof appData.statisticsGoals !== 'object') {
-    appData.statisticsGoals = {};
-  }
-  appData.statisticsGoals.missions =
-    Number.isFinite(Number(appData.statisticsGoals.missions)) &&
-    Number(appData.statisticsGoals.missions) > 0
-      ? Math.floor(Number(appData.statisticsGoals.missions))
-      : 60;
-  appData.statisticsGoals.workouts =
-    Number.isFinite(Number(appData.statisticsGoals.workouts)) &&
-    Number(appData.statisticsGoals.workouts) > 0
-      ? Math.floor(Number(appData.statisticsGoals.workouts))
-      : 20;
-  appData.statisticsGoals.studies =
-    Number.isFinite(Number(appData.statisticsGoals.studies)) &&
-    Number(appData.statisticsGoals.studies) > 0
-      ? Math.floor(Number(appData.statisticsGoals.studies))
-      : 20;
-  appData.statisticsGoals.works =
-    Number.isFinite(Number(appData.statisticsGoals.works)) &&
-    Number(appData.statisticsGoals.works) > 0
-      ? Math.floor(Number(appData.statisticsGoals.works))
-      : 30;
-
-  appData.financeBudgets = appData.financeBudgets
-    .filter((b) => b && typeof b === 'object')
-    .map((b) => ({
-      id: Number.isFinite(Number(b.id)) ? Number(b.id) : createUniqueId(appData.financeBudgets),
-      month:
-        typeof b.month === 'string' && /^\d{4}-\d{2}$/.test(b.month)
-          ? b.month
-          : getLocalDateString().slice(0, 7),
-      category: String(b.category || '').trim(),
-      limit: Number.isFinite(Number(b.limit)) && Number(b.limit) > 0 ? Number(b.limit) : 0,
-    }))
-    .filter((b) => b.category && b.limit > 0);
-  normalizeEntityIds(appData.financeBudgets);
-
-  appData.financeRecurring = appData.financeRecurring
-    .filter((r) => r && typeof r === 'object')
-    .map((r) => ({
-      id: Number.isFinite(Number(r.id)) ? Number(r.id) : createUniqueId(appData.financeRecurring),
-      type: r.type === 'income' ? 'income' : 'expense',
-      amount: Number.isFinite(Number(r.amount)) && Number(r.amount) > 0 ? Number(r.amount) : 0,
-      category: String(r.category || '').trim(),
-      description: String(r.description || '').trim(),
-      dayOfMonth: Math.min(31, Math.max(1, parseInt(r.dayOfMonth, 10) || 1)),
-      startDate: typeof r.startDate === 'string' ? r.startDate : getLocalDateString(),
-      endDate: r.endDate ? String(r.endDate) : '',
-      active: r.active !== false,
-    }))
-    .filter((r) => r.amount > 0);
-  normalizeEntityIds(appData.financeRecurring);
-
-  appData.financeRecurringSkips = appData.financeRecurringSkips
-    .map((s) => String(s || '').trim())
-    .filter((s) => /^\d+\|\d{4}-\d{2}$/.test(s));
-
-  if (!Array.isArray(appData.foodItems)) appData.foodItems = [];
-  if (!Array.isArray(appData.nutritionEntries)) appData.nutritionEntries = [];
-  if (!appData.nutritionGoals || typeof appData.nutritionGoals !== 'object') {
-    appData.nutritionGoals = {};
-  }
-  if (!appData.nutritionStats || typeof appData.nutritionStats !== 'object') {
-    appData.nutritionStats = {};
-  }
-
-  const nutritionGoalDefaults = {
-    kcal: 2200,
-    protein: 140,
-    carbs: 240,
-    fat: 70,
-    fiber: 30,
-  };
-  Object.keys(nutritionGoalDefaults).forEach((key) => {
-    const parsed = Number(appData.nutritionGoals[key]);
-    appData.nutritionGoals[key] =
-      Number.isFinite(parsed) && parsed > 0 ? parsed : nutritionGoalDefaults[key];
-  });
-
-  appData.foodItems = appData.foodItems
-    .filter((item) => item && typeof item === 'object')
-    .map((item) => ({
-      id: Number.isFinite(Number(item.id)) ? Number(item.id) : createUniqueId(appData.foodItems),
-      name: String(item.name || '').trim(),
-      brand: String(item.brand || '').trim(),
-      portionGrams:
-        Number.isFinite(Number(item.portionGrams)) && Number(item.portionGrams) > 0
-          ? Number(item.portionGrams)
-          : 100,
-      kcal: Number.isFinite(Number(item.kcal)) && Number(item.kcal) >= 0 ? Number(item.kcal) : 0,
-      protein:
-        Number.isFinite(Number(item.protein)) && Number(item.protein) >= 0
-          ? Number(item.protein)
-          : 0,
-      carbs:
-        Number.isFinite(Number(item.carbs)) && Number(item.carbs) >= 0 ? Number(item.carbs) : 0,
-      fat: Number.isFinite(Number(item.fat)) && Number(item.fat) >= 0 ? Number(item.fat) : 0,
-      fiber:
-        Number.isFinite(Number(item.fiber)) && Number(item.fiber) >= 0 ? Number(item.fiber) : 0,
-    }))
-    .filter((item) => item.name);
-  normalizeEntityIds(appData.foodItems);
-
-  appData.nutritionEntries = appData.nutritionEntries
-    .filter((entry) => entry && typeof entry === 'object')
-    .map((entry) => ({
-      id: Number.isFinite(Number(entry.id))
-        ? Number(entry.id)
-        : createUniqueId(appData.nutritionEntries),
-      date:
-        typeof entry.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entry.date)
-          ? entry.date
-          : getLocalDateString(),
-      meal: Object.prototype.hasOwnProperty.call(NUTRITION_MEALS, entry.meal)
-        ? entry.meal
-        : 'lanche',
-      foodId: entry.foodId !== undefined && entry.foodId !== null ? Number(entry.foodId) : null,
-      foodName: String(entry.foodName || '').trim(),
-      quantity:
-        Number.isFinite(Number(entry.quantity)) && Number(entry.quantity) > 0
-          ? Number(entry.quantity)
-          : 1,
-      grams:
-        Number.isFinite(Number(entry.grams)) && Number(entry.grams) > 0 ? Number(entry.grams) : 0,
-      kcal: Number.isFinite(Number(entry.kcal)) && Number(entry.kcal) >= 0 ? Number(entry.kcal) : 0,
-      protein:
-        Number.isFinite(Number(entry.protein)) && Number(entry.protein) >= 0
-          ? Number(entry.protein)
-          : 0,
-      carbs:
-        Number.isFinite(Number(entry.carbs)) && Number(entry.carbs) >= 0 ? Number(entry.carbs) : 0,
-      fat: Number.isFinite(Number(entry.fat)) && Number(entry.fat) >= 0 ? Number(entry.fat) : 0,
-      fiber:
-        Number.isFinite(Number(entry.fiber)) && Number(entry.fiber) >= 0 ? Number(entry.fiber) : 0,
-      notes: String(entry.notes || '').trim(),
-    }))
-    .filter((entry) => entry.foodName);
-  normalizeEntityIds(appData.nutritionEntries);
-
-  if (!Array.isArray(appData.nutritionStats.logDates)) appData.nutritionStats.logDates = [];
-  if (!Array.isArray(appData.nutritionStats.goalHitDates)) appData.nutritionStats.goalHitDates = [];
-  if (!Array.isArray(appData.nutritionStats.rewardedGoalDates))
-    appData.nutritionStats.rewardedGoalDates = [];
-  if (!Array.isArray(appData.nutritionStats.rewardedMealKeys))
-    appData.nutritionStats.rewardedMealKeys = [];
-  appData.nutritionStats.logDates = appData.nutritionStats.logDates
-    .map((v) => String(v || '').trim())
-    .filter((v) => /^\d{4}-\d{2}-\d{2}$/.test(v));
-  appData.nutritionStats.goalHitDates = appData.nutritionStats.goalHitDates
-    .map((v) => String(v || '').trim())
-    .filter((v) => /^\d{4}-\d{2}-\d{2}$/.test(v));
-  appData.nutritionStats.rewardedGoalDates = appData.nutritionStats.rewardedGoalDates
-    .map((v) => String(v || '').trim())
-    .filter((v) => /^\d{4}-\d{2}-\d{2}$/.test(v));
-  appData.nutritionStats.rewardedMealKeys = appData.nutritionStats.rewardedMealKeys
-    .map((v) => String(v || '').trim())
-    .filter((v) => /^\d{4}-\d{2}-\d{2}\|(cafe|almoco|jantar|lanche)$/.test(v));
-
-  if (!appData.hydration || typeof appData.hydration !== 'object') {
-    appData.hydration = {
-      glasses: 0,
-      goal: 8,
-      lastDate: null,
-      currentStreak: 0,
-      bestStreak: 0,
-      startDate: null,
-      logDates: [],
-      goalHitDates: [],
-    };
-  }
-  if (!Number.isFinite(appData.hydration.glasses) || appData.hydration.glasses < 0)
-    appData.hydration.glasses = 0;
-  if (!Number.isFinite(appData.hydration.goal) || appData.hydration.goal <= 0)
-    appData.hydration.goal = 8;
-  if (!Array.isArray(appData.hydration.logDates)) appData.hydration.logDates = [];
-  if (!Array.isArray(appData.hydration.goalHitDates)) appData.hydration.goalHitDates = [];
-  if (!appData.hydration.startDate) appData.hydration.startDate = getLocalDateString();
-  appData.hydration.logDates = appData.hydration.logDates
-    .map((v) => String(v || '').trim())
-    .filter((v) => /^\d{4}-\d{2}-\d{2}$/.test(v));
-  appData.hydration.goalHitDates = appData.hydration.goalHitDates
-    .map((v) => String(v || '').trim())
-    .filter((v) => /^\d{4}-\d{2}-\d{2}$/.test(v));
-}
-
 function normalizeWeekdayValue(value) {
   const asNumber = Number(value);
   return Number.isInteger(asNumber) && asNumber >= 0 && asNumber <= 6 ? asNumber : null;
+}
+
+function cloneDefaultAppState() {
+  return JSON.parse(JSON.stringify(APP_DEFAULTS));
+}
+
+function replaceAppState(source) {
+  const nextState = cloneDefaultAppState();
+  if (source && typeof source === 'object') {
+    Object.assign(nextState, JSON.parse(JSON.stringify(source)));
+  }
+  Object.keys(appData).forEach((key) => delete appData[key]);
+  Object.assign(appData, nextState);
+}
+
+function finalizeLoadedState() {
+  normalizeActivityDays();
+  if (typeof populateFinanceMonthOptions === 'function') {
+    populateFinanceMonthOptions();
+  }
 }
 
 function normalizeActivityDays() {
@@ -413,130 +119,6 @@ function normalizeActivityDays() {
   normalizeListDays(appData.studies);
   normalizeListDays(appData.missions);
   normalizeListDays(appData.works);
-}
-
-function normalizeBooksData() {
-  if (!Array.isArray(appData.books)) {
-    appData.books = [];
-    return;
-  }
-
-  appData.books = appData.books
-    .filter((book) => book && typeof book === 'object')
-    .map((book) => {
-      const completed = book.completed === true || book.status === 'concluido';
-      const rawStatus = String(book.status || '').trim();
-      const status = completed ? 'concluido' : rawStatus === 'lendo' ? 'lendo' : 'quero-ler';
-      return {
-        id: Number.isFinite(Number(book.id)) ? Number(book.id) : createUniqueId(appData.books),
-        name: String(book.name || '').trim(),
-        author: String(book.author || '').trim(),
-        emoji: String(book.emoji || '').trim() || '📖',
-        type: 'book',
-        status,
-        completed,
-        dateAdded:
-          typeof book.dateAdded === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(book.dateAdded)
-            ? book.dateAdded
-            : getLocalDateString(),
-        dateCompleted:
-          typeof book.dateCompleted === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(book.dateCompleted)
-            ? book.dateCompleted
-            : '',
-      };
-    })
-    .filter((book) => book.name);
-
-  normalizeEntityIds(appData.books);
-}
-
-function normalizeClassIds() {
-  const validClassIds = new Set((appData.classes || []).map((c) => Number(c.id)));
-  const normalizeList = (list) => {
-    if (!Array.isArray(list)) return;
-    list.forEach((item) => {
-      if (item && Object.prototype.hasOwnProperty.call(item, 'classId')) {
-        const normalized = Number(item.classId);
-        item.classId =
-          Number.isFinite(normalized) && validClassIds.has(normalized) ? normalized : null;
-      }
-    });
-  };
-
-  normalizeList(appData.works);
-  normalizeList(appData.completedWorks);
-}
-
-// FunÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o helper para consolidar validaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de dados (elimina duplicaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o)
-function ensureDataIntegrity() {
-  ensureCriticalDataShape();
-  ensureCoreAttributes();
-  ensureClasses();
-  ensureStartingLevels();
-  normalizeBooksData();
-  normalizeClassIds();
-}
-
-function resetAllXpKeepLevelsForRecovery() {
-  appData.hero.xp = 0;
-
-  if (Array.isArray(appData.attributes)) {
-    appData.attributes.forEach((attr) => {
-      attr.xp = 0;
-    });
-  }
-
-  if (Array.isArray(appData.classes)) {
-    appData.classes.forEach((cls) => {
-      cls.xp = 0;
-    });
-  }
-
-  if (Array.isArray(appData.workouts)) {
-    appData.workouts.forEach((workout) => {
-      workout.xp = 0;
-    });
-  }
-
-  if (Array.isArray(appData.studies)) {
-    appData.studies.forEach((study) => {
-      study.xp = 0;
-    });
-  }
-}
-
-function recoverInvalidLivesStateOnLoad() {
-  if (!appData.hero || !Number.isFinite(appData.hero.lives) || appData.hero.lives > 0) {
-    return false;
-  }
-
-  const todayStr = getLocalDateString();
-  const maxLives = Math.max(1, Number.isFinite(appData.hero.maxLives) ? appData.hero.maxLives : 10);
-
-  appData.hero.maxLives = maxLives;
-  appData.hero.coins = 0;
-  resetAllXpKeepLevelsForRecovery();
-  appData.hero.lives = Math.min(3, maxLives);
-  appData.hero.gameOverCounted = false;
-  appData.hero.lastRestoreDate = todayStr;
-  appData.hero.pendingGameOverNotice = true;
-
-  if (!appData.statistics || typeof appData.statistics !== 'object') {
-    appData.statistics = {};
-  }
-  appData.statistics.deaths = (appData.statistics.deaths || 0) + 1;
-  if (!Array.isArray(appData.statistics.deathDates)) {
-    appData.statistics.deathDates = [];
-  }
-  appData.statistics.deathDates.push(todayStr);
-
-  addHeroLog(
-    'system',
-    'Game Over recuperado no carregamento',
-    'O save tinha 0 vidas. O app restaurou 3 vidas automaticamente e zerou moedas e XP, mantendo os nÃƒÆ’Ã‚Â­veis.'
-  );
-
-  return true;
 }
 
 const LOCAL_CACHE_HISTORY_LIMIT = 240;
@@ -587,32 +169,6 @@ function buildLocalCachePayload() {
 }
 
 // FunÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o para mesclar dados
-function mergeData(target, source) {
-  for (const key in source) {
-    if (source.hasOwnProperty(key)) {
-      const sourceValue = source[key];
-      const targetValue = target[key];
-
-      if (Array.isArray(sourceValue)) {
-        // Arrays devem ser copiados (nÃƒÆ’Ã‚Â£o mesclados recursivamente)
-        target[key] = sourceValue.slice();
-        continue;
-      }
-
-      if (
-        typeof sourceValue === 'object' &&
-        sourceValue !== null &&
-        typeof targetValue === 'object' &&
-        targetValue !== null
-      ) {
-        mergeData(targetValue, sourceValue);
-      } else {
-        target[key] = sourceValue;
-      }
-    }
-  }
-}
-
 /* saveToLocalStorage() substituÃƒÆ’Ã‚Â­da por saveManager.js */
 
 // Verificar reset diÃƒÆ’Ã‚Â¡rio - usa apenas serverMeta (salvo na nuvem)
@@ -620,11 +176,6 @@ function checkDailyReset() {
   const today = getLocalDateString();
   // Agora usa apenas serverMeta.lastDailyReset (que ÃƒÆ’Ã‚Â© salvo na nuvem)
   let lastReset = appData.serverMeta?.lastDailyReset;
-  if (!Number.isFinite(appData.hero.maxLives) || appData.hero.maxLives <= 0)
-    appData.hero.maxLives = 10;
-  if (!Number.isFinite(appData.hero.lives) || appData.hero.lives < 0)
-    appData.hero.lives = appData.hero.maxLives;
-
   if (!lastReset) {
     // Primeira vez: inicializar serverMeta e salvar na nuvem
     if (!appData.serverMeta) appData.serverMeta = {};
@@ -811,7 +362,7 @@ function getDialogModal() {
   modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="fx-dialog-title">ConfirmaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o</h3>
+                <h3 id="fx-dialog-title">Confirma\u00e7\u00e3o</h3>
                 <button type="button" class="close-modal" data-dialog-close>&times;</button>
             </div>
             <div class="modal-body" id="fx-dialog-body"></div>
@@ -829,7 +380,7 @@ function closeDialogModal() {
 
 function showDialog(options = {}) {
   const {
-    title = 'ConfirmaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o',
+    title = 'Confirma\u00e7\u00e3o',
     message = '',
     confirmText = 'Confirmar',
     cancelText = 'Cancelar',
@@ -922,7 +473,7 @@ function showDialog(options = {}) {
 
 async function askConfirmation(message, options = {}) {
   const result = await showDialog({
-    title: options.title || 'Confirmar aÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o',
+    title: options.title || 'Confirmar a\u00e7\u00e3o',
     message,
     confirmText: options.confirmText || 'Confirmar',
     cancelText: options.cancelText || 'Cancelar',
@@ -987,6 +538,46 @@ function celebrateAction(options = {}) {
   if (message) showToast(message, type);
 }
 
+function applyCoinPenalty(options = {}) {
+  const {
+    requestedAmount = 0,
+    failMessage,
+    failLogTitle,
+    failLogContent,
+  } = options;
+
+  const penaltyAmount = Number.isFinite(Number(requestedAmount))
+    ? Math.max(0, Math.floor(Number(requestedAmount)))
+    : 0;
+  const currentCoins = Number.isFinite(appData.hero?.coins) ? appData.hero.coins : 0;
+  const coinsLost = Math.min(currentCoins, penaltyAmount);
+  if (appData.hero) {
+    appData.hero.coins = Math.max(0, currentCoins - coinsLost);
+  }
+
+  let feedbackMessage = failMessage || 'Penalidade aplicada.';
+  if (coinsLost > 0) {
+    feedbackMessage += ` -${coinsLost} moeda${coinsLost === 1 ? '' : 's'}.`;
+  } else {
+    feedbackMessage += ' Sem moedas para descontar.';
+  }
+
+  showFeedback(feedbackMessage, 'error');
+
+  if (failLogTitle && failLogContent) {
+    const logSuffix =
+      coinsLost > 0
+        ? `Penalidade: -${coinsLost} moeda${coinsLost === 1 ? '' : 's'}.`
+        : 'Sem moedas suficientes para desconto.';
+    addHeroLog('penalty', failLogTitle, `${failLogContent} ${logSuffix}`);
+  }
+
+  return {
+    coinsLost,
+    requestedAmount: penaltyAmount,
+  };
+}
+
 function applyActivityPenalties(config) {
   const {
     targetDateStr,
@@ -1000,9 +591,6 @@ function applyActivityPenalties(config) {
     statsKey,
     streakKeys,
     alertFail,
-    alertShield,
-    logShieldTitle,
-    logShieldContent,
     logFailTitle,
     logFailContent,
   } = config;
@@ -1031,7 +619,7 @@ function applyActivityPenalties(config) {
         date: dayItem.date,
         failedDate: targetDateStr,
         failed: true,
-        reason: 'NÃƒÆ’Ã‚Â£o concluÃƒÆ’Ã‚Â­do',
+        reason: 'N\u00e3o conclu\u00eddo',
       });
     }
   });
@@ -1053,31 +641,17 @@ function applyActivityPenalties(config) {
     });
   }
 
-  let livesLost = 0;
-  let shieldUsed = false;
-  incompleteItems.forEach(() => {
-    if (appData.hero.protection?.shield) {
-      appData.hero.protection.shield = false;
-      shieldUsed = true;
-      return;
-    }
-    appData.hero.lives = Math.max(0, appData.hero.lives - 1);
-    livesLost++;
+  streakKeys.forEach((key) => {
+    appData.hero.streak[key] = 0;
   });
-
-  if (livesLost > 0) {
-    streakKeys.forEach((key) => {
-      appData.hero.streak[key] = 0;
-    });
-    addAttributeXP(6, -1);
-    appData.statistics[statsKey] = (appData.statistics[statsKey] || 0) + incompleteItems.length;
-    showFeedback(alertFail, 'error');
-    addHeroLog('penalty', logFailTitle, logFailContent);
-    handleGameOverIfNeeded();
-  } else if (shieldUsed) {
-    showFeedback(alertShield, 'warn');
-    addHeroLog('penalty', logShieldTitle, logShieldContent);
-  }
+  addAttributeXP(6, -1);
+  appData.statistics[statsKey] = (appData.statistics[statsKey] || 0) + incompleteItems.length;
+  applyCoinPenalty({
+    requestedAmount: incompleteItems.length,
+    failMessage: alertFail,
+    failLogTitle: logFailTitle,
+    failLogContent: logFailContent,
+  });
 }
 
 // Gerar atividades do dia
@@ -1143,16 +717,12 @@ function generateDailyActivities() {
 Object.assign(globalThis, {
   startApp,
   loadFromLocalStorage,
-  ensureCoreAttributes,
-  ensureClasses,
-  ensureStartingLevels,
-  ensureCriticalDataShape,
+  cloneDefaultAppState,
+  replaceAppState,
+  finalizeLoadedState,
   normalizeWeekdayValue,
   normalizeActivityDays,
-  normalizeClassIds,
-  ensureDataIntegrity,
   buildLocalCachePayload,
-  mergeData,
   checkDailyReset,
   checkWeeklyReset,
   getWeekNumber,
@@ -1170,6 +740,9 @@ Object.assign(globalThis, {
   pulseElement,
   spawnFloatingReward,
   celebrateAction,
+  applyCoinPenalty,
   applyActivityPenalties,
   generateDailyActivities,
 });
+
+

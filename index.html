@@ -30,14 +30,6 @@
               <span class="stats-icon"><i class="fas fa-fire"></i></span>
               <span id="streak-count">0</span>
             </div>
-            <div class="stats-item">
-              <span class="stats-icon"><i class="fas fa-heart"></i></span>
-              <span id="life-count">5</span>
-            </div>
-            <div class="stats-item shield-status" id="shield-status">
-              <span class="stats-icon"><i class="fas fa-shield-alt"></i></span>
-              <span class="shield-text">Sem escudo</span>
-            </div>
           </div>
         </div>
       </header>
@@ -325,11 +317,6 @@
             </div>
             <div class="profile-info">
               <h2 class="hero-name">Ryan Pascoal</h2>
-              <div class="lives-integrated">
-                <span class="lives-label"><i class="fas fa-heart"></i> Vidas:</span>
-                <div class="hearts-integrated" id="hearts-container"></div>
-                <span class="lives-count" id="lives-count-text">4/4</span>
-              </div>
               <div class="level-xp-integrated">
                 <div class="level-xp-header">
                   <span class="level-label">Nível <span id="level">1</span></span>
@@ -477,7 +464,9 @@
               <button class="settings-btn" id="import-btn">
                 <i class="fas fa-upload"></i> Importar Dados
               </button>
-              <button class="settings-btn" onclick="toggleTheme()">Alternar Tema</button>
+              <button class="settings-btn" id="theme-toggle-btn" type="button">
+                Alternar Tema
+              </button>
             </div>
             <div class="cloud-sync-card">
               <h4><i class="fas fa-cloud"></i> Sincronização na Nuvem</h4>
@@ -563,10 +552,6 @@
                   <div class="stat-card cat-mission">
                     <h4><i class="fas fa-flag"></i> Missões Falhadas</h4>
                     <div class="stat-value" id="stat-missions-failed">0</div>
-                  </div>
-                  <div class="stat-card">
-                    <h4><i class="fas fa-skull"></i> Mortes</h4>
-                    <div class="stat-value" id="stat-deaths">0</div>
                   </div>
                   <div class="stat-card">
                     <h4><i class="fas fa-balance-scale"></i> Justiças Realizadas</h4>
