@@ -571,10 +571,81 @@ async function maybeEditItemDeadline(item, options = {}) {
 }
 
 // Editar e excluir funções (implementações básicas)
+function openActivityEditor(category, item) {
+  if (!item) return;
+
+  const activitiesSection = document.getElementById('atividades');
+  if (!activitiesSection) return;
+
+  switchTab('atividades');
+  switchSubTab('atividades-gerenciar', activitiesSection);
+
+  const categorySelect = document.getElementById('activity-category');
+  const editIdInput = document.getElementById('activity-edit-id');
+  const nameInput = document.getElementById('activity-name');
+  const emojiInput = document.getElementById('activity-emoji');
+  const scheduleTypeInput = document.getElementById('activity-schedule-type');
+  const workoutTypeInput = document.getElementById('activity-workout-type');
+  const studyTypeInput = document.getElementById('activity-study-type');
+  const dateInput = document.getElementById('activity-date');
+  const deadlineInput = document.getElementById('activity-deadline');
+  const authorInput = document.getElementById('activity-book-author');
+  const bookStatusInput = document.getElementById('activity-book-status');
+  const classInput = document.getElementById('activity-class');
+  const urgentInput = document.getElementById('activity-urgent');
+
+  if (categorySelect) categorySelect.value = category;
+  if (editIdInput) editIdInput.value = item.id;
+  if (nameInput) nameInput.value = item.name || '';
+  if (emojiInput) emojiInput.value = item.emoji || '';
+  if (scheduleTypeInput && (category === 'mission' || category === 'work')) {
+    scheduleTypeInput.value = item.type || 'rotina';
+  }
+
+  if (typeof updateActivityForm === 'function') updateActivityForm();
+
+  if (workoutTypeInput && category === 'workout') workoutTypeInput.value = item.type || 'repeticao';
+  if (studyTypeInput && category === 'study') studyTypeInput.value = item.type || 'logico';
+  if (dateInput) dateInput.value = item.date || '';
+  if (deadlineInput) deadlineInput.value = item.deadline || '';
+  if (authorInput) authorInput.value = item.author || '';
+  if (bookStatusInput) bookStatusInput.value = item.status === 'lendo' ? 'lendo' : 'quero-ler';
+  if (classInput) classInput.value = item.classId ? String(item.classId) : '';
+  if (urgentInput) urgentInput.checked = item.urgent === true;
+
+  document
+    .querySelectorAll('#activity-days-container input[type="checkbox"][value]:not([data-select-all])')
+    .forEach((checkbox) => {
+      checkbox.checked = Array.isArray(item.days)
+        ? item.days.map((day) => String(day)).includes(checkbox.value)
+        : false;
+    });
+
+  const selectAllDaysCheckbox = document.querySelector(
+    '#activity-days-container input[data-select-all="true"]'
+  );
+  const dayCheckboxes = Array.from(
+    document.querySelectorAll('#activity-days-container input[type="checkbox"][value]:not([data-select-all])')
+  );
+  if (selectAllDaysCheckbox) {
+    const checkedCount = dayCheckboxes.filter((checkbox) => checkbox.checked).length;
+    selectAllDaysCheckbox.checked = checkedCount === dayCheckboxes.length && checkedCount > 0;
+    selectAllDaysCheckbox.indeterminate = checkedCount > 0 && checkedCount < dayCheckboxes.length;
+  }
+
+  document.querySelectorAll('#activity-attributes input[type="checkbox"]').forEach((checkbox) => {
+    const attrId = parseInt(checkbox.value, 10);
+    checkbox.checked = Array.isArray(item.attributes) && item.attributes.includes(attrId);
+  });
+
+  if (typeof fillActivityPlanningForm === 'function') fillActivityPlanningForm(item);
+  nameInput?.focus();
+}
+
 function editWorkout(id) {
   const workout = appData.workouts.find((item) => item.id === id);
   if (!workout) return;
-  showItemModal('treino', workout);
+  openActivityEditor('workout', workout);
 }
 
 function deleteWorkout(id) {
@@ -590,7 +661,7 @@ function deleteWorkout(id) {
 function editStudy(id) {
   const study = appData.studies.find((item) => item.id === id);
   if (!study) return;
-  showItemModal('estudo', study);
+  openActivityEditor('study', study);
 }
 
 function deleteStudy(id) {
@@ -606,47 +677,13 @@ function deleteStudy(id) {
 function editBook(id) {
   const book = appData.books.find((item) => Number(item.id) === Number(id));
   if (!book) return;
-  const activitiesSection = document.getElementById('atividades');
-  if (!activitiesSection) return;
-  switchTab('atividades');
-  switchSubTab('atividades-gerenciar', activitiesSection);
-  const categorySelect = document.getElementById('activity-category');
-  if (categorySelect) categorySelect.value = 'book';
-  const editIdInput = document.getElementById('activity-edit-id');
-  const nameInput = document.getElementById('activity-name');
-  const authorInput = document.getElementById('activity-book-author');
-  const emojiInput = document.getElementById('activity-emoji');
-  if (editIdInput) editIdInput.value = book.id;
-  if (nameInput) nameInput.value = book.name || '';
-  if (authorInput) authorInput.value = book.author || '';
-  if (emojiInput) emojiInput.value = book.emoji || '📖';
-  if (typeof updateActivityForm === 'function') updateActivityForm();
-  nameInput?.focus();
+  openActivityEditor('book', book);
 }
 
 function editMission(id) {
   const mission = appData.missions.find((m) => m.id === id);
   if (!mission) return;
-
-  (async () => {
-    const newName = await askInput('Novo nome da missão:', {
-      title: 'Editar missão',
-      defaultValue: mission.name,
-    });
-    if (newName === null) return;
-    if (newName.trim()) mission.name = newName.trim();
-
-    const newEmoji = await askInput('Novo emoji (opcional):', {
-      title: 'Editar missão',
-      defaultValue: mission.emoji || '',
-    });
-    if (newEmoji !== null && newEmoji.trim()) mission.emoji = newEmoji.trim();
-
-    await maybeEditItemDeadline(mission, { title: 'Editar missão' });
-
-    updateUI({ mode: 'activity' });
-    showFeedback('Missão atualizada com sucesso!', 'success');
-  })();
+  openActivityEditor('mission', mission);
 }
 
 function deleteMission(id) {
@@ -662,26 +699,7 @@ function deleteMission(id) {
 function editWork(id) {
   const work = appData.works.find((w) => w.id === id);
   if (!work) return;
-
-  (async () => {
-    const newName = await askInput('Novo nome do trabalho:', {
-      title: 'Editar trabalho',
-      defaultValue: work.name,
-    });
-    if (newName === null) return;
-    if (newName.trim()) work.name = newName.trim();
-
-    const newEmoji = await askInput('Novo emoji (opcional):', {
-      title: 'Editar trabalho',
-      defaultValue: work.emoji || '',
-    });
-    if (newEmoji !== null && newEmoji.trim()) work.emoji = newEmoji.trim();
-
-    await maybeEditItemDeadline(work, { title: 'Editar trabalho' });
-
-    updateUI({ mode: 'activity' });
-    showFeedback('Trabalho atualizado com sucesso!', 'success');
-  })();
+  openActivityEditor('work', work);
 }
 
 function deleteWork(id) {

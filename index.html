@@ -103,6 +103,7 @@
                   <option value="book">Livros</option>
                 </select>
               </div>
+              <div id="planning-dashboard" class="planning-dashboard"></div>
               <div class="missions-list" id="daily-activities"></div>
             </div>
 
@@ -225,6 +226,59 @@
                     </select>
                   </div>
 
+                  <div class="planning-meta-grid">
+                    <div class="form-group">
+                      <label for="activity-objective">Objetivo</label>
+                      <select id="activity-objective">
+                        <option value="">Nenhum</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="activity-project">Projeto</label>
+                      <select id="activity-project">
+                        <option value="">Nenhum</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="activity-priority">Prioridade</label>
+                      <select id="activity-priority">
+                        <option value="critical">Crítica</option>
+                        <option value="high">Alta</option>
+                        <option value="medium" selected>Média</option>
+                        <option value="low">Baixa</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="activity-impact">Impacto</label>
+                      <select id="activity-impact">
+                        <option value="high">Alto</option>
+                        <option value="medium" selected>Médio</option>
+                        <option value="low">Baixo</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="activity-effort">Esforço</label>
+                      <select id="activity-effort">
+                        <option value="high">Alto</option>
+                        <option value="medium" selected>Médio</option>
+                        <option value="low">Baixo</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="activity-energy">Energia</label>
+                      <select id="activity-energy">
+                        <option value="high">Alta</option>
+                        <option value="medium" selected>Média</option>
+                        <option value="low">Baixa</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div class="form-group" id="activity-days-container">
                     <label>Dias da Semana</label>
                     <div class="days-selector">
@@ -298,6 +352,171 @@
 
                   <button type="submit" class="submit-btn">Cadastrar Classe</button>
                 </form>
+              </div>
+
+              <div class="form-container">
+                <h3>Objetivos</h3>
+                <form id="objective-form">
+                  <input type="hidden" id="objective-edit-id" />
+                  <div class="planning-meta-grid">
+                    <div class="form-group">
+                      <label for="objective-name">Nome</label>
+                      <input type="text" id="objective-name" placeholder="Ex: Saúde de alto nível" required />
+                    </div>
+
+                    <div class="form-group">
+                      <label for="objective-horizon">Horizonte</label>
+                      <select id="objective-horizon">
+                        <option value="annual">Anual</option>
+                        <option value="quarter" selected>Trimestral</option>
+                        <option value="month">Mensal</option>
+                        <option value="custom">Livre</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="objective-status">Status</label>
+                      <select id="objective-status">
+                        <option value="active" selected>Ativo</option>
+                        <option value="paused">Pausado</option>
+                        <option value="completed">Concluído</option>
+                        <option value="cancelled">Cancelado</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="objective-target-date">Prazo</label>
+                      <input type="date" id="objective-target-date" />
+                    </div>
+
+                    <div class="form-group">
+                      <label for="objective-progress">Progresso (%)</label>
+                      <input type="number" id="objective-progress" min="0" max="100" value="0" />
+                    </div>
+
+                    <div class="form-group">
+                      <label for="objective-progress-mode">Modo do Progresso</label>
+                      <select id="objective-progress-mode">
+                        <option value="hybrid" selected>Híbrido</option>
+                        <option value="auto">Automático</option>
+                        <option value="manual">Manual</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="objective-notes">Notas</label>
+                    <textarea id="objective-notes" rows="3" placeholder="Critério de sucesso, restrições, definição de concluído"></textarea>
+                  </div>
+
+                  <button type="submit" class="submit-btn">Salvar Objetivo</button>
+                </form>
+                <div class="items-list planning-items-list" id="objectives-list"></div>
+              </div>
+
+              <div class="form-container">
+                <h3>Projetos</h3>
+                <form id="project-form">
+                  <input type="hidden" id="project-edit-id" />
+                  <div class="planning-meta-grid">
+                    <div class="form-group">
+                      <label for="project-name">Nome</label>
+                      <input type="text" id="project-name" placeholder="Ex: Ciclo de cutting" required />
+                    </div>
+
+                    <div class="form-group">
+                      <label for="project-objective">Objetivo</label>
+                      <select id="project-objective">
+                        <option value="">Sem objetivo</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="project-status">Status</label>
+                      <select id="project-status">
+                        <option value="active" selected>Ativo</option>
+                        <option value="paused">Pausado</option>
+                        <option value="completed">Concluído</option>
+                        <option value="cancelled">Cancelado</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="project-target-date">Prazo</label>
+                      <input type="date" id="project-target-date" />
+                    </div>
+
+                    <div class="form-group">
+                      <label for="project-progress">Progresso (%)</label>
+                      <input type="number" id="project-progress" min="0" max="100" value="0" />
+                    </div>
+
+                    <div class="form-group">
+                      <label for="project-progress-mode">Modo do Progresso</label>
+                      <select id="project-progress-mode">
+                        <option value="hybrid" selected>Híbrido</option>
+                        <option value="auto">Automático</option>
+                        <option value="manual">Manual</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="project-next-action">Próxima ação</label>
+                    <input type="text" id="project-next-action" placeholder="Ex: fechar treino de quinta" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="project-notes">Notas</label>
+                    <textarea id="project-notes" rows="3" placeholder="Escopo, trava atual, condição de saída"></textarea>
+                  </div>
+
+                  <button type="submit" class="submit-btn">Salvar Projeto</button>
+                </form>
+                <div class="items-list planning-items-list" id="projects-list"></div>
+              </div>
+
+              <div class="form-container">
+                <h3>Revisão</h3>
+                <form id="review-form">
+                  <div class="planning-meta-grid">
+                    <div class="form-group">
+                      <label for="review-period-type">Tipo</label>
+                      <select id="review-period-type">
+                        <option value="weekly" selected>Semanal</option>
+                        <option value="monthly">Mensal</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="review-period-start">Referência</label>
+                      <input type="date" id="review-period-start" />
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="review-wins">Ganhos</label>
+                    <textarea id="review-wins" rows="2" placeholder="O que realmente avançou"></textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="review-blockers">Travou</label>
+                    <textarea id="review-blockers" rows="2" placeholder="Onde você emperrou"></textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="review-next-focus">Próximo foco</label>
+                    <textarea id="review-next-focus" rows="2" placeholder="O que entra na próxima semana/mês"></textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="review-notes">Notas</label>
+                    <textarea id="review-notes" rows="2" placeholder="Cortes, ajustes e observações"></textarea>
+                  </div>
+
+                  <button type="submit" class="submit-btn">Salvar Revisão</button>
+                </form>
+                <div class="items-list planning-items-list" id="reviews-list"></div>
               </div>
 
               <div class="existing-items">
@@ -545,6 +764,22 @@
                     <h4><i class="fas fa-forward"></i> Trabalhos Ignorados</h4>
                     <div class="stat-value" id="stat-works-ignored">0</div>
                   </div>
+                  <div class="stat-card">
+                    <h4><i class="fas fa-bullseye"></i> Objetivos Ativos</h4>
+                    <div class="stat-value" id="stat-objectives-active">0</div>
+                  </div>
+                  <div class="stat-card">
+                    <h4><i class="fas fa-diagram-project"></i> Projetos Ativos</h4>
+                    <div class="stat-value" id="stat-projects-active">0</div>
+                  </div>
+                  <div class="stat-card">
+                    <h4><i class="fas fa-triangle-exclamation"></i> Objetivos em Risco</h4>
+                    <div class="stat-value" id="stat-objectives-risk">0</div>
+                  </div>
+                  <div class="stat-card">
+                    <h4><i class="fas fa-hourglass-end"></i> Projetos Atrasados</h4>
+                    <div class="stat-value" id="stat-projects-delayed">0</div>
+                  </div>
                   <div class="stat-card cat-mission">
                     <h4><i class="fas fa-flag-checkered"></i> Missões Concluídas</h4>
                     <div class="stat-value" id="stat-missions-done">0</div>
@@ -588,6 +823,18 @@
                       </button>
                     </div>
                     <div class="stats-advanced-content" id="stat-goals-status">-</div>
+                  </div>
+                  <div class="stat-card stat-advanced-card">
+                    <h4><i class="fas fa-heart-pulse"></i> Saúde do Planejamento</h4>
+                    <div class="stats-advanced-content" id="stat-planning-health">-</div>
+                  </div>
+                  <div class="stat-card stat-advanced-card">
+                    <h4><i class="fas fa-trophy"></i> Objetivo Mais Forte</h4>
+                    <div class="stats-advanced-content" id="stat-objective-progress">-</div>
+                  </div>
+                  <div class="stat-card stat-advanced-card">
+                    <h4><i class="fas fa-temperature-three-quarters"></i> Projeto Mais Quente</h4>
+                    <div class="stats-advanced-content" id="stat-project-pressure">-</div>
                   </div>
                 </div>
 
@@ -683,6 +930,10 @@
                   <div class="chart-box">
                     <h4>XP por Fonte</h4>
                     <canvas id="xp-source-chart" width="400" height="200"></canvas>
+                  </div>
+                  <div class="chart-box">
+                    <h4>Planejamento: Progresso x Pressão</h4>
+                    <canvas id="planning-focus-chart" width="400" height="200"></canvas>
                   </div>
                   <div class="chart-box">
                     <h4>Volume de Treino por Semana</h4>
@@ -942,7 +1193,7 @@
                       </div>
                       <div class="form-group">
                         <label for="nutrition-entry-food-search">Alimento</label>
-                        <div class="custom-autocomplete-container" style="position: relative">
+                        <div class="custom-autocomplete-container">
                           <input
                             type="text"
                             id="nutrition-entry-food-search"
@@ -1071,9 +1322,8 @@
                     <div class="import-section">
                       <button
                         type="button"
-                        class="submit-btn"
+                        class="submit-btn success"
                         id="import-foods-btn"
-                        style="background: #28a745; margin-top: 10px"
                       >
                         <i class="fas fa-file-upload"></i> Importar de JSON
                       </button>
@@ -1081,7 +1331,6 @@
                         type="button"
                         class="submit-btn danger"
                         id="reset-foods-btn"
-                        style="margin-top: 10px"
                       >
                         <i class="fas fa-trash-alt"></i> Resetar alimentos cadastrados
                       </button>
@@ -1089,7 +1338,7 @@
                         type="file"
                         id="import-foods-file"
                         accept=".json"
-                        style="display: none"
+                        class="hidden-file-input"
                       />
                     </div>
                   </div>

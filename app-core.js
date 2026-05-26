@@ -1,41 +1,74 @@
 // InicializaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o principal do aplicativo
+function getGlobalHook(name, fallback) {
+  const hook = window[name];
+  return typeof hook === 'function' ? hook : fallback;
+}
+
+function runDailyResetHook() {
+  if (window.__cloudSyncBootstrapPending === true) return false;
+  getGlobalHook('checkDailyReset', checkDailyReset)();
+  return true;
+}
+
+function runWeeklyResetHook() {
+  if (window.__cloudSyncBootstrapPending === true) return false;
+  getGlobalHook('checkWeeklyReset', checkWeeklyReset)();
+  return true;
+}
+
+function runDeferredStartupResets() {
+  if (window.__startupCriticalTasksRan === true) return true;
+  if (window.__cloudSyncBootstrapPending === true) return false;
+
+  const canRunCriticalResets =
+    typeof window.shouldRunCriticalResets === 'function' ? window.shouldRunCriticalResets() : true;
+  if (!canRunCriticalResets) return false;
+
+  runDailyResetHook();
+  recreateDailyMissionsForToday();
+  recreateDailyWorksForToday();
+  cleanupOldDailyMissions();
+  cleanupOldDailyWorks();
+  checkOverdueMissions({ isInitialCheck: true });
+  checkOverdueWorks({ isInitialCheck: true });
+  runWeeklyResetHook();
+  generateDailyActivities();
+
+  window.__startupCriticalTasksRan = true;
+
+  if (window.__startupUiReady !== true) return true;
+  if (typeof updateStreaks === 'function') updateStreaks();
+  if (typeof updateUI === 'function') {
+    updateUI({ mode: 'full', forceCalendar: true, forceNutrition: true });
+  }
+  return true;
+}
+
+window.runDeferredStartupResets = runDeferredStartupResets;
+
 function startApp() {
   if (window.__appStarted) return;
   window.__appStarted = true;
 
   // 1. Primeiro: carregar dados salvos
-  loadFromLocalStorage();
+  getGlobalHook('loadFromLocalStorage', loadFromLocalStorage)();
   if (typeof globalThis.rebuildProductiveDaysFromHistory === 'function') {
     globalThis.rebuildProductiveDaysFromHistory();
   }
   normalizeActivityDays();
-  const canRunCriticalResets =
-    typeof window.shouldRunCriticalResets === 'function' ? window.shouldRunCriticalResets() : true;
-
-  if (canRunCriticalResets) {
-    checkDailyReset();
+  runDeferredStartupResets();
 
     // 2. Verificar e recriar missÃƒÆ’Ã‚Âµes diÃƒÆ’Ã‚Â¡rias para HOJE (coloque AQUI!)
-    recreateDailyMissionsForToday();
-    recreateDailyWorksForToday();
 
-    cleanupOldDailyMissions();
-    cleanupOldDailyWorks();
 
-    // 3. Depois: verificar outras coisas
-    checkOverdueMissions({ isInitialCheck: true });
-    checkOverdueWorks({ isInitialCheck: true });
-    checkWeeklyReset();
 
-    // 4. Gerar atividades do dia
-    generateDailyActivities();
-  }
 
   // 5. Resto da inicializaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o...
   updateStreaks();
   initUI();
   initEvents();
   initHydrationUI();
+  window.__startupUiReady = true;
   updateUI();
   if (typeof switchTab === 'function') {
     const activeTab = document.querySelector('.tab-content.active')?.id || 'atividades';
@@ -44,8 +77,8 @@ function startApp() {
   updateMidnightCountdown();
   setInterval(updateMidnightCountdown, 1000);
   updateCurrentDate();
-  setInterval(checkDailyReset, 60000);
-  setInterval(checkWeeklyReset, 60000);
+  setInterval(runDailyResetHook, 60000);
+  setInterval(runWeeklyResetHook, 60000);
   setInterval(updateStreaks, 60000);
 }
 
@@ -59,16 +92,16 @@ function loadFromLocalStorage() {
     delegatedLoader();
   } else {
     // Fallback: apenas para desenvolvimento offline sem Firebase
-    const savedData = localStorage.getItem('heroJourneyData');
-    if (savedData) {
-      try {
+    try {
+      const savedData = localStorage.getItem('heroJourneyData');
+      if (savedData) {
         const parsedData = JSON.parse(savedData);
         replaceAppState(parsedData);
         finalizeLoadedState();
         console.log('Dados carregados do localStorage (modo offline)');
-      } catch (e) {
-        console.error('Erro ao carregar dados:', e);
       }
+    } catch (e) {
+      console.error('Erro ao carregar dados:', e);
     }
   }
 }

@@ -622,12 +622,12 @@ function getCalendarItemsForDate(dateStr) {
 
   // Remover pendentes quando há concluídas/falhadas no mesmo dia
   const doneKeys = new Set(
-    items.filter((i) => i.status !== 'pending').map((i) => `${i.kindLabel}-${i.name}-${dateStr}`)
+    items.filter((i) => i.status !== 'pending').map((i) => getCalendarResolutionKey(i, dateStr))
   );
 
   const filtered = items.filter((i) => {
     if (i.status !== 'pending') return true;
-    return !doneKeys.has(`${i.kindLabel}-${i.name}-${dateStr}`);
+    return !doneKeys.has(getCalendarResolutionKey(i, dateStr));
   });
 
   // Remover duplicidade por id e status
@@ -717,6 +717,18 @@ function getCalendarMarkersForDate(date) {
   if (isWorkOffDay(dateStr)) markers.add('work-off');
 
   return Array.from(markers);
+}
+
+function getCalendarResolutionKey(item, dateStr) {
+  const sourceId =
+    item.originalId ??
+    item.workoutId ??
+    item.studyId ??
+    item.actionId ??
+    item.id ??
+    item.name ??
+    'unknown';
+  return `${item.entryKind}-${String(sourceId)}-${dateStr}`;
 }
 
 function isRestDay(dateStr) {
@@ -1384,6 +1396,29 @@ function showWorkCompletionModal(workId) {
   modal.classList.add('active');
 }
 
+function showBookCompletionModal(bookId) {
+  const modal = document.getElementById('item-modal');
+  const modalTitle = document.getElementById('modal-title');
+  const form = document.getElementById('item-form');
+  if (!modal || !modalTitle || !form) return;
+
+  const book = appData.books.find((b) => b.id === bookId);
+  if (!book) return;
+
+  modalTitle.textContent = `Concluir ${book.name}`;
+  form.innerHTML = `
+        <div class="form-group">
+            <label for="book-feedback">Feedback (opcional)</label>
+            <textarea id="book-feedback" rows="3" placeholder="O que o livro te ensinou? Qual insight vale guardar?"></textarea>
+        </div>
+        <input type="hidden" id="book-id" value="${bookId}">
+        <input type="hidden" id="modal-item-category" value="complete-book">
+        <button type="submit" class="submit-btn">Concluir e Salvar Feedback</button>
+    `;
+
+  modal.classList.add('active');
+}
+
 // Fechar modal
 function closeModal() {
   const modal = document.getElementById('item-modal');
@@ -1456,6 +1491,7 @@ Object.assign(globalThis, {
   showStudyCompletionModal,
   showMissionCompletionModal,
   showWorkCompletionModal,
+  showBookCompletionModal,
   closeModal,
   resetAllXpKeepLevels,
 });

@@ -33,6 +33,9 @@ function updateCharts() {
   // Atualizar gráfico de XP por fonte
   updateXpBySourceChart();
 
+  // Atualizar gráfico de planejamento
+  updatePlanningFocusChart();
+
   // Atualizar volume semanal de treinos
   updateWorkoutVolumeChart();
 
@@ -138,11 +141,13 @@ function populateWorkoutEvolutionOptions() {
   }
 
   select.disabled = false;
-  select.innerHTML = workouts
-    .map(
-      (workout) => `<option value="${workout.id}">${workout.emoji || '💪'} ${workout.name}</option>`
-    )
-    .join('');
+  select.replaceChildren();
+  workouts.forEach((workout) => {
+    const option = document.createElement('option');
+    option.value = String(workout.id);
+    option.textContent = `${workout.emoji || '💪'} ${workout.name || 'Treino'}`;
+    select.appendChild(option);
+  });
 
   const hasPrevious = workouts.some((workout) => String(workout.id) === String(previousValue));
   select.value = hasPrevious ? previousValue : String(workouts[0].id);
@@ -246,6 +251,79 @@ function updateActivitiesChart() {
     data: data,
     options: {
       responsive: true,
+    },
+  });
+}
+
+function updatePlanningFocusChart() {
+  const ctx = document.getElementById('planning-focus-chart');
+  if (!ctx) return;
+
+  if (ctx.chart) {
+    ctx.chart.destroy();
+  }
+
+  if (typeof globalThis.getPlanningStatisticsSnapshot !== 'function') return;
+
+  const todayActivities =
+    typeof globalThis.getUnifiedTodayActivities === 'function' ? globalThis.getUnifiedTodayActivities() : [];
+  const snapshot = globalThis.getPlanningStatisticsSnapshot(appData, { todayActivities });
+  const topObjectives = Array.isArray(snapshot.objectiveCards) ? snapshot.objectiveCards.slice(0, 4) : [];
+  const topProjects = Array.isArray(snapshot.projectCards) ? snapshot.projectCards.slice(0, 4) : [];
+
+  const labels = [
+    ...topObjectives.map((objective) => `Obj: ${objective.name}`),
+    ...topProjects.map((project) => `Proj: ${project.name}`),
+  ];
+
+  if (labels.length === 0) return;
+
+  const progressData = [
+    ...topObjectives.map((objective) => objective.effectiveProgress || 0),
+    ...topProjects.map((project) => project.effectiveProgress || 0),
+  ];
+  const pressureData = [
+    ...topObjectives.map((objective) => objective.pressureScore || 0),
+    ...topProjects.map((project) => project.pressureScore || 0),
+  ];
+
+  ctx.chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Progresso efetivo (%)',
+          data: progressData,
+          backgroundColor: 'rgba(34, 197, 94, 0.65)',
+          borderColor: 'rgba(34, 197, 94, 1)',
+          borderWidth: 1,
+        },
+        {
+          type: 'line',
+          label: 'Pressão (%)',
+          data: pressureData,
+          borderColor: 'rgba(239, 68, 68, 1)',
+          backgroundColor: 'rgba(239, 68, 68, 0.18)',
+          tension: 0.25,
+          fill: false,
+          yAxisID: 'y',
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          title: {
+            display: true,
+            text: 'Percentual',
+          },
+        },
+      },
     },
   });
 }

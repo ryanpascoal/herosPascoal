@@ -33,6 +33,19 @@
   const recurringStartInput = document.getElementById('finance-recurring-start');
   if (recurringStartInput && !recurringStartInput.value)
     recurringStartInput.value = getLocalDateString();
+  const reviewPeriodStartInput = document.getElementById('review-period-start');
+  if (reviewPeriodStartInput && !reviewPeriodStartInput.value) {
+    reviewPeriodStartInput.value = getLocalDateString();
+  }
+  if (typeof ensurePlanningState === 'function') {
+    ensurePlanningState(appData);
+  }
+  if (typeof populateObjectiveOptions === 'function') {
+    populateObjectiveOptions();
+  }
+  if (typeof updateProjectSelectOptions === 'function') {
+    updateProjectSelectOptions();
+  }
   initNutritionForms();
 
   // Inicializar gráficos
@@ -234,12 +247,15 @@ function initEvents() {
     'theme-toggle-btn': toggleTheme,
   });
   bindManyById('submit', {
-    'activity-form': handleActivitySubmit,
-    'shop-item-form': handleShopItemSubmit,
-    'class-form': handleClassSubmit,
-    'finance-form': handleFinanceSubmit,
-    'finance-budget-form': handleFinanceBudgetSubmit,
-    'finance-recurring-form': handleFinanceRecurringSubmit,
+     'activity-form': handleActivitySubmit,
+     'shop-item-form': handleShopItemSubmit,
+     'class-form': handleClassSubmit,
+     'objective-form': handleObjectiveSubmit,
+     'project-form': handleProjectSubmit,
+     'review-form': handleReviewSubmit,
+     'finance-form': handleFinanceSubmit,
+     'finance-budget-form': handleFinanceBudgetSubmit,
+     'finance-recurring-form': handleFinanceRecurringSubmit,
     'nutrition-food-form': handleNutritionFoodSubmit,
     'nutrition-entry-form': handleNutritionEntrySubmit,
     'nutrition-goals-form': handleNutritionGoalsSubmit,
@@ -400,15 +416,18 @@ function initEvents() {
   document.getElementById('activity-schedule-type')?.addEventListener('change', function () {
     updateActivityForm();
   });
+  if (typeof initPlanningEvents === 'function') {
+    initPlanningEvents();
+  }
 
   // Botões de conclusão de treinos do dia
   document.addEventListener('click', function (e) {
-    const calendarCompleteMissionBtn = e.target.closest('.calendar-complete-mission-btn');
-    if (calendarCompleteMissionBtn) {
-      const missionId = parseInt(calendarCompleteMissionBtn.getAttribute('data-id'), 10);
-      if (Number.isFinite(missionId)) completeMission(missionId);
-      return;
-    }
+     const calendarCompleteMissionBtn = e.target.closest('.calendar-complete-mission-btn');
+     if (calendarCompleteMissionBtn) {
+       const missionId = parseInt(calendarCompleteMissionBtn.getAttribute('data-id'), 10);
+       if (Number.isFinite(missionId)) showMissionCompletionModal(missionId);
+       return;
+     }
 
     const calendarSkipMissionBtn = e.target.closest('.calendar-skip-mission-btn');
     if (calendarSkipMissionBtn) {
@@ -417,12 +436,12 @@ function initEvents() {
       return;
     }
 
-    const calendarCompleteWorkBtn = e.target.closest('.calendar-complete-work-btn');
-    if (calendarCompleteWorkBtn) {
-      const workId = parseInt(calendarCompleteWorkBtn.getAttribute('data-id'), 10);
-      if (Number.isFinite(workId)) completeWork(workId);
-      return;
-    }
+     const calendarCompleteWorkBtn = e.target.closest('.calendar-complete-work-btn');
+     if (calendarCompleteWorkBtn) {
+       const workId = parseInt(calendarCompleteWorkBtn.getAttribute('data-id'), 10);
+       if (Number.isFinite(workId)) showWorkCompletionModal(workId);
+       return;
+     }
 
     const calendarSkipWorkBtn = e.target.closest('.calendar-skip-work-btn');
     if (calendarSkipWorkBtn) {
@@ -459,12 +478,12 @@ function initEvents() {
       return;
     }
 
-    const unifiedCompleteMissionBtn = e.target.closest('.unified-complete-mission-btn');
-    if (unifiedCompleteMissionBtn) {
-      const missionId = parseInt(unifiedCompleteMissionBtn.getAttribute('data-id'), 10);
-      if (Number.isFinite(missionId)) completeMission(missionId);
-      return;
-    }
+     const unifiedCompleteMissionBtn = e.target.closest('.unified-complete-mission-btn');
+     if (unifiedCompleteMissionBtn) {
+       const missionId = parseInt(unifiedCompleteMissionBtn.getAttribute('data-id'), 10);
+       if (Number.isFinite(missionId)) showMissionCompletionModal(missionId);
+       return;
+     }
 
     const unifiedSkipMissionBtn = e.target.closest('.unified-skip-mission-btn');
     if (unifiedSkipMissionBtn) {
@@ -473,12 +492,12 @@ function initEvents() {
       return;
     }
 
-    const unifiedCompleteWorkBtn = e.target.closest('.unified-complete-work-btn');
-    if (unifiedCompleteWorkBtn) {
-      const workId = parseInt(unifiedCompleteWorkBtn.getAttribute('data-id'), 10);
-      if (Number.isFinite(workId)) completeWork(workId);
-      return;
-    }
+     const unifiedCompleteWorkBtn = e.target.closest('.unified-complete-work-btn');
+     if (unifiedCompleteWorkBtn) {
+       const workId = parseInt(unifiedCompleteWorkBtn.getAttribute('data-id'), 10);
+       if (Number.isFinite(workId)) showWorkCompletionModal(workId);
+       return;
+     }
 
     const unifiedSkipWorkBtn = e.target.closest('.unified-skip-work-btn');
     if (unifiedSkipWorkBtn) {
@@ -511,7 +530,7 @@ function initEvents() {
     const unifiedCompleteBookBtn = e.target.closest('.unified-complete-book-btn');
     if (unifiedCompleteBookBtn) {
       const bookId = parseInt(unifiedCompleteBookBtn.getAttribute('data-id'), 10);
-      if (Number.isFinite(bookId)) completeBook(bookId);
+      if (Number.isFinite(bookId)) showBookCompletionModal(bookId);
       return;
     }
 
@@ -588,7 +607,8 @@ function updateUI(options = {}) {
   if (maxXpEl) maxXpEl.textContent = appData.hero.maxXp;
   const xpFillEl = document.getElementById('xp-fill');
   if (xpFillEl) {
-    const xpProgress = appData.hero.maxXp > 0 ? (appData.hero.xp / appData.hero.maxXp) * 100 : 0;
+    const rawProgress = appData.hero.maxXp > 0 ? (appData.hero.xp / appData.hero.maxXp) * 100 : 0;
+    const xpProgress = Math.min(100, Math.max(0, rawProgress));
     xpFillEl.style.width = `${xpProgress}%`;
   }
 
@@ -608,6 +628,9 @@ function updateUI(options = {}) {
 
   if (shouldUpdateActivity) {
     // Garante que atividades do dia reflitam cadastros/edições feitos na sessão atual
+    if (typeof ensurePlanningState === 'function') {
+      ensurePlanningState(appData);
+    }
     normalizeActivityDays();
     generateDailyActivities();
 
@@ -616,6 +639,9 @@ function updateUI(options = {}) {
     updateStudiesDisplay();
     if (typeof updateUnifiedActivities === 'function') {
       updateUnifiedActivities();
+    }
+    if (typeof getUnifiedTodayActivities === 'function' && typeof renderPlanningViews === 'function') {
+      renderPlanningViews(getUnifiedTodayActivities());
     }
 
     // Atualizar estatísticas
@@ -806,6 +832,8 @@ function updateStudiesDisplay() {
     const level = Number.isFinite(study.level) ? study.level : Math.floor(study.xp / 100);
     const currentXp = study.xp % 100;
     const percentage = (currentXp / 100) * 100;
+    const safeEmoji = escapeHtml(study.emoji || '📚');
+    const safeName = escapeHtml(study.name || 'Estudo');
 
     // Converter números dos dias para nomes
     const dayNames = (study.days || [])
@@ -820,8 +848,8 @@ function updateStudiesDisplay() {
     studyCard.innerHTML = `
             <div class="display-card-header">
                 <div class="display-name">
-                    <span class="display-emoji">${study.emoji}</span>
-                    <span>${study.name}</span>
+                    <span class="display-emoji">${safeEmoji}</span>
+                    <span>${safeName}</span>
                 </div>
                 <div class="display-type">${study.type === 'logico' ? 'Lógico' : 'Criativo'}</div>
             </div>
@@ -867,6 +895,8 @@ function updateWorkoutsDisplay() {
     const level = Number.isFinite(workout.level) ? workout.level : Math.floor(workout.xp / 100);
     const currentXp = workout.xp % 100;
     const percentage = (currentXp / 100) * 100;
+    const safeEmoji = escapeHtml(workout.emoji || '💪');
+    const safeName = escapeHtml(workout.name || 'Treino');
 
     // Converter números dos dias para nomes
     const dayNames = (workout.days || [])
@@ -881,8 +911,8 @@ function updateWorkoutsDisplay() {
     workoutCard.innerHTML = `
             <div class="display-card-header">
                 <div class="display-name">
-                    <span class="display-emoji">${workout.emoji}</span>
-                    <span>${workout.name}</span>
+                    <span class="display-emoji">${safeEmoji}</span>
+                    <span>${safeName}</span>
                 </div>
                 <div class="display-type">${getWorkoutTypeName(workout.type)}</div>
             </div>

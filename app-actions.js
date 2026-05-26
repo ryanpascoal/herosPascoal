@@ -44,6 +44,10 @@
     case 'complete-work':
       shouldClose = handleWorkCompletion();
       break;
+
+    case 'complete-book':
+      shouldClose = handleBookCompletion();
+      break;
   }
 
   if (shouldClose !== false) {
@@ -181,6 +185,73 @@ function handleEditBook() {
   return true;
 }
 
+function getProgressionApi() {
+  return globalThis.AppProgression || {};
+}
+
+function addHeroCoins(amount) {
+  const currentCoins = Number.isFinite(appData.hero?.coins) ? appData.hero.coins : 0;
+  const coinDelta = Number.isFinite(Number(amount)) ? Math.trunc(Number(amount)) : 0;
+  const nextCoins = Math.max(0, currentCoins + coinDelta);
+  appData.hero.coins = nextCoins;
+  return nextCoins - currentCoins;
+}
+
+function addTrackerXP(entity, amount, mode = 'cyclic') {
+  if (!entity) return null;
+
+  const progressionApi = getProgressionApi();
+  const advanceFn =
+    mode === 'linear' ? progressionApi.advanceLinearProgress : progressionApi.advanceCyclicProgress;
+  if (typeof advanceFn !== 'function') return null;
+
+  const nextState = advanceFn(entity, amount, { step: 100 });
+  entity.xp = nextState.xp;
+  entity.level = nextState.level;
+  entity.maxXp = nextState.maxXp;
+  return nextState;
+}
+
+function applyRewardPackage(options = {}) {
+  const {
+    heroXp = 0,
+    coins = 0,
+    attributeRewards = [],
+    classRewards = [],
+    trackerRewards = [],
+  } = options;
+
+  attributeRewards.forEach((reward) => {
+    if (!reward) return;
+    addAttributeXP(reward.id, reward.amount);
+  });
+
+  classRewards.forEach((reward) => {
+    if (!reward) return;
+    addClassXP(reward.id, reward.amount);
+  });
+
+  trackerRewards.forEach((reward) => {
+    if (!reward || !reward.entity) return;
+    addTrackerXP(reward.entity, reward.amount, reward.mode);
+  });
+
+  if (heroXp) {
+    addXP(heroXp);
+  }
+
+  if (coins) {
+    addHeroCoins(coins);
+  }
+}
+
+function buildAttributeRewards(attributeIds = [], amountPerAttribute = 1, wealthAmount = amountPerAttribute) {
+  return (Array.isArray(attributeIds) ? attributeIds : []).map((attrId) => ({
+    id: attrId,
+    amount: attrId === 14 ? wealthAmount : amountPerAttribute,
+  }));
+}
+
 // Manipular conclusão de treino
 function handleWorkoutCompletion() {
   const workoutDayId = parseInt(document.getElementById('workout-day-id').value);
@@ -277,40 +348,37 @@ function handleWorkoutCompletion() {
       distance: workoutDay.distance ?? null,
       time: workoutDay.time ?? null,
       feedback: workoutDay.feedback || '',
+      objectiveId: workout.objectiveId || null,
+      projectId: workout.projectId || null,
+      priority: workout.priority || 'medium',
+      impact: workout.impact || 'medium',
+      effort: workout.effort || 'medium',
+      energy: workout.energy || 'medium',
     });
   }
 
   // Calcular XP e recompensas
   let xpGained = 3; // XP geral base
+  const attributeRewards = [{ id: 2, amount: 1 }]; // Vigor sempre ganha XP
 
-  // XP de vigor (sempre)
-  addAttributeXP(2, 1); // Vigor
-
-  // XP adicional baseado no tipo de treino
   if (workout.type === 'menor-tempo') {
-    addAttributeXP(3, 1); // Agilidade
+    attributeRewards.push({ id: 3, amount: 1 }); // Agilidade
   }
 
   if (workout.type === 'repeticao' || workout.type === 'maior-tempo') {
-    addAttributeXP(1, 1); // Força
+    attributeRewards.push({ id: 1, amount: 1 }); // Força
   }
 
   if (workout.type === 'distancia') {
-    addAttributeXP(6, 1); // Disciplina
+    attributeRewards.push({ id: 6, amount: 1 }); // Disciplina
   }
 
-  // Adicionar XP ao treino
-  workout.xp += 10;
-  if (workout.xp >= 100) {
-    workout.xp = 0;
-    workout.level++;
-  }
-
-  // Adicionar XP geral
-  addXP(xpGained);
-
-  // Adicionar moedas
-  appData.hero.coins += 1;
+  applyRewardPackage({
+    heroXp: xpGained,
+    coins: 1,
+    attributeRewards,
+    trackerRewards: [{ entity: workout, amount: 10, mode: 'cyclic' }],
+  });
 
   // Atualizar streak
 
@@ -356,6 +424,12 @@ function handleWorkCompletion() {
   return completeWork(workId, feedback);
 }
 
+function handleBookCompletion() {
+  const bookId = parseInt(document.getElementById('book-id').value, 10);
+  const feedback = document.getElementById('book-feedback')?.value || '';
+  return completeBook(bookId, feedback);
+}
+
 // Concluir estudo
 function completeStudy(studyDayId, feedbackText = '') {
   const studyDay = appData.dailyStudies.find((ds) => ds.id === studyDayId);
@@ -385,6 +459,12 @@ function completeStudy(studyDayId, feedbackText = '') {
       failed: false,
       applied: !!studyDay.applied,
       feedback: studyDay.feedback || '',
+      objectiveId: study.objectiveId || null,
+      projectId: study.projectId || null,
+      priority: study.priority || 'medium',
+      impact: study.impact || 'medium',
+      effort: study.effort || 'medium',
+      energy: study.energy || 'medium',
     });
   }
 
@@ -400,29 +480,26 @@ function completeStudy(studyDayId, feedbackText = '') {
 
   // Calcular XP
   let xpGained = 1; // XP geral base
-  let knowledgeXP = 1; // XP de conhecimento base
-
-  // XP de conhecimento
-  addAttributeXP(12, knowledgeXP);
+  const attributeRewards = [{ id: 12, amount: 1 }]; // Conhecimento base
 
   // 3 XP de criatividade se for do tipo criativo
   if (study.type === 'criativo') {
-    addAttributeXP(5, 3); // Criatividade
+    attributeRewards.push({ id: 5, amount: 3 }); // Criatividade
   }
 
   // Bônus se foi aplicado
   if (studyDay.applied) {
     xpGained += 2; // +2 XP geral
-    addAttributeXP(12, 2); // +2 XP de conhecimento
-    addAttributeXP(7, 3); // +3 XP de inteligência
+    attributeRewards.push({ id: 12, amount: 2 }); // +2 XP de conhecimento
+    attributeRewards.push({ id: 7, amount: 3 }); // +3 XP de inteligência
   }
 
-  // Adicionar XP ao estudo
-  study.xp += 5;
-  if (study.xp >= 100) {
-    study.xp = 0;
-    study.level++;
-  }
+  applyRewardPackage({
+    heroXp: xpGained,
+    coins: 1,
+    attributeRewards,
+    trackerRewards: [{ entity: study, amount: 5, mode: 'cyclic' }],
+  });
 
   // Atualizar estatísticas do estudo
   if (!study.stats) study.stats = {};
@@ -430,12 +507,6 @@ function completeStudy(studyDayId, feedbackText = '') {
   if (studyDay.applied) {
     study.stats.applied = (study.stats.applied || 0) + 1;
   }
-
-  // Adicionar XP geral
-  addXP(xpGained);
-
-  // Adicionar moedas
-  appData.hero.coins += 1;
 
   // Atualizar streak
 
@@ -464,18 +535,29 @@ function completeStudy(studyDayId, feedbackText = '') {
 }
 
 // Concluir livro
-function completeBook(bookId) {
+function completeBook(bookId, feedbackText = '') {
   const book = appData.books.find((b) => b.id === bookId);
-  if (!book) return;
-  if (book.completed || book.status === 'concluido') return;
+  if (!book) return false;
+  if (book.completed || book.status === 'concluido') return false;
 
   book.completed = true;
   book.status = 'concluido';
   book.dateCompleted = getLocalDateString();
+  book.feedback = feedbackText;
 
-  // Adicionar XP
-  addXP(20); // 20 XP geral
-  addAttributeXP(12, 20); // 20 XP de conhecimento
+  if (feedbackText) {
+    appData.feedbacks.push({
+      type: 'book',
+      activityId: bookId,
+      feedback: feedbackText,
+      date: new Date().toISOString(),
+    });
+  }
+
+  applyRewardPackage({
+    heroXp: 20,
+    attributeRewards: [{ id: 12, amount: 20 }],
+  });
 
   // Atualizar estatísticas
   if (!appData.statistics) appData.statistics = {};
@@ -486,6 +568,8 @@ function completeBook(bookId) {
 
   showFeedback('Livro concluído com sucesso!', 'success');
   updateUI();
+  saveToLocalStorage();
+  return true;
 }
 
 // Manipular envio do formulário de missão
@@ -600,6 +684,9 @@ function handleActivitySubmit(e) {
   e.preventDefault();
 
   const category = document.getElementById('activity-category')?.value || 'mission';
+  const editIdInput = document.getElementById('activity-edit-id');
+  const editIdValue = editIdInput ? parseInt(editIdInput.value, 10) : null;
+  const isEditing = Number.isFinite(editIdValue);
   const name = document.getElementById('activity-name')?.value?.trim();
   const emoji = document.getElementById('activity-emoji')?.value?.trim();
   const scheduleType = document.getElementById('activity-schedule-type')?.value || 'rotina';
@@ -608,6 +695,17 @@ function handleActivitySubmit(e) {
   const selectedDays = Array.from(document.querySelectorAll(daySelector)).map((cb) =>
     parseInt(cb.value, 10)
   );
+  const planningFields =
+    typeof readActivityPlanningFields === 'function'
+      ? readActivityPlanningFields()
+      : {
+          objectiveId: null,
+          projectId: null,
+          priority: 'medium',
+          impact: 'medium',
+          effort: 'medium',
+          energy: 'medium',
+        };
 
   if (!name) {
     showFeedback('Informe um nome válido para a atividade.', 'warn');
@@ -630,79 +728,128 @@ function handleActivitySubmit(e) {
     const attributes = Array.from(
       document.querySelectorAll('#activity-attributes input[type="checkbox"]:checked')
     ).map((cb) => parseInt(cb.value, 10));
-    const newMission = {
-      id: createUniqueId(appData.missions, appData.completedMissions),
-      name,
-      emoji: emoji || '🎯',
-      type: scheduleType,
-      attributes,
-      completed: false,
-      dateAdded: getLocalDateString(),
-    };
-    if (scheduleType === 'rotina') {
-      newMission.days = selectedDays;
-      newMission.originalId = newMission.id;
-    } else if (scheduleType === 'eventual') {
-      newMission.date = document.getElementById('activity-date')?.value || getLocalDateString();
-    } else {
-      newMission.deadline = document.getElementById('activity-deadline')?.value || '';
+    const mission = isEditing ? appData.missions.find((item) => item.id === editIdValue) : null;
+    const targetMission =
+      mission ||
+      {
+        id: createUniqueId(appData.missions, appData.completedMissions),
+        completed: false,
+        dateAdded: getLocalDateString(),
+      };
+    targetMission.name = name;
+    targetMission.emoji = emoji || '🎯';
+    targetMission.type = scheduleType;
+    targetMission.attributes = attributes;
+    delete targetMission.days;
+    delete targetMission.date;
+    delete targetMission.deadline;
+    if (scheduleType !== 'rotina') {
+      delete targetMission.originalId;
     }
-    appData.missions.push(newMission);
+    if (scheduleType === 'rotina') {
+      targetMission.days = selectedDays;
+      targetMission.originalId = targetMission.originalId || targetMission.id;
+    } else if (scheduleType === 'eventual') {
+      targetMission.date = document.getElementById('activity-date')?.value || getLocalDateString();
+    } else {
+      targetMission.deadline = document.getElementById('activity-deadline')?.value || '';
+    }
+    if (typeof applyPlanningFields === 'function') {
+      applyPlanningFields(targetMission, planningFields);
+    }
+    if (!mission) appData.missions.push(targetMission);
   } else if (category === 'work') {
     const attributes = Array.from(
       document.querySelectorAll('#activity-attributes input[type="checkbox"]:checked')
     ).map((cb) => parseInt(cb.value, 10));
     const classIdRaw = document.getElementById('activity-class')?.value;
     const classId = classIdRaw ? parseInt(classIdRaw, 10) : null;
-    const newWork = {
-      id: createUniqueId(appData.works, appData.completedWorks),
-      name,
-      emoji: emoji || '💼',
-      type: scheduleType,
-      attributes,
-      classId: Number.isFinite(classId) ? classId : null,
-      completed: false,
-      urgent: document.getElementById('activity-urgent')?.checked === true,
-      dateAdded: getLocalDateString(),
-    };
-    if (scheduleType === 'rotina') {
-      newWork.days = selectedDays;
-      newWork.originalId = newWork.id;
-    } else if (scheduleType === 'eventual') {
-      newWork.date = document.getElementById('activity-date')?.value || getLocalDateString();
-    } else {
-      newWork.deadline = document.getElementById('activity-deadline')?.value || '';
+    const work = isEditing ? appData.works.find((item) => item.id === editIdValue) : null;
+    const targetWork =
+      work ||
+      {
+        id: createUniqueId(appData.works, appData.completedWorks),
+        completed: false,
+        dateAdded: getLocalDateString(),
+      };
+    targetWork.name = name;
+    targetWork.emoji = emoji || '💼';
+    targetWork.type = scheduleType;
+    targetWork.attributes = attributes;
+    targetWork.classId = Number.isFinite(classId) ? classId : null;
+    targetWork.urgent = document.getElementById('activity-urgent')?.checked === true;
+    delete targetWork.days;
+    delete targetWork.date;
+    delete targetWork.deadline;
+    if (scheduleType !== 'rotina') {
+      delete targetWork.originalId;
     }
-    appData.works.push(newWork);
+    if (scheduleType === 'rotina') {
+      targetWork.days = selectedDays;
+      targetWork.originalId = targetWork.originalId || targetWork.id;
+    } else if (scheduleType === 'eventual') {
+      targetWork.date = document.getElementById('activity-date')?.value || getLocalDateString();
+    } else {
+      targetWork.deadline = document.getElementById('activity-deadline')?.value || '';
+    }
+    if (typeof applyPlanningFields === 'function') {
+      applyPlanningFields(targetWork, planningFields);
+    }
+    if (!work) appData.works.push(targetWork);
   } else if (category === 'workout') {
     const workoutType = document.getElementById('activity-workout-type')?.value || 'repeticao';
-    appData.workouts.push(createWorkoutPayload(name, emoji, workoutType, selectedDays));
+    const existingWorkout = isEditing ? appData.workouts.find((item) => item.id === editIdValue) : null;
+    const workout = existingWorkout || createWorkoutPayload(name, emoji, workoutType, selectedDays);
+    workout.name = name;
+    workout.emoji = emoji || '💪';
+    workout.type = workoutType;
+    workout.days = selectedDays.length > 0 ? selectedDays : [1, 2, 3, 4, 5];
+    if (typeof applyPlanningFields === 'function') {
+      applyPlanningFields(workout, planningFields);
+    }
+    if (!existingWorkout) appData.workouts.push(workout);
   } else if (category === 'study') {
     const studyType = document.getElementById('activity-study-type')?.value || 'logico';
-    appData.studies.push(createStudyPayload(name, emoji, studyType, selectedDays));
+    const existingStudy = isEditing ? appData.studies.find((item) => item.id === editIdValue) : null;
+    const study = existingStudy || createStudyPayload(name, emoji, studyType, selectedDays);
+    study.name = name;
+    study.emoji = emoji || '📚';
+    study.type = studyType;
+    study.days = selectedDays.length > 0 ? selectedDays : [1, 2, 3, 4, 5];
+    if (typeof applyPlanningFields === 'function') {
+      applyPlanningFields(study, planningFields);
+    }
+    if (!existingStudy) appData.studies.push(study);
   } else if (category === 'book') {
     const author = document.getElementById('activity-book-author')?.value?.trim() || '';
     const status = document.getElementById('activity-book-status')?.value || 'quero-ler';
-    const editIdInput = document.getElementById('activity-edit-id');
-    const editId = editIdInput ? parseInt(editIdInput.value, 10) : null;
-    if (editId) {
-      const book = appData.books.find((b) => b.id === editId);
+    if (isEditing) {
+      const book = appData.books.find((b) => b.id === editIdValue);
       if (book) {
         book.name = name;
         book.author = author;
         book.emoji = emoji || '📖';
+        if (!book.completed) {
+          book.status = status === 'lendo' ? 'lendo' : 'quero-ler';
+        }
+        if (typeof applyPlanningFields === 'function') {
+          applyPlanningFields(book, planningFields);
+        }
       }
     } else {
-      appData.books.push(createBookPayload(name, emoji, status, author));
+      const book = createBookPayload(name, emoji, status, author);
+      if (typeof applyPlanningFields === 'function') {
+        applyPlanningFields(book, planningFields);
+      }
+      appData.books.push(book);
     }
   }
 
-  const editIdInput = document.getElementById('activity-edit-id');
   if (editIdInput) editIdInput.value = '';
   e.target.reset();
   updateActivityForm();
   updateUI({ mode: 'activity' });
-  showFeedback('Atividade cadastrada com sucesso!', 'success');
+  showFeedback(isEditing ? 'Atividade atualizada com sucesso!' : 'Atividade cadastrada com sucesso!', 'success');
 }
 
 //Formulário de missão baseado no tipo
@@ -756,24 +903,21 @@ function completeMission(missionId, feedbackText = '') {
   // 4. Aplicar recompensas
   let xpGained = 1;
   let coinsGained = 1;
+  let attributeRewards = [];
 
   if (mission.type === 'epica') {
     xpGained = 20;
     coinsGained = 10;
-    mission.attributes.forEach((attrId) => {
-      const attrXp = attrId === 14 ? 100 : 20;
-      addAttributeXP(attrId, attrXp);
-    });
+    attributeRewards = buildAttributeRewards(mission.attributes, 20, 100);
   } else {
-    mission.attributes.forEach((attrId) => {
-      const attrXp = attrId === 14 ? 20 : 1;
-      addAttributeXP(attrId, attrXp);
-    });
+    attributeRewards = buildAttributeRewards(mission.attributes, 1, 20);
   }
 
-  // Adicionar XP e moedas
-  addXP(xpGained);
-  appData.hero.coins += coinsGained;
+  applyRewardPackage({
+    heroXp: xpGained,
+    coins: coinsGained,
+    attributeRewards,
+  });
 
   // Atualizar estatísticas
   if (!appData.statistics) appData.statistics = {};
@@ -847,25 +991,21 @@ function completeWork(workId, feedbackText = '') {
 
   let xpGained = 1;
   let coinsGained = 1;
+  let attributeRewards = [];
   if (work.type === 'epica') {
     xpGained = 20;
     coinsGained = 10;
-    (work.attributes || []).forEach((attrId) => {
-      const attrXp = attrId === 14 ? 100 : 20;
-      addAttributeXP(attrId, attrXp);
-    });
+    attributeRewards = buildAttributeRewards(work.attributes || [], 20, 100);
   } else {
-    (work.attributes || []).forEach((attrId) => {
-      addAttributeXP(attrId, 1);
-    });
+    attributeRewards = buildAttributeRewards(work.attributes || [], 1, 1);
   }
 
-  if (work.classId) {
-    addClassXP(work.classId, xpGained);
-  }
-
-  addXP(xpGained);
-  appData.hero.coins += coinsGained;
+  applyRewardPackage({
+    heroXp: xpGained,
+    coins: coinsGained,
+    attributeRewards,
+    classRewards: work.classId ? [{ id: work.classId, amount: xpGained }] : [],
+  });
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.worksDone = (appData.statistics.worksDone || 0) + 1;
   updateProductiveDay(0, 0, 0, xpGained, 1, { xpWork: xpGained });
@@ -1300,26 +1440,25 @@ async function useItem(itemId) {
 
 // Adicionar XP ao herói
 function addXP(amount) {
-  appData.hero.xp += amount;
+  const progressionApi = getProgressionApi();
+  if (typeof progressionApi.advanceHeroProgress !== 'function') {
+    appData.hero.xp += amount;
+    return;
+  }
 
-  // Verificar se subiu de nível
-  while (appData.hero.xp >= appData.hero.maxXp) {
-    appData.hero.xp -= appData.hero.maxXp;
-    appData.hero.level++;
-    appData.hero.maxXp = Math.floor(appData.hero.maxXp * 1.5); // Aumentar XP necessário para próximo nível
+  const nextState = progressionApi.advanceHeroProgress(appData.hero, amount, { growthFactor: 1.5 });
+  appData.hero.xp = nextState.xp;
+  appData.hero.level = nextState.level;
+  appData.hero.maxXp = nextState.maxXp;
 
-    // Mostrar mensagem de novo nível
-    showToast(`Parabéns! Você alcançou o nível ${appData.hero.level}!`, 'success', 2800);
+  nextState.levelUps.forEach((levelUp) => {
+    showToast(`Parabéns! Você alcançou o nível ${levelUp.level}!`, 'success', 2800);
     celebrateAction({
       target: document.getElementById('level'),
       message: 'Novo nível alcançado!',
     });
-    addHeroLog(
-      'level',
-      `Nível ${appData.hero.level} alcançado`,
-      `Novo XP necessário: ${appData.hero.maxXp}`
-    );
-  }
+    addHeroLog('level', `Nível ${levelUp.level} alcançado`, `Novo XP necessário: ${levelUp.maxXp}`);
+  });
 }
 
 // Adicionar XP a um atributo
@@ -1327,21 +1466,20 @@ function addAttributeXP(attributeId, amount) {
   const attribute = appData.attributes.find((a) => a.id === attributeId);
   if (!attribute) return;
 
-  const oldXp = Number.isFinite(attribute.xp) ? attribute.xp : 0;
-  attribute.xp = Math.max(0, oldXp + amount);
+  const progressionApi = getProgressionApi();
+  if (typeof progressionApi.advanceLinearProgress !== 'function') return;
 
-  // Verificar se subiu de nível
-  const oldLevel = Math.floor(oldXp / 100);
-  const newLevel = Math.floor(attribute.xp / 100);
+  const oldLevel = Number.isFinite(attribute.level) ? attribute.level : Math.floor((attribute.xp || 0) / 100);
+  const nextState = progressionApi.advanceLinearProgress(attribute, amount, { step: 100 });
+  const newLevel = nextState.level;
+
+  attribute.xp = nextState.xp;
+  attribute.maxXp = nextState.maxXp;
+  attribute.level = nextState.level;
 
   if (newLevel > oldLevel) {
-    // Mostrar mensagem de novo nível do atributo
     console.log(`Atributo ${attribute.name} alcançou o nível ${newLevel}!`);
   }
-
-  // Ajustar maxXp se necessário
-  attribute.maxXp = (newLevel + 1) * 100;
-  attribute.level = newLevel;
 }
 
 // Causar dano aos chefões baseado em atributos
@@ -1350,17 +1488,20 @@ function addClassXP(classId, amount) {
   const cls = appData.classes.find((c) => c.id === classId);
   if (!cls) return;
 
-  cls.xp += amount;
+  const progressionApi = getProgressionApi();
+  if (typeof progressionApi.advanceLinearProgress !== 'function') return;
 
-  const oldLevel = Math.floor((cls.xp - amount) / 100);
-  const newLevel = Math.floor(cls.xp / 100);
+  const oldLevel = Number.isFinite(cls.level) ? cls.level : Math.floor((cls.xp || 0) / 100);
+  const nextState = progressionApi.advanceLinearProgress(cls, amount, { step: 100 });
+  const newLevel = nextState.level;
+
+  cls.xp = nextState.xp;
+  cls.maxXp = nextState.maxXp;
+  cls.level = nextState.level;
 
   if (newLevel > oldLevel) {
     console.log(`Classe ${cls.name} alcançou o nível ${newLevel}!`);
   }
-
-  cls.maxXp = (newLevel + 1) * 100;
-  cls.level = newLevel;
 }
 
 function generateHeroLogs() {
@@ -1447,6 +1588,7 @@ Object.assign(globalThis, {
   handleStudyCompletion,
   handleMissionCompletion,
   handleWorkCompletion,
+  handleBookCompletion,
   completeStudy,
   completeBook,
   handleClassSubmit,

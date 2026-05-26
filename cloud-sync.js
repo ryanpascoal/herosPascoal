@@ -32,6 +32,8 @@
   let lastAppliedRemoteMs = 0;
   let lastAppliedRemoteHash = '';
   let applyingRemoteState = false;
+  let authResolved = false;
+  let startupRemoteSyncFailed = false;
   const CLIENT_SESSION_ID = `session-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
   const serverMeta = {
@@ -57,8 +59,42 @@
     }
   }
 
+  function safeStorageGet(key, fallback = null) {
+    try {
+      const value = localStorage.getItem(key);
+      return value ?? fallback;
+    } catch (err) {
+      console.warn('Falha ao ler localStorage:', err);
+      return fallback;
+    }
+  }
+
+  function safeStorageSet(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (err) {
+      console.warn('Falha ao gravar localStorage:', err);
+      return false;
+    }
+  }
+
+  function safeStorageRemove(key) {
+    try {
+      localStorage.removeItem(key);
+      return true;
+    } catch (err) {
+      console.warn('Falha ao remover item do localStorage:', err);
+      return false;
+    }
+  }
+
   function deepClone(value) {
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function getSyncPolicyApi() {
+    return globalThis.AppSyncPolicy || {};
   }
 
   function getTimestampMs(ts) {
@@ -82,13 +118,31 @@
     realtimeEnabled = false;
   }
 
+  function clearCloudRetryTimer() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+  }
+
+  function scheduleCloudRetry(delayMs = 5000) {
+    clearCloudRetryTimer();
+    if (!currentUser || !cloudReady) return;
+    saveTimer = window.setTimeout(() => {
+      saveTimer = null;
+      if (hasUnsyncedLocalChanges) {
+        pushCloud(true);
+      }
+    }, delayMs);
+  }
+
   function persistLocalCache() {
     try {
       const payload =
         typeof buildLocalCachePayload === 'function'
           ? buildLocalCachePayload()
           : deepClone(appData);
-      localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify(payload));
+      safeStorageSet(CLOUD_CACHE_KEY, JSON.stringify(payload));
     } catch (err) {
       console.warn('Falha ao persistir cache local:', err);
     }
@@ -159,10 +213,7 @@
             pushCloud(true);
           } else {
             // Se nÃƒÂ£o estÃƒÂ¡ conectado, mostra o painel de login
-            const panel = document.getElementById('cloud-auth-panel');
-            if (panel) {
-              panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
-            }
+            openCloudLoginPanel();
           }
         });
       }
@@ -201,6 +252,67 @@
     userLabel.textContent = text;
   }
 
+  function openCloudLoginPanel() {
+    if (typeof switchTab === 'function') {
+      switchTab('perfil');
+    }
+
+    const syncCard = document.querySelector('.cloud-sync-card');
+    if (syncCard && typeof syncCard.scrollIntoView === 'function') {
+      syncCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    const emailInput = document.getElementById('cloud-email');
+    if (emailInput && typeof emailInput.focus === 'function') {
+      window.setTimeout(() => emailInput.focus(), 120);
+    }
+  }
+
+  function ensureCloudAccessLock() {
+    let lock = document.getElementById('cloud-access-lock');
+    if (lock) return lock;
+
+    lock = document.createElement('div');
+    lock.id = 'cloud-access-lock';
+    lock.className = 'cloud-access-lock';
+    lock.innerHTML = `
+      <div class="cloud-access-lock-card">
+        <div class="cloud-access-lock-badge">Sincronização obrigatória</div>
+        <h3 id="cloud-access-lock-title">Faça login para usar o HEROSPASCOAL</h3>
+        <p id="cloud-access-lock-text">
+          O modo offline foi desativado para evitar conflitos. Seus dados locais sempre terão prioridade ao sincronizar.
+        </p>
+        <button type="button" class="submit-btn" id="cloud-access-lock-action">Ir para login</button>
+      </div>
+    `;
+
+    document.body.appendChild(lock);
+    lock.querySelector('#cloud-access-lock-action')?.addEventListener('click', openCloudLoginPanel);
+    return lock;
+  }
+
+  function setCloudAccessLock(active, options = {}) {
+    const lock = ensureCloudAccessLock();
+    const titleEl = lock.querySelector('#cloud-access-lock-title');
+    const textEl = lock.querySelector('#cloud-access-lock-text');
+    const actionEl = lock.querySelector('#cloud-access-lock-action');
+    const title = options.title || 'Faça login para usar o HEROSPASCOAL';
+    const text =
+      options.text ||
+      'O modo offline foi desativado para evitar conflitos. Seus dados locais sempre terão prioridade ao sincronizar.';
+    const actionLabel = options.actionLabel || 'Ir para login';
+    const hideAction = options.hideAction === true;
+
+    if (titleEl) titleEl.textContent = title;
+    if (textEl) textEl.textContent = text;
+    if (actionEl) {
+      actionEl.textContent = actionLabel;
+      actionEl.hidden = hideAction;
+    }
+
+    lock.classList.toggle('active', active === true);
+  }
+
   function ensureCloudUI() {
     if (document.getElementById('cloud-email') && document.getElementById('cloud-login-btn')) {
       return;
@@ -225,8 +337,18 @@
     return db.collection('users').doc(uid).collection('progress').doc('main');
   }
 
+  function releaseStartupGate() {
+    window.__cloudSyncBootstrapPending = false;
+    if (typeof window.runDeferredStartupResets === 'function') {
+      window.runDeferredStartupResets();
+    }
+  }
+
   function canRunCriticalResets() {
-    return cloudReady && !!currentUser;
+    if (window.location && window.location.protocol === 'file:') return false;
+    if (!hasValidFirebaseConfig()) return false;
+    if (!window.firebase) return false;
+    return authResolved && !!currentUser && cloudReady && !startupRemoteSyncFailed;
   }
   window.shouldRunCriticalResets = canRunCriticalResets;
 
@@ -258,10 +380,13 @@
       );
 
       hasUnsyncedLocalChanges = false;
+      clearCloudRetryTimer();
       setSyncStatus(force ? 'Sincronizado (agora)' : 'Sincronizado', 'ok');
     } catch (err) {
       console.error('Erro ao salvar na nuvem:', err);
+      hasUnsyncedLocalChanges = true;
       setSyncStatus('Erro ao sincronizar', 'err');
+      scheduleCloudRetry();
     } finally {
       saveInFlight = false;
       if (saveQueued) {
@@ -300,7 +425,7 @@
     }
 
     // Obter ÃƒÂºltima sincronizaÃƒÂ§ÃƒÂ£o local
-    const lastLocalSync = localStorage.getItem(LAST_SYNC_KEY);
+    const lastLocalSync = safeStorageGet(LAST_SYNC_KEY, null);
     const lastSyncDate = lastLocalSync ? new Date(parseInt(lastLocalSync)) : null;
 
     // Se HÃƒÂ¡ dados locais e a nuvem foi modificada mais recentemente
@@ -383,7 +508,7 @@
 
     applyDataGuards();
     persistLocalCache();
-    localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+    safeStorageSet(LAST_SYNC_KEY, Date.now().toString());
 
     const remoteMs = getTimestampMs(remote.updatedAt);
     if (remoteMs > 0) lastAppliedRemoteMs = remoteMs;
@@ -426,23 +551,11 @@
     if (!remote || typeof remote !== 'object') return;
     conflictInProgress = true;
     syncBlockedByConflict = true;
-    setSyncStatus('Conflito detectado. Escolha local ou nuvem.', 'warn');
-
-    const keepLocal = await askConflictKeepLocal();
-    if (keepLocal) {
-      syncBlockedByConflict = false;
-      conflictInProgress = false;
-      setSyncStatus('Mantendo local. Enviando para nuvem...', 'syncing');
-      hasUnsyncedLocalChanges = true;
-      await pushCloud(true);
-    } else {
-      applyRemoteState(remote, {
-        statusMessage: 'Conflito resolvido: versao da nuvem aplicada',
-        statusKind: 'ok',
-      });
-      syncBlockedByConflict = false;
-      conflictInProgress = false;
-    }
+    setSyncStatus('Dados locais priorizados. Atualizando nuvem...', 'syncing');
+    hasUnsyncedLocalChanges = true;
+    await pushCloud(true);
+    syncBlockedByConflict = false;
+    conflictInProgress = false;
 
     if (pendingRemoteConflict) {
       const next = pendingRemoteConflict;
@@ -533,9 +646,67 @@
     return { hasRemoteData: true };
   }
 
+  async function pullCloudWithLocalPriority(uid) {
+    const snap = await getProgressRef(uid).get();
+    if (!snap.exists) {
+      updateServerMetaFromLocal();
+      return { hasRemoteData: false, shouldPushLocal: true };
+    }
+
+    const remote = snap.data() || {};
+    const remoteAppData = remote.appData && typeof remote.appData === 'object' ? remote.appData : null;
+    const syncPolicyApi = getSyncPolicyApi();
+    const decision =
+      typeof syncPolicyApi.resolvePreferredSyncAction === 'function'
+        ? syncPolicyApi.resolvePreferredSyncAction({
+            localData: buildSerializableData(),
+            remoteData: remoteAppData,
+            defaultData: typeof cloneDefaultAppState === 'function' ? cloneDefaultAppState() : APP_DEFAULTS,
+          })
+        : { action: 'apply_remote', reason: 'fallback' };
+
+    if (decision.action === 'push_local') {
+      updateServerMetaFromLocal();
+      setSyncStatus('Dados locais priorizados. Atualizando nuvem...', 'syncing');
+      return {
+        hasRemoteData: true,
+        shouldPushLocal: true,
+        preferredSource: 'local',
+        decision,
+      };
+    }
+
+    if (decision.action === 'keep_local') {
+      const remoteMs = getTimestampMs(remote.updatedAt);
+      const remoteHash = getDataHash(remoteAppData);
+      if (remoteMs > 0) lastAppliedRemoteMs = Math.max(lastAppliedRemoteMs, remoteMs);
+      if (remoteHash) lastAppliedRemoteHash = remoteHash;
+      hasUnsyncedLocalChanges = false;
+      setSyncStatus('Sincronizado', 'ok');
+      return {
+        hasRemoteData: true,
+        shouldPushLocal: false,
+        preferredSource: 'local',
+        decision,
+      };
+    }
+
+    const applied = applyRemoteState(remote, {
+      statusMessage: 'Dados carregados da nuvem',
+      statusKind: 'ok',
+      uiMode: 'full',
+      forceCalendar: true,
+      skipIfUnchanged: true,
+    });
+    if (!applied) {
+      return { hasRemoteData: true, shouldPushLocal: false, preferredSource: 'cloud', decision };
+    }
+    return { hasRemoteData: true, shouldPushLocal: false, preferredSource: 'cloud', decision };
+  }
+
   function overrideStorageFunctions() {
     window.loadFromLocalStorage = function () {
-      const saved = parseJson(localStorage.getItem(CLOUD_CACHE_KEY), null);
+      const saved = parseJson(safeStorageGet(CLOUD_CACHE_KEY, null), null);
       if (saved && typeof saved === 'object') {
         if (typeof replaceAppState === 'function') {
           replaceAppState(saved);
@@ -548,26 +719,24 @@
       updateServerMetaFromLocal();
     };
 
-    // Salva na nuvem quando autenticado; sem login, mantem cache local.
+    // Salva localmente e sincroniza automaticamente quando autenticado.
     window.saveToLocalStorage = function () {
       if (window.__suppressSave === true || applyingRemoteState) return;
-      if (!cloudReady || !currentUser) {
-        hasUnsyncedLocalChanges = true;
-        persistLocalCache();
-        return;
-      }
-      if (syncBlockedByConflict) {
-        hasUnsyncedLocalChanges = true;
-        persistLocalCache();
-        setSyncStatus('Sincroniza\u00e7\u00e3o pausada por conflito', 'warn');
-        return;
-      }
       hasUnsyncedLocalChanges = true;
-      // Salvar na nuvem
-      queueCloudSave();
+      if (typeof window.queueSave === 'function') {
+        return window.queueSave({
+          source: currentUser && cloudReady ? 'cloud-session' : 'auth-required',
+        });
+      }
+      persistLocalCache();
+      if (currentUser && cloudReady) {
+        queueCloudSave();
+      }
+      return null;
     };
 
     window.checkDailyReset = function () {
+      if (!currentUser || !cloudReady) return;
       const today = getLocalDateString();
       const lastReset = serverMeta.lastDailyReset;
 
@@ -602,6 +771,7 @@
     };
 
     window.checkWeeklyReset = function () {
+      if (!currentUser || !cloudReady) return;
       const today = new Date();
       const thisWeekKey =
         typeof getWeekKey === 'function'
@@ -636,8 +806,10 @@
       }
 
       window.__suppressSave = true;
-      localStorage.removeItem(CLOUD_CACHE_KEY);
-      localStorage.removeItem(AUTH_CACHE_KEY);
+      safeStorageRemove(CLOUD_CACHE_KEY);
+      safeStorageRemove(AUTH_CACHE_KEY);
+      safeStorageRemove(LAST_SYNC_KEY);
+      safeStorageRemove('heroJourneyLocalSaveMeta');
 
       if (cloudReady && currentUser) {
         try {
@@ -662,7 +834,7 @@
 
     if (!emailEl || !passwordEl || !loginBtn || !registerBtn || !logoutBtn || !syncNowBtn) return;
 
-    const savedAuth = parseJson(localStorage.getItem(AUTH_CACHE_KEY), {});
+    const savedAuth = parseJson(safeStorageGet(AUTH_CACHE_KEY, null), {});
     if (savedAuth.email) emailEl.value = savedAuth.email;
 
     loginBtn.addEventListener('click', async function () {
@@ -672,7 +844,7 @@
         alert('Informe email e senha.');
         return;
       }
-      localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ email: email }));
+      safeStorageSet(AUTH_CACHE_KEY, JSON.stringify({ email: email }));
       try {
         await auth.signInWithEmailAndPassword(email, password);
       } catch (err) {
@@ -687,7 +859,7 @@
         alert('Informe email e senha.');
         return;
       }
-      localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ email: email }));
+      safeStorageSet(AUTH_CACHE_KEY, JSON.stringify({ email: email }));
       try {
         await auth.createUserWithEmailAndPassword(email, password);
       } catch (err) {
@@ -710,66 +882,111 @@
 
   async function initFirebaseSync() {
     if (window.location && window.location.protocol === 'file:') {
-      setSyncStatus('Modo local (abra via http:// para usar nuvem)', 'warn');
+      authResolved = true;
+      setSyncStatus('Uso bloqueado: abra via http:// com nuvem ativa', 'err');
+      setCloudAccessLock(true, {
+        title: 'Uso offline bloqueado',
+        text: 'Abra o aplicativo via http:// para autenticar e sincronizar. O modo offline foi desativado.',
+        hideAction: true,
+      });
+      releaseStartupGate();
       return;
     }
 
     if (!window.firebase) {
+      authResolved = true;
+      startupRemoteSyncFailed = true;
       setSyncStatus('SDK Firebase nao carregado', 'err');
+      setCloudAccessLock(true, {
+        title: 'Sincronização indisponível',
+        text: 'O Firebase não carregou. Sem nuvem, o uso do app fica bloqueado para evitar conflitos.',
+        hideAction: true,
+      });
+      releaseStartupGate();
       return;
     }
 
     if (!hasValidFirebaseConfig()) {
-      setSyncStatus('Configure FIREBASE_CONFIG', 'warn');
+      authResolved = true;
+      setSyncStatus('Configure FIREBASE_CONFIG', 'err');
+      setCloudAccessLock(true, {
+        title: 'Sincronização não configurada',
+        text: 'A configuração do Firebase está incompleta. Sem nuvem, o uso do app fica bloqueado.',
+        hideAction: true,
+      });
+      releaseStartupGate();
       return;
     }
 
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     auth = firebase.auth();
     db = firebase.firestore();
+    authResolved = false;
+    startupRemoteSyncFailed = false;
 
     bindAuthActions();
 
     auth.onAuthStateChanged(async function (user) {
+      authResolved = true;
       currentUser = user;
 
       if (!user) {
         unsubscribeRealtime();
+        clearCloudRetryTimer();
         cloudReady = false;
+        startupRemoteSyncFailed = false;
         syncBlockedByConflict = false;
         conflictInProgress = false;
         pendingRemoteConflict = null;
         hasUnsyncedLocalChanges = false;
         setUserLabel('N\u00e3o autenticado');
-        setSyncStatus('Modo local (sem login)', 'warn');
+        setSyncStatus('Login obrigatório para usar', 'warn');
+        setCloudAccessLock(true, {
+          title: 'Faça login para continuar',
+          text: 'O modo offline foi desativado. Seus dados locais continuam guardados e terão prioridade ao sincronizar.',
+          actionLabel: 'Ir para login',
+        });
+        releaseStartupGate();
         return;
       }
 
       unsubscribeRealtime();
+      clearCloudRetryTimer();
       cloudReady = false;
+      startupRemoteSyncFailed = false;
       syncBlockedByConflict = false;
       conflictInProgress = false;
       pendingRemoteConflict = null;
       setUserLabel('Usuario: ' + (user.email || user.uid));
       setSyncStatus('Conectado. Sincronizando...', 'warn');
+      setCloudAccessLock(true, {
+        title: 'Sincronizando seus dados',
+        text: 'Aguarde enquanto alinhamos seus dados locais com a nuvem. Os dados locais têm prioridade automática.',
+        hideAction: true,
+      });
 
       try {
-        const result = await pullCloud(user.uid);
+        const result = await pullCloudWithLocalPriority(user.uid);
         cloudReady = true;
         startRealtimeSync(user.uid);
-        if (result && result.hasRemoteData === false) {
+        releaseStartupGate();
+        if (result && result.shouldPushLocal === true) {
+          hasUnsyncedLocalChanges = true;
           await pushCloud(true);
         }
-        if (typeof checkDailyReset === 'function') checkDailyReset();
-        if (typeof checkOverdueMissions === 'function')
-          checkOverdueMissions({ isInitialCheck: true });
-        if (typeof checkOverdueWorks === 'function') checkOverdueWorks({ isInitialCheck: true });
-        if (typeof checkWeeklyReset === 'function') checkWeeklyReset();
         if (typeof updateStreaks === 'function') updateStreaks();
         if (typeof updateUI === 'function') updateUI({ mode: 'full', forceCalendar: true });
+        setCloudAccessLock(false);
       } catch (err) {
         console.error('Erro ao carregar nuvem:', err);
+        startupRemoteSyncFailed = true;
         setSyncStatus('Falha ao carregar nuvem', 'err');
+        setCloudAccessLock(true, {
+          title: 'Falha ao conectar com a nuvem',
+          text: 'Sem sincronização ativa, o uso do app fica bloqueado para proteger seus dados locais.',
+          hideAction: true,
+        });
+        releaseStartupGate();
       }
     });
   }
@@ -780,12 +997,22 @@
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function () {
         ensureCloudUI();
+        setCloudAccessLock(true, {
+          title: 'Verificando autenticação',
+          text: 'O uso do HEROSPASCOAL fica disponível após conectar seus dados locais à nuvem.',
+          hideAction: true,
+        });
         initFirebaseSync();
       });
       return;
     }
 
     ensureCloudUI();
+    setCloudAccessLock(true, {
+      title: 'Verificando autenticação',
+      text: 'O uso do HEROSPASCOAL fica disponível após conectar seus dados locais à nuvem.',
+      hideAction: true,
+    });
     initFirebaseSync();
   }
 

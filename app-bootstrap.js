@@ -12,7 +12,7 @@ function resolveScriptUrl(src) {
   if (/^https?:\/\//i.test(src)) {
     return src;
   }
-  return new URL(src, import.meta.url).href;
+  return new URL(src, window.location.href).href;
 }
 
 function loadScriptSequentially(src) {
@@ -29,17 +29,26 @@ function loadScriptSequentially(src) {
 }
 
 async function loadCoreScripts() {
+  const coreModules = [
+    './app-state.js',
+    './app-rules.js',
+    './app-progression.js',
+    './app-planning.js',
+    './app-sync-policy.js',
+    './app-core.js',
+    './app-activities.js',
+    './app-ui.js',
+    './app-diary-finance.js',
+    './app-calendar-history.js',
+    './app-actions.js',
+    './app-charts-nutrition.js',
+    './app-import-theme.js',
+  ];
+
   // First phase: module side-effects (state + pure rules + migrated bridges)
-  await import(new URL('./app-state.js', import.meta.url).href);
-  await import(new URL('./app-rules.js', import.meta.url).href);
-  await import(new URL('./app-core.js', import.meta.url).href);
-  await import(new URL('./app-activities.js', import.meta.url).href);
-  await import(new URL('./app-ui.js', import.meta.url).href);
-  await import(new URL('./app-diary-finance.js', import.meta.url).href);
-  await import(new URL('./app-calendar-history.js', import.meta.url).href);
-  await import(new URL('./app-actions.js', import.meta.url).href);
-  await import(new URL('./app-charts-nutrition.js', import.meta.url).href);
-  await import(new URL('./app-import-theme.js', import.meta.url).href);
+  for (const src of coreModules) {
+    await import(src);
+  }
 
   // Second phase: required local scripts (fail-fast)
   for (const src of LOCAL_SCRIPT_ORDER) {
@@ -53,6 +62,12 @@ async function loadExternalScriptsBestEffort() {
       await loadScriptSequentially(src);
     } catch (error) {
       console.warn(`Script externo indisponível: ${src}`, error);
+      if (src === 'cloud-sync.js') {
+        window.__cloudSyncBootstrapPending = false;
+        if (typeof window.runDeferredStartupResets === 'function') {
+          window.runDeferredStartupResets();
+        }
+      }
     }
   }
 }
@@ -64,6 +79,7 @@ async function runAppBootstrap() {
   window.__bootstrapLoaded = true;
 
   await loadCoreScripts();
+  window.__cloudSyncBootstrapPending = true;
 
   if (typeof applySavedTheme === 'function') {
     applySavedTheme();

@@ -8,14 +8,18 @@
 
   const monthFilter =
     document.getElementById('finance-month')?.value || getLocalDateString().slice(0, 7);
-  const monthKey = monthFilter === 'all' ? getLocalDateString().slice(0, 7) : monthFilter;
+  const monthKey = monthFilter === 'all' ? null : monthFilter;
   const prevMonthKey = getPreviousMonthKey(monthKey);
-  updateFinanceKpiContext(monthKey);
+  updateFinanceKpiContext(monthFilter);
 
-  const monthEntries = appData.financeEntries.filter((e) => getMonthKey(e.date) === monthKey);
-  const prevMonthEntries = appData.financeEntries.filter(
-    (e) => getMonthKey(e.date) === prevMonthKey
-  );
+  const monthEntries =
+    monthFilter === 'all'
+      ? appData.financeEntries.slice()
+      : appData.financeEntries.filter((e) => getMonthKey(e.date) === monthKey);
+  const prevMonthEntries =
+    monthFilter === 'all'
+      ? []
+      : appData.financeEntries.filter((e) => getMonthKey(e.date) === prevMonthKey);
 
   const income = monthEntries
     .filter((e) => e.type === 'income')
@@ -41,10 +45,13 @@
     .filter((e) => e.type === 'expense' && !e.recurringId)
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const dayData = getMonthDayData(monthKey);
+  const dayData =
+    monthFilter === 'all' ? getFinanceRangeDayData(monthEntries) : getMonthDayData(monthKey);
   const averageDailyExpense = dayData.daysInPeriod > 0 ? expense / dayData.daysInPeriod : 0;
   const projectedBalance =
-    monthKey === getLocalDateString().slice(0, 7)
+    monthFilter === 'all'
+      ? balance
+      : monthKey === getLocalDateString().slice(0, 7)
       ? dayData.daysInPeriod > 0
         ? (balance / dayData.daysInPeriod) * dayData.daysInMonth
         : balance
@@ -54,9 +61,15 @@
   expenseEl.textContent = formatBRL(expense);
   balanceEl.textContent = formatBRL(balance);
 
-  setFinanceDelta('finance-income-delta', calculatePercentChange(income, prevIncome), true);
-  setFinanceDelta('finance-expense-delta', calculatePercentChange(expense, prevExpense), true);
-  setFinanceDelta('finance-balance-delta', calculatePercentChange(balance, prevBalance), false);
+  if (monthFilter === 'all') {
+    setFinanceDeltaUnavailable('finance-income-delta');
+    setFinanceDeltaUnavailable('finance-expense-delta');
+    setFinanceDeltaUnavailable('finance-balance-delta');
+  } else {
+    setFinanceDelta('finance-income-delta', calculatePercentChange(income, prevIncome), true);
+    setFinanceDelta('finance-expense-delta', calculatePercentChange(expense, prevExpense), true);
+    setFinanceDelta('finance-balance-delta', calculatePercentChange(balance, prevBalance), false);
+  }
 
   const savingsEl = document.getElementById('finance-savings-rate');
   if (savingsEl) savingsEl.textContent = `${savingsRate.toFixed(1).replace('.', ',')}%`;
@@ -296,6 +309,7 @@ function getFinanceFilteredEntries() {
 }
 
 function getPreviousMonthKey(monthKey) {
+  if (!monthKey || monthKey.length !== 7) return null;
   const [year, month] = monthKey.split('-').map((v) => parseInt(v, 10));
   const prev = new Date(year, month - 2, 1);
   return getLocalDateString(prev).slice(0, 7);
@@ -309,6 +323,25 @@ function getMonthDayData(monthKey) {
   const daysInPeriod =
     monthKey === currentMonthKey ? Math.min(daysInMonth, now.getDate()) : daysInMonth;
   return { daysInMonth, daysInPeriod };
+}
+
+function getFinanceRangeDayData(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return { daysInMonth: 0, daysInPeriod: 0 };
+  }
+
+  const dates = entries
+    .map((entry) => parseLocalDateString(entry.date))
+    .filter((date) => date instanceof Date && !Number.isNaN(date.getTime()))
+    .sort((a, b) => a - b);
+  if (dates.length === 0) {
+    return { daysInMonth: 0, daysInPeriod: 0 };
+  }
+
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  const diffDays = Math.floor((last - first) / 86400000) + 1;
+  return { daysInMonth: diffDays, daysInPeriod: diffDays };
 }
 
 function calculatePercentChange(current, previous) {
@@ -347,15 +380,26 @@ function setFinanceDelta(elementId, changeValue, inverseGood) {
   element.classList.add(isGood ? 'positive' : 'negative');
 }
 
-function updateFinanceKpiContext(monthKey) {
+function setFinanceDeltaUnavailable(elementId) {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+  element.textContent = 'Comparação indisponível em "Todos".';
+  element.className = 'finance-delta neutral';
+}
+
+function updateFinanceKpiContext(monthFilter) {
   const noteEl = document.getElementById('finance-kpi-note');
   if (!noteEl) return;
-  if (!monthKey || monthKey.length !== 7) {
+  if (monthFilter === 'all') {
     noteEl.textContent =
-      'KPIs do topo consideram apenas o mês selecionado (ignoram filtros de tipo e categoria).';
+      'KPIs do topo consideram todos os meses (ignoram filtros de tipo e categoria).';
     return;
   }
-  const [year, month] = monthKey.split('-');
+  if (!monthFilter || monthFilter.length !== 7) {
+    noteEl.textContent = 'KPIs do topo consideram o período selecionado.';
+    return;
+  }
+  const [year, month] = monthFilter.split('-');
   noteEl.textContent = `KPIs do topo consideram ${month}/${year} (ignoram filtros de tipo e categoria).`;
 }
 
@@ -364,18 +408,29 @@ function populateFinanceMonthOptions() {
   if (!select) return;
 
   const current = getLocalDateString().slice(0, 7);
-  const months = [];
-  for (let i = 0; i < 12; i++) {
-    const d = new Date();
-    d.setMonth(d.getMonth() - i);
-    const key = getLocalDateString(d).slice(0, 7);
-    months.push(key);
-  }
+  const previousValue = select.value || current;
+  const months = new Set([current]);
+
+  (appData.financeEntries || []).forEach((entry) => {
+    if (entry?.date) months.add(getMonthKey(entry.date));
+  });
+  (appData.financeBudgets || []).forEach((budget) => {
+    if (budget?.month) months.add(String(budget.month));
+  });
+  (appData.financeRecurring || []).forEach((rec) => {
+    if (rec?.startDate) months.add(getMonthKey(rec.startDate));
+    if (rec?.endDate) months.add(getMonthKey(rec.endDate));
+  });
+
+  const sortedMonths = Array.from(months)
+    .filter((month) => typeof month === 'string' && /^\d{4}-\d{2}$/.test(month))
+    .sort((a, b) => b.localeCompare(a));
 
   select.innerHTML =
     '<option value="all">Todos</option>' +
-    months.map((m) => `<option value="${m}">${m}</option>`).join('');
-  select.value = current;
+    sortedMonths.map((m) => `<option value="${m}">${m}</option>`).join('');
+  const availableValues = new Set(['all', ...sortedMonths]);
+  select.value = availableValues.has(previousValue) ? previousValue : current;
 }
 
 function updateFinanceCharts() {

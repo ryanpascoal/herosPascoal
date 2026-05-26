@@ -75,13 +75,10 @@ function getAllTodayActivities() {
       items.push({ category: 'book', item: book });
   });
 
-  return items.sort((a, b) => {
-    if (a.category === 'work' && a.item.urgent && !(b.category === 'work' && b.item.urgent))
-      return -1;
-    if (b.category === 'work' && b.item.urgent && !(a.category === 'work' && a.item.urgent))
-      return 1;
-    return String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR');
-  });
+  if (typeof comparePlannedActivities === 'function') {
+    return items.sort(comparePlannedActivities);
+  }
+  return items.sort((a, b) => String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR'));
 }
 
 function updateActivityProgressBar() {
@@ -186,13 +183,10 @@ function getUnifiedTodayActivities() {
     if (book.status === 'lendo') items.push({ category: 'book', item: book });
   });
 
-  return items.sort((a, b) => {
-    if (a.category === 'work' && a.item.urgent && !(b.category === 'work' && b.item.urgent))
-      return -1;
-    if (b.category === 'work' && b.item.urgent && !(a.category === 'work' && a.item.urgent))
-      return 1;
-    return String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR');
-  });
+  if (typeof comparePlannedActivities === 'function') {
+    return items.sort(comparePlannedActivities);
+  }
+  return items.sort((a, b) => String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR'));
 }
 
 function getUnifiedHistoryActivities() {
@@ -394,6 +388,8 @@ function renderUnifiedActivitiesList() {
 
   items.forEach(({ category, item }) => {
     const categoryMeta = getActivityCategoryMeta(category);
+    const planningMeta =
+      typeof getActivityPlanningMeta === 'function' ? getActivityPlanningMeta(item) : null;
     const secondary =
       category === 'workout'
         ? getWorkoutTypeName(item.type)
@@ -404,17 +400,28 @@ function renderUnifiedActivitiesList() {
           : category === 'book'
             ? getBookActivityStatusLabel(item)
             : getMissionTypeName(item.type);
+    const planningLine = planningMeta
+      ? [
+          planningMeta.objectiveName ? `Objetivo: ${planningMeta.objectiveName}` : '',
+          planningMeta.projectName ? `Projeto: ${planningMeta.projectName}` : '',
+          `Prioridade: ${planningMeta.priorityLabel}`,
+        ]
+          .filter(Boolean)
+          .map((part) => `<div class="item-type">${escapeHtml(part)}</div>`)
+          .join('')
+      : '';
     const card = document.createElement('div');
     card.className = 'item-card';
     card.innerHTML = `
       <div class="item-info">
         <span class="item-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
-        <div>
-          <div class="item-name">${escapeHtml(item.name || 'Atividade')}</div>
-          <div class="item-type">${categoryMeta.label} - ${secondary}</div>
-          ${category === 'book' && item.author ? `<div class="item-author">${escapeHtml(item.author)}</div>` : ''}
+          <div>
+            <div class="item-name">${escapeHtml(item.name || 'Atividade')}</div>
+            <div class="item-type">${categoryMeta.label} - ${secondary}</div>
+            ${category === 'book' && item.author ? `<div class="item-author">${escapeHtml(item.author)}</div>` : ''}
+            ${planningLine}
+          </div>
         </div>
-      </div>
       <div class="item-actions">
         <button class="action-btn unified-edit-activity-btn" data-category="${category}" data-id="${item.id}">
           <i class="fas fa-edit"></i>
@@ -755,6 +762,9 @@ function updateStatistics() {
   if (statMissionsFailed) statMissionsFailed.textContent = appData.statistics.missionsFailed || 0;
   const statJusticeDone = document.getElementById('stat-justice-done');
   if (statJusticeDone) statJusticeDone.textContent = appData.statistics.justiceDone || 0;
+  if (typeof renderPlanningStatisticsPanel === 'function') {
+    renderPlanningStatisticsPanel(typeof getUnifiedTodayActivities === 'function' ? getUnifiedTodayActivities() : []);
+  }
 
   // Atualizar tabela de detalhes de treinos
   updateWorkoutDetailsTable();
@@ -1000,6 +1010,7 @@ function updateWorkoutDetailsTable() {
 
   appData.workouts.forEach((workout) => {
     const row = document.createElement('tr');
+    const safeWorkoutLabel = escapeHtml(`${workout.emoji || '💪'} ${workout.name || 'Treino'}`);
 
     let totalReps = 0;
     let totalDistance = 0;
@@ -1014,7 +1025,7 @@ function updateWorkoutDetailsTable() {
     }
 
     row.innerHTML = `
-            <td>${workout.emoji} ${workout.name}</td>
+            <td>${safeWorkoutLabel}</td>
             <td>${workout.type === 'repeticao' ? totalReps : '-'}</td>
             <td>${workout.type === 'distancia' ? totalDistance.toFixed(2) + ' km' : '-'}</td>
             <td>${workout.type === 'distancia' ? (totalTime > 0 ? totalTime.toFixed(1) + ' min' : '-') : workout.type === 'maior-tempo' || workout.type === 'menor-tempo' ? totalTime.toFixed(1) + ' min' : '-'}</td>
@@ -1118,6 +1129,9 @@ function updateRecords() {
         label: 'Missões concluídas no total',
         value: `${stats.missionsDone}`,
       });
+    }
+    if (typeof getPlanningRecords === 'function') {
+      records.push(...getPlanningRecords(appData));
     }
 
     if (records.length === 0) {
