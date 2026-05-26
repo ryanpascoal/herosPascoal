@@ -403,7 +403,6 @@ function renderUnifiedActivitiesList() {
     const planningLine = planningMeta
       ? [
           planningMeta.objectiveName ? `Objetivo: ${planningMeta.objectiveName}` : '',
-          planningMeta.projectName ? `Projeto: ${planningMeta.projectName}` : '',
           `Prioridade: ${planningMeta.priorityLabel}`,
         ]
           .filter(Boolean)
@@ -785,6 +784,18 @@ function updateAdvancedStatistics() {
   const monthlyCompareEl = document.getElementById('stat-monthly-compare');
   const adherenceEl = document.getElementById('stat-adherence');
   const goalsStatusEl = document.getElementById('stat-goals-status');
+  const planningSnapshot =
+    typeof getPlanningStatisticsSnapshot === 'function'
+      ? getPlanningStatisticsSnapshot(
+          appData,
+          typeof getUnifiedTodayActivities === 'function'
+            ? { todayActivities: getUnifiedTodayActivities() }
+            : undefined
+        )
+      : null;
+  const planningObjectivesHealthy = planningSnapshot
+    ? Math.max(0, Number(planningSnapshot.objectivesActive || 0) - Number(planningSnapshot.atRiskObjectives || 0))
+    : 0;
 
   const weeklyCurrent = getPeriodTotals(7, 0);
   const weeklyPrevious = getPeriodTotals(7, 7);
@@ -799,6 +810,11 @@ function updateAdvancedStatistics() {
             <p>Estudos: ${weeklyCurrent.studies} (${formatTrendHtml(weeklyCurrent.studies, weeklyPrevious.studies)})</p>
             <p>Falhas/Ignorados Estudos: ${weeklyCurrent.studiesMissed} (${formatTrendHtml(weeklyCurrent.studiesMissed, weeklyPrevious.studiesMissed, true)})</p>
             <p>XP: ${weeklyCurrent.totalXP} (${formatTrendHtml(weeklyCurrent.totalXP, weeklyPrevious.totalXP)})</p>
+            ${
+              planningSnapshot
+                ? `<p>Objetivos em risco agora: ${planningSnapshot.atRiskObjectives}/${planningSnapshot.objectivesActive}</p>`
+                : ''
+            }
         `;
   }
 
@@ -815,6 +831,11 @@ function updateAdvancedStatistics() {
             <p>Estudos: ${monthCurrent.studies} (${formatTrendHtml(monthCurrent.studies, monthPrevious.studies)})</p>
             <p>Falhas/Ignorados Estudos: ${monthCurrent.studiesMissed} (${formatTrendHtml(monthCurrent.studiesMissed, monthPrevious.studiesMissed, true)})</p>
             <p>XP: ${monthCurrent.totalXP} (${formatTrendHtml(monthCurrent.totalXP, monthPrevious.totalXP)})</p>
+            ${
+              planningSnapshot?.topObjective
+                ? `<p>Objetivo líder agora: ${escapeHtml(planningSnapshot.topObjective.name)} (${planningSnapshot.topObjective.effectiveProgress}%)</p>`
+                : ''
+            }
         `;
   }
 
@@ -836,6 +857,11 @@ function updateAdvancedStatistics() {
             <p>Mês - Trabalhos: ${formatRate(monthCurrent.works, monthWorksPlanned)}</p>
             <p>Mês - Treinos: ${formatRate(monthCurrent.workouts, monthWorkoutsPlanned)}</p>
             <p>Mês - Estudos: ${formatRate(monthCurrent.studies, monthStudiesPlanned)}</p>
+            ${
+              planningSnapshot
+                ? `<p>Objetivos saudáveis: ${formatRate(planningObjectivesHealthy, planningSnapshot.objectivesActive || 0)}</p>`
+                : ''
+            }
         `;
   }
 
@@ -847,6 +873,11 @@ function updateAdvancedStatistics() {
             <p class="${getGoalStatusClass(weeklyCurrent.works, goals.works)}">Trabalhos: ${weeklyCurrent.works}/${goals.works}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.workouts, goals.workouts)}">Treinos: ${weeklyCurrent.workouts}/${goals.workouts}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.studies, goals.studies)}">Estudos: ${weeklyCurrent.studies}/${goals.studies}</p>
+            ${
+              planningSnapshot
+                ? `<p class="${planningSnapshot.atRiskObjectives === 0 ? 'goal-status-ok' : 'goal-status-danger'}">Objetivos em risco: ${planningSnapshot.atRiskObjectives}</p>`
+                : ''
+            }
         `;
   }
 }

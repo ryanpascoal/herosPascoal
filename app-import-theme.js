@@ -40,6 +40,16 @@ function handleNutritionFoodSubmit(event) {
   showFeedback('Alimento cadastrado com sucesso!', 'success');
 }
 
+function safeRemoveLocalProgressCache(keys) {
+  keys.forEach((key) => {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.warn('Falha ao remover item do localStorage:', key, error);
+    }
+  });
+}
+
 function handleImportFoods(event) {
   const file = event.target.files?.[0];
   if (!file) return;
@@ -283,8 +293,12 @@ async function resetProgress() {
     }
 
     window.__suppressSave = true;
-    // Limpar localStorage
-    localStorage.removeItem('heroJourneyData');
+    safeRemoveLocalProgressCache([
+      'heroJourneyData',
+      'heroJourneyLocalSaveMeta',
+      'heroJourneyLastSync',
+      'heroJourneyAuth',
+    ]);
 
     // Tentar apagar dados na nuvem usando Firebase diretamente
     try {
@@ -328,8 +342,12 @@ async function resetProgress() {
   }
 
   window.__suppressSave = true;
-  // Limpar localStorage
-  localStorage.removeItem('heroJourneyData');
+  safeRemoveLocalProgressCache([
+    'heroJourneyData',
+    'heroJourneyLocalSaveMeta',
+    'heroJourneyLastSync',
+    'heroJourneyAuth',
+  ]);
 
   // Também limpar dados na nuvem se estiver logado
   if (typeof currentUser !== 'undefined' && currentUser && typeof getProgressRef === 'function') {
@@ -639,6 +657,7 @@ function openActivityEditor(category, item) {
   });
 
   if (typeof fillActivityPlanningForm === 'function') fillActivityPlanningForm(item);
+  if (typeof setActivityFormSubmitLabel === 'function') setActivityFormSubmitLabel(true);
   nameInput?.focus();
 }
 

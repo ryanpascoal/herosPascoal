@@ -15,8 +15,38 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
   </head>
-  <body>
-    <div class="container">
+  <body class="app-auth-pending">
+    <section id="auth-screen" class="auth-screen active">
+      <div class="auth-screen-panel">
+        <div class="auth-screen-brand">
+          <span class="auth-brand-badge">HEROSPASCOAL</span>
+          <h1>Entre para carregar seu progresso</h1>
+          <p id="auth-screen-text">
+            O sistema libera o painel principal somente depois da autenticação e da sincronização inicial.
+          </p>
+        </div>
+        <div class="auth-screen-card">
+          <div class="auth-screen-header">
+            <h2 id="auth-screen-title">Login</h2>
+            <span id="auth-sync-status" class="cloud-status warn">Aguardando autenticação</span>
+          </div>
+          <div class="auth-screen-form">
+            <input id="cloud-email" type="email" placeholder="Email" />
+            <input id="cloud-password" type="password" placeholder="Senha" />
+            <button class="submit-btn" id="cloud-login-btn" type="button">
+              <i class="fas fa-sign-in-alt"></i> Entrar
+            </button>
+            <button class="settings-btn" id="cloud-register-btn" type="button">
+              <i class="fas fa-user-plus"></i> Criar Conta
+            </button>
+          </div>
+          <div class="auth-screen-meta">
+            <span id="auth-user-label" class="cloud-user-label">Não autenticado</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="container" id="app-shell">
       <!-- Cabeçalho -->
       <header class="header">
         <div class="header-content">
@@ -235,43 +265,9 @@
                     </div>
 
                     <div class="form-group">
-                      <label for="activity-project">Projeto</label>
-                      <select id="activity-project">
-                        <option value="">Nenhum</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group">
                       <label for="activity-priority">Prioridade</label>
                       <select id="activity-priority">
                         <option value="critical">Crítica</option>
-                        <option value="high">Alta</option>
-                        <option value="medium" selected>Média</option>
-                        <option value="low">Baixa</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group">
-                      <label for="activity-impact">Impacto</label>
-                      <select id="activity-impact">
-                        <option value="high">Alto</option>
-                        <option value="medium" selected>Médio</option>
-                        <option value="low">Baixo</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group">
-                      <label for="activity-effort">Esforço</label>
-                      <select id="activity-effort">
-                        <option value="high">Alto</option>
-                        <option value="medium" selected>Médio</option>
-                        <option value="low">Baixo</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group">
-                      <label for="activity-energy">Energia</label>
-                      <select id="activity-energy">
                         <option value="high">Alta</option>
                         <option value="medium" selected>Média</option>
                         <option value="low">Baixa</option>
@@ -365,26 +361,6 @@
                     </div>
 
                     <div class="form-group">
-                      <label for="objective-horizon">Horizonte</label>
-                      <select id="objective-horizon">
-                        <option value="annual">Anual</option>
-                        <option value="quarter" selected>Trimestral</option>
-                        <option value="month">Mensal</option>
-                        <option value="custom">Livre</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group">
-                      <label for="objective-status">Status</label>
-                      <select id="objective-status">
-                        <option value="active" selected>Ativo</option>
-                        <option value="paused">Pausado</option>
-                        <option value="completed">Concluído</option>
-                        <option value="cancelled">Cancelado</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group">
                       <label for="objective-target-date">Prazo</label>
                       <input type="date" id="objective-target-date" />
                     </div>
@@ -394,129 +370,11 @@
                       <input type="number" id="objective-progress" min="0" max="100" value="0" />
                     </div>
 
-                    <div class="form-group">
-                      <label for="objective-progress-mode">Modo do Progresso</label>
-                      <select id="objective-progress-mode">
-                        <option value="hybrid" selected>Híbrido</option>
-                        <option value="auto">Automático</option>
-                        <option value="manual">Manual</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div class="form-group">
-                    <label for="objective-notes">Notas</label>
-                    <textarea id="objective-notes" rows="3" placeholder="Critério de sucesso, restrições, definição de concluído"></textarea>
                   </div>
 
                   <button type="submit" class="submit-btn">Salvar Objetivo</button>
                 </form>
                 <div class="items-list planning-items-list" id="objectives-list"></div>
-              </div>
-
-              <div class="form-container">
-                <h3>Projetos</h3>
-                <form id="project-form">
-                  <input type="hidden" id="project-edit-id" />
-                  <div class="planning-meta-grid">
-                    <div class="form-group">
-                      <label for="project-name">Nome</label>
-                      <input type="text" id="project-name" placeholder="Ex: Ciclo de cutting" required />
-                    </div>
-
-                    <div class="form-group">
-                      <label for="project-objective">Objetivo</label>
-                      <select id="project-objective">
-                        <option value="">Sem objetivo</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group">
-                      <label for="project-status">Status</label>
-                      <select id="project-status">
-                        <option value="active" selected>Ativo</option>
-                        <option value="paused">Pausado</option>
-                        <option value="completed">Concluído</option>
-                        <option value="cancelled">Cancelado</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group">
-                      <label for="project-target-date">Prazo</label>
-                      <input type="date" id="project-target-date" />
-                    </div>
-
-                    <div class="form-group">
-                      <label for="project-progress">Progresso (%)</label>
-                      <input type="number" id="project-progress" min="0" max="100" value="0" />
-                    </div>
-
-                    <div class="form-group">
-                      <label for="project-progress-mode">Modo do Progresso</label>
-                      <select id="project-progress-mode">
-                        <option value="hybrid" selected>Híbrido</option>
-                        <option value="auto">Automático</option>
-                        <option value="manual">Manual</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div class="form-group">
-                    <label for="project-next-action">Próxima ação</label>
-                    <input type="text" id="project-next-action" placeholder="Ex: fechar treino de quinta" />
-                  </div>
-
-                  <div class="form-group">
-                    <label for="project-notes">Notas</label>
-                    <textarea id="project-notes" rows="3" placeholder="Escopo, trava atual, condição de saída"></textarea>
-                  </div>
-
-                  <button type="submit" class="submit-btn">Salvar Projeto</button>
-                </form>
-                <div class="items-list planning-items-list" id="projects-list"></div>
-              </div>
-
-              <div class="form-container">
-                <h3>Revisão</h3>
-                <form id="review-form">
-                  <div class="planning-meta-grid">
-                    <div class="form-group">
-                      <label for="review-period-type">Tipo</label>
-                      <select id="review-period-type">
-                        <option value="weekly" selected>Semanal</option>
-                        <option value="monthly">Mensal</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group">
-                      <label for="review-period-start">Referência</label>
-                      <input type="date" id="review-period-start" />
-                    </div>
-                  </div>
-
-                  <div class="form-group">
-                    <label for="review-wins">Ganhos</label>
-                    <textarea id="review-wins" rows="2" placeholder="O que realmente avançou"></textarea>
-                  </div>
-
-                  <div class="form-group">
-                    <label for="review-blockers">Travou</label>
-                    <textarea id="review-blockers" rows="2" placeholder="Onde você emperrou"></textarea>
-                  </div>
-
-                  <div class="form-group">
-                    <label for="review-next-focus">Próximo foco</label>
-                    <textarea id="review-next-focus" rows="2" placeholder="O que entra na próxima semana/mês"></textarea>
-                  </div>
-
-                  <div class="form-group">
-                    <label for="review-notes">Notas</label>
-                    <textarea id="review-notes" rows="2" placeholder="Cortes, ajustes e observações"></textarea>
-                  </div>
-
-                  <button type="submit" class="submit-btn">Salvar Revisão</button>
-                </form>
-                <div class="items-list planning-items-list" id="reviews-list"></div>
               </div>
 
               <div class="existing-items">
@@ -690,22 +548,15 @@
             <div class="cloud-sync-card">
               <h4><i class="fas fa-cloud"></i> Sincronização na Nuvem</h4>
               <div class="cloud-sync-grid">
-                <input id="cloud-email" type="email" placeholder="Email" />
-                <input id="cloud-password" type="password" placeholder="Senha" />
-                <button class="settings-btn" id="cloud-login-btn" type="button">
-                  <i class="fas fa-sign-in-alt"></i> Entrar
-                </button>
-                <button class="settings-btn" id="cloud-register-btn" type="button">
-                  <i class="fas fa-user-plus"></i> Criar Conta
-                </button>
-                <button class="settings-btn" id="cloud-logout-btn" type="button">
+                <button class="settings-btn" id="cloud-profile-logout-btn" type="button">
                   <i class="fas fa-sign-out-alt"></i> Sair
                 </button>
-                <button class="settings-btn" id="cloud-sync-now-btn" type="button">
+                <button class="settings-btn" id="cloud-profile-sync-now-btn" type="button">
                   <i class="fas fa-sync-alt"></i> Sincronizar Agora
                 </button>
               </div>
               <div class="cloud-sync-meta">
+                <span class="cloud-sync-note">O acesso é feito pela tela de login inicial.</span>
                 <span id="cloud-user-label" class="cloud-user-label">Não autenticado</span>
                 <span id="cloud-sync-status" class="cloud-status warn">Modo local</span>
               </div>
@@ -769,16 +620,8 @@
                     <div class="stat-value" id="stat-objectives-active">0</div>
                   </div>
                   <div class="stat-card">
-                    <h4><i class="fas fa-diagram-project"></i> Projetos Ativos</h4>
-                    <div class="stat-value" id="stat-projects-active">0</div>
-                  </div>
-                  <div class="stat-card">
                     <h4><i class="fas fa-triangle-exclamation"></i> Objetivos em Risco</h4>
                     <div class="stat-value" id="stat-objectives-risk">0</div>
-                  </div>
-                  <div class="stat-card">
-                    <h4><i class="fas fa-hourglass-end"></i> Projetos Atrasados</h4>
-                    <div class="stat-value" id="stat-projects-delayed">0</div>
                   </div>
                   <div class="stat-card cat-mission">
                     <h4><i class="fas fa-flag-checkered"></i> Missões Concluídas</h4>
@@ -831,10 +674,6 @@
                   <div class="stat-card stat-advanced-card">
                     <h4><i class="fas fa-trophy"></i> Objetivo Mais Forte</h4>
                     <div class="stats-advanced-content" id="stat-objective-progress">-</div>
-                  </div>
-                  <div class="stat-card stat-advanced-card">
-                    <h4><i class="fas fa-temperature-three-quarters"></i> Projeto Mais Quente</h4>
-                    <div class="stats-advanced-content" id="stat-project-pressure">-</div>
                   </div>
                 </div>
 
@@ -932,7 +771,7 @@
                     <canvas id="xp-source-chart" width="400" height="200"></canvas>
                   </div>
                   <div class="chart-box">
-                    <h4>Planejamento: Progresso x Pressão</h4>
+                    <h4>Objetivos: Progresso x Pressão</h4>
                     <canvas id="planning-focus-chart" width="400" height="200"></canvas>
                   </div>
                   <div class="chart-box">

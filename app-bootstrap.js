@@ -8,6 +8,34 @@ const EXTERNAL_SCRIPT_ORDER = [
   'https://cdn.jsdelivr.net/npm/chart.js',
 ];
 
+function setBootstrapAuthGate(active, options = {}) {
+  const body = document.body;
+  const authScreen = document.getElementById('auth-screen');
+  const titleEl = document.getElementById('auth-screen-title');
+  const textEl = document.getElementById('auth-screen-text');
+  const statusEl = document.getElementById('auth-sync-status');
+
+  if (body) {
+    body.classList.toggle('app-authenticated', active !== true);
+    body.classList.toggle('app-auth-pending', active === true);
+  }
+  if (authScreen) {
+    authScreen.classList.toggle('active', active === true);
+  }
+  if (titleEl) titleEl.textContent = options.title || 'Verificando autenticação';
+  if (textEl) {
+    textEl.textContent =
+      options.text || 'O HEROSPASCOAL fica bloqueado até a sincronização em nuvem ser inicializada.';
+  }
+  if (statusEl) {
+    statusEl.textContent = options.statusText || 'Preparando sincronização';
+    statusEl.classList.remove('ok', 'warn', 'err', 'syncing');
+    statusEl.classList.add(options.statusKind || 'warn');
+  }
+}
+
+window.setBootstrapAuthGate = setBootstrapAuthGate;
+
 function resolveScriptUrl(src) {
   if (/^https?:\/\//i.test(src)) {
     return src;
@@ -63,6 +91,12 @@ async function loadExternalScriptsBestEffort() {
     } catch (error) {
       console.warn(`Script externo indisponível: ${src}`, error);
       if (src === 'cloud-sync.js') {
+        window.setBootstrapAuthGate?.(true, {
+          title: 'Sincronização indisponível',
+          text: 'O cloud-sync não carregou. O aplicativo permanece bloqueado para evitar uso offline.',
+          statusText: 'Falha ao carregar autenticação',
+          statusKind: 'err',
+        });
         window.__cloudSyncBootstrapPending = false;
         if (typeof window.runDeferredStartupResets === 'function') {
           window.runDeferredStartupResets();
@@ -78,6 +112,12 @@ async function runAppBootstrap() {
   }
   window.__bootstrapLoaded = true;
 
+  setBootstrapAuthGate(true, {
+    title: 'Preparando sincronização',
+    text: 'O HEROSPASCOAL ficará disponível depois que a camada de nuvem terminar de subir.',
+    statusText: 'Iniciando autenticação',
+    statusKind: 'warn',
+  });
   await loadCoreScripts();
   window.__cloudSyncBootstrapPending = true;
 

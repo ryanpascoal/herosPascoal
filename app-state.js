@@ -86,8 +86,6 @@ const appData = {
   },
   feedbacks: [],
   objectives: [],
-  projects: [],
-  reviews: [],
   dailyWorkouts: [],
   dailyStudies: [],
   restDays: [],

@@ -349,7 +349,6 @@ function handleWorkoutCompletion() {
       time: workoutDay.time ?? null,
       feedback: workoutDay.feedback || '',
       objectiveId: workout.objectiveId || null,
-      projectId: workout.projectId || null,
       priority: workout.priority || 'medium',
       impact: workout.impact || 'medium',
       effort: workout.effort || 'medium',
@@ -460,7 +459,6 @@ function completeStudy(studyDayId, feedbackText = '') {
       applied: !!studyDay.applied,
       feedback: studyDay.feedback || '',
       objectiveId: study.objectiveId || null,
-      projectId: study.projectId || null,
       priority: study.priority || 'medium',
       impact: study.impact || 'medium',
       effort: study.effort || 'medium',
@@ -680,6 +678,23 @@ function updateActivityForm() {
   }
 }
 
+function setActivityFormSubmitLabel(isEditing) {
+  const submitButton = document.querySelector('#activity-form button[type="submit"]');
+  if (!submitButton) return;
+  submitButton.textContent = isEditing ? 'Atualizar Atividade' : 'Cadastrar Atividade';
+}
+
+function clearActivityEditState(options = {}) {
+  const editIdInput = document.getElementById('activity-edit-id');
+  if (editIdInput) editIdInput.value = '';
+  setActivityFormSubmitLabel(false);
+
+  if (options.resetForm === true) {
+    document.getElementById('activity-form')?.reset();
+    updateActivityForm();
+  }
+}
+
 function handleActivitySubmit(e) {
   e.preventDefault();
 
@@ -700,7 +715,6 @@ function handleActivitySubmit(e) {
       ? readActivityPlanningFields()
       : {
           objectiveId: null,
-          projectId: null,
           priority: 'medium',
           impact: 'medium',
           effort: 'medium',
@@ -845,7 +859,7 @@ function handleActivitySubmit(e) {
     }
   }
 
-  if (editIdInput) editIdInput.value = '';
+  clearActivityEditState();
   e.target.reset();
   updateActivityForm();
   updateUI({ mode: 'activity' });

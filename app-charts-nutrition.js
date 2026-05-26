@@ -269,23 +269,13 @@ function updatePlanningFocusChart() {
     typeof globalThis.getUnifiedTodayActivities === 'function' ? globalThis.getUnifiedTodayActivities() : [];
   const snapshot = globalThis.getPlanningStatisticsSnapshot(appData, { todayActivities });
   const topObjectives = Array.isArray(snapshot.objectiveCards) ? snapshot.objectiveCards.slice(0, 4) : [];
-  const topProjects = Array.isArray(snapshot.projectCards) ? snapshot.projectCards.slice(0, 4) : [];
 
-  const labels = [
-    ...topObjectives.map((objective) => `Obj: ${objective.name}`),
-    ...topProjects.map((project) => `Proj: ${project.name}`),
-  ];
+  const labels = topObjectives.map((objective) => `Obj: ${objective.name}`);
 
   if (labels.length === 0) return;
 
-  const progressData = [
-    ...topObjectives.map((objective) => objective.effectiveProgress || 0),
-    ...topProjects.map((project) => project.effectiveProgress || 0),
-  ];
-  const pressureData = [
-    ...topObjectives.map((objective) => objective.pressureScore || 0),
-    ...topProjects.map((project) => project.pressureScore || 0),
-  ];
+  const progressData = topObjectives.map((objective) => objective.effectiveProgress || 0);
+  const pressureData = topObjectives.map((objective) => objective.pressureScore || 0);
 
   ctx.chart = new Chart(ctx, {
     type: 'bar',

@@ -6,6 +6,141 @@
   box-shadow: none !important;
 }
 
+body.app-auth-pending #app-shell,
+body:not(.app-authenticated) #app-shell {
+  display: none;
+}
+
+body.app-authenticated #app-shell {
+  display: block;
+}
+
+.auth-screen {
+  min-height: 100vh;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background:
+    radial-gradient(circle at top left, rgba(16, 242, 255, 0.18), transparent 32%),
+    radial-gradient(circle at top right, rgba(124, 92, 255, 0.16), transparent 28%),
+    linear-gradient(180deg, #060b14 0%, #0d1524 100%);
+}
+
+.auth-screen.active {
+  display: flex;
+}
+
+body.app-authenticated .auth-screen {
+  display: none;
+}
+
+.auth-screen-panel {
+  width: min(980px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 420px);
+  gap: 28px;
+  align-items: stretch;
+}
+
+.auth-screen-brand,
+.auth-screen-card {
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(8, 14, 26, 0.88);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.auth-screen-brand {
+  padding: 42px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+}
+
+.auth-brand-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(16, 242, 255, 0.12);
+  border: 1px solid rgba(16, 242, 255, 0.22);
+  color: #9eefff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auth-screen-brand h1 {
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1.02;
+  color: #f8fafc;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.auth-screen-brand p {
+  max-width: 40ch;
+  color: rgba(226, 232, 240, 0.8);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.auth-screen-card {
+  padding: 28px;
+  display: grid;
+  gap: 20px;
+  align-content: center;
+}
+
+.auth-screen-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-screen-header h2 {
+  color: #f8fafc;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.auth-screen-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-screen-form input {
+  height: 50px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.82);
+  color: #f8fafc;
+  padding: 0 14px;
+}
+
+.auth-screen-form input:focus {
+  outline: none;
+  border-color: rgba(16, 242, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(16, 242, 255, 0.12);
+}
+
+.auth-screen-form .submit-btn,
+.auth-screen-form .settings-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.auth-screen-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .planning-dashboard {
   display: grid;
   gap: 16px;
@@ -20,8 +155,7 @@
 
 .planning-summary-card,
 .planning-board-card,
-.planning-item-card,
-.review-card {
+.planning-item-card {
   background: rgba(17, 24, 39, 0.72);
   border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 16px;
@@ -66,7 +200,6 @@
 
 .focus-item,
 .planning-alert,
-.planning-review-pill,
 .focus-objective-card,
 .planning-feedback-card {
   border-radius: 12px;
@@ -102,8 +235,7 @@
   font-size: 0.88rem;
 }
 
-.focus-item-priority,
-.planning-review-pill strong {
+.focus-item-priority {
   display: inline-flex;
   align-items: center;
   padding: 4px 8px;
@@ -145,10 +277,6 @@
   border-color: rgba(245, 158, 11, 0.35);
 }
 
-.planning-alert.muted {
-  border-color: rgba(148, 163, 184, 0.18);
-}
-
 .planning-progress-bar {
   width: 100%;
   height: 10px;
@@ -173,8 +301,7 @@
   margin-top: 16px;
 }
 
-.planning-item-card,
-.review-card {
+.planning-item-card {
   padding: 16px;
   margin-top: 12px;
   display: grid;
@@ -184,13 +311,6 @@
 .planning-item-actions {
   display: flex;
   gap: 8px;
-}
-
-.planning-review-pill {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
 }
 
 .planning-feedback-card {
@@ -206,8 +326,7 @@
 
 body.light-theme .planning-summary-card,
 body.light-theme .planning-board-card,
-body.light-theme .planning-item-card,
-body.light-theme .review-card {
+body.light-theme .planning-item-card {
   background: rgba(255, 255, 255, 0.94);
   border-color: rgba(148, 163, 184, 0.2);
   box-shadow: 0 12px 28px rgba(148, 163, 184, 0.18);
@@ -230,7 +349,6 @@ body.light-theme .planning-item-foot {
 
 body.light-theme .focus-item,
 body.light-theme .planning-alert,
-body.light-theme .planning-review-pill,
 body.light-theme .focus-objective-card,
 body.light-theme .planning-feedback-card {
   background: rgba(241, 245, 249, 0.92);
@@ -242,6 +360,15 @@ body.light-theme .planning-feedback-card p {
 }
 
 @media (max-width: 768px) {
+  .auth-screen-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-screen-brand,
+  .auth-screen-card {
+    padding: 24px;
+  }
+
   .planning-board-grid,
   .planning-summary-grid,
   .planning-meta-grid {
@@ -1317,6 +1444,12 @@ body {
   align-items: center;
 }
 
+.cloud-sync-note {
+  width: 100%;
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 0.88rem;
+}
+
 .cloud-user-label {
   font-size: 0.9rem;
   color: var(--gray-color);
@@ -1419,6 +1552,41 @@ body.light-theme .cloud-access-lock-badge {
 
 body.light-theme .cloud-access-lock-card p {
   color: #5b6574;
+}
+
+body.light-theme .auth-screen {
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.14), transparent 32%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 28%),
+    linear-gradient(180deg, #eef4fb 0%, #dfe8f4 100%);
+}
+
+body.light-theme .auth-screen-brand,
+body.light-theme .auth-screen-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+body.light-theme .auth-brand-badge {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.18);
+  color: #1d4ed8;
+}
+
+body.light-theme .auth-screen-brand h1,
+body.light-theme .auth-screen-header h2 {
+  color: #0f172a;
+}
+
+body.light-theme .auth-screen-brand p,
+body.light-theme .cloud-sync-note {
+  color: rgba(15, 23, 42, 0.72);
+}
+
+body.light-theme .auth-screen-form input {
+  background: rgba(241, 245, 249, 0.94);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #0f172a;
 }
 
 .page-header {

@@ -182,12 +182,13 @@
   }
 
   function setSyncStatus(message, kind) {
-    const status = document.getElementById('cloud-sync-status');
-    if (status) {
+    ['cloud-sync-status', 'auth-sync-status'].forEach((id) => {
+      const status = document.getElementById(id);
+      if (!status) return;
       status.textContent = message;
       status.classList.remove('ok', 'warn', 'err', 'syncing');
       status.classList.add(kind || 'warn');
-    }
+    });
 
     // Atualizar indicador no cabeÃƒÂ§alho tambÃƒÂ©m
     updateHeaderSyncIndicator(message, kind);
@@ -247,26 +248,46 @@
   }
 
   function setUserLabel(text) {
-    const userLabel = document.getElementById('cloud-user-label');
-    if (!userLabel) return;
-    userLabel.textContent = text;
+    ['cloud-user-label', 'auth-user-label'].forEach((id) => {
+      const userLabel = document.getElementById(id);
+      if (!userLabel) return;
+      userLabel.textContent = text;
+    });
   }
 
-  function openCloudLoginPanel() {
-    if (typeof switchTab === 'function') {
-      switchTab('perfil');
+  function setAuthEntryState(isAuthenticated, options = {}) {
+    const body = document.body;
+    const authScreen = document.getElementById('auth-screen');
+    const titleEl = document.getElementById('auth-screen-title');
+    const textEl = document.getElementById('auth-screen-text');
+
+    if (body) {
+      body.classList.toggle('app-authenticated', isAuthenticated === true);
+      body.classList.toggle('app-auth-pending', isAuthenticated !== true);
     }
 
-    const syncCard = document.querySelector('.cloud-sync-card');
-    if (syncCard && typeof syncCard.scrollIntoView === 'function') {
-      syncCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (authScreen) {
+      authScreen.classList.toggle('active', isAuthenticated !== true);
     }
+
+    if (titleEl && options.title) titleEl.textContent = options.title;
+    if (textEl && options.text) textEl.textContent = options.text;
+  }
+  window.setAuthEntryState = setAuthEntryState;
+
+  function openCloudLoginPanel() {
+    setAuthEntryState(false, {
+      title: 'Login',
+      text: 'Entre para liberar o sistema e carregar seus dados da nuvem.',
+    });
+    setCloudAccessLock(false);
 
     const emailInput = document.getElementById('cloud-email');
     if (emailInput && typeof emailInput.focus === 'function') {
       window.setTimeout(() => emailInput.focus(), 120);
     }
   }
+  window.openCloudLoginPanel = openCloudLoginPanel;
 
   function ensureCloudAccessLock() {
     let lock = document.getElementById('cloud-access-lock');
@@ -308,6 +329,11 @@
     if (actionEl) {
       actionEl.textContent = actionLabel;
       actionEl.hidden = hideAction;
+    }
+
+    if (!document.body?.classList.contains('app-authenticated')) {
+      lock.classList.remove('active');
+      return;
     }
 
     lock.classList.toggle('active', active === true);
@@ -829,15 +855,19 @@
     const passwordEl = document.getElementById('cloud-password');
     const loginBtn = document.getElementById('cloud-login-btn');
     const registerBtn = document.getElementById('cloud-register-btn');
-    const logoutBtn = document.getElementById('cloud-logout-btn');
-    const syncNowBtn = document.getElementById('cloud-sync-now-btn');
+    const logoutButtons = Array.from(
+      document.querySelectorAll('#cloud-logout-btn, #cloud-profile-logout-btn')
+    );
+    const syncNowButtons = Array.from(
+      document.querySelectorAll('#cloud-sync-now-btn, #cloud-profile-sync-now-btn')
+    );
 
-    if (!emailEl || !passwordEl || !loginBtn || !registerBtn || !logoutBtn || !syncNowBtn) return;
+    if (!emailEl || !passwordEl || !loginBtn || !registerBtn) return;
 
     const savedAuth = parseJson(safeStorageGet(AUTH_CACHE_KEY, null), {});
     if (savedAuth.email) emailEl.value = savedAuth.email;
 
-    loginBtn.addEventListener('click', async function () {
+    const performLogin = async function () {
       const email = (emailEl.value || '').trim();
       const password = passwordEl.value || '';
       if (!email || !password) {
@@ -849,6 +879,13 @@
         await auth.signInWithEmailAndPassword(email, password);
       } catch (err) {
         alert('Erro no login: ' + (err.message || err.code || 'desconhecido'));
+      }
+    };
+    loginBtn.addEventListener('click', performLogin);
+    passwordEl.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        performLogin();
       }
     });
 
@@ -867,16 +904,20 @@
       }
     });
 
-    logoutBtn.addEventListener('click', async function () {
-      await auth.signOut();
+    logoutButtons.forEach((button) => {
+      button.addEventListener('click', async function () {
+        await auth.signOut();
+      });
     });
 
-    syncNowBtn.addEventListener('click', async function () {
-      if (!cloudReady || !currentUser) {
-        alert('Faca login para sincronizar.');
-        return;
-      }
-      await pushCloud(true);
+    syncNowButtons.forEach((button) => {
+      button.addEventListener('click', async function () {
+        if (!cloudReady || !currentUser) {
+          alert('Faca login para sincronizar.');
+          return;
+        }
+        await pushCloud(true);
+      });
     });
   }
 
@@ -884,6 +925,10 @@
     if (window.location && window.location.protocol === 'file:') {
       authResolved = true;
       setSyncStatus('Uso bloqueado: abra via http:// com nuvem ativa', 'err');
+      setAuthEntryState(false, {
+        title: 'Abra via http://',
+        text: 'O HEROSPASCOAL só entra após login e sincronização. Abra o projeto via http:// para autenticar.',
+      });
       setCloudAccessLock(true, {
         title: 'Uso offline bloqueado',
         text: 'Abra o aplicativo via http:// para autenticar e sincronizar. O modo offline foi desativado.',
@@ -897,6 +942,10 @@
       authResolved = true;
       startupRemoteSyncFailed = true;
       setSyncStatus('SDK Firebase nao carregado', 'err');
+      setAuthEntryState(false, {
+        title: 'Sincronização indisponível',
+        text: 'O Firebase não carregou. Sem nuvem, o sistema não libera a entrada.',
+      });
       setCloudAccessLock(true, {
         title: 'Sincronização indisponível',
         text: 'O Firebase não carregou. Sem nuvem, o uso do app fica bloqueado para evitar conflitos.',
@@ -909,6 +958,10 @@
     if (!hasValidFirebaseConfig()) {
       authResolved = true;
       setSyncStatus('Configure FIREBASE_CONFIG', 'err');
+      setAuthEntryState(false, {
+        title: 'Configuração incompleta',
+        text: 'O Firebase ainda não está configurado. Sem isso, o login não libera o sistema.',
+      });
       setCloudAccessLock(true, {
         title: 'Sincronização não configurada',
         text: 'A configuração do Firebase está incompleta. Sem nuvem, o uso do app fica bloqueado.',
@@ -941,6 +994,10 @@
         hasUnsyncedLocalChanges = false;
         setUserLabel('N\u00e3o autenticado');
         setSyncStatus('Login obrigatório para usar', 'warn');
+        setAuthEntryState(false, {
+          title: 'Login',
+          text: 'Entre para liberar o HEROSPASCOAL e carregar seu progresso sincronizado.',
+        });
         setCloudAccessLock(true, {
           title: 'Faça login para continuar',
           text: 'O modo offline foi desativado. Seus dados locais continuam guardados e terão prioridade ao sincronizar.',
@@ -959,6 +1016,10 @@
       pendingRemoteConflict = null;
       setUserLabel('Usuario: ' + (user.email || user.uid));
       setSyncStatus('Conectado. Sincronizando...', 'warn');
+      setAuthEntryState(false, {
+        title: 'Sincronizando seus dados',
+        text: 'Aguarde enquanto a sessão valida o login e alinha seus dados com a nuvem.',
+      });
       setCloudAccessLock(true, {
         title: 'Sincronizando seus dados',
         text: 'Aguarde enquanto alinhamos seus dados locais com a nuvem. Os dados locais têm prioridade automática.',
@@ -976,11 +1037,16 @@
         }
         if (typeof updateStreaks === 'function') updateStreaks();
         if (typeof updateUI === 'function') updateUI({ mode: 'full', forceCalendar: true });
+        setAuthEntryState(true);
         setCloudAccessLock(false);
       } catch (err) {
         console.error('Erro ao carregar nuvem:', err);
         startupRemoteSyncFailed = true;
         setSyncStatus('Falha ao carregar nuvem', 'err');
+        setAuthEntryState(false, {
+          title: 'Falha ao entrar',
+          text: 'O login foi reconhecido, mas a sincronização inicial falhou. O sistema continua bloqueado até a nuvem responder.',
+        });
         setCloudAccessLock(true, {
           title: 'Falha ao conectar com a nuvem',
           text: 'Sem sincronização ativa, o uso do app fica bloqueado para proteger seus dados locais.',
@@ -997,6 +1063,10 @@
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function () {
         ensureCloudUI();
+        setAuthEntryState(false, {
+          title: 'Verificando autenticação',
+          text: 'O sistema libera o painel principal apenas depois da autenticação e da sincronização inicial.',
+        });
         setCloudAccessLock(true, {
           title: 'Verificando autenticação',
           text: 'O uso do HEROSPASCOAL fica disponível após conectar seus dados locais à nuvem.',
@@ -1008,6 +1078,10 @@
     }
 
     ensureCloudUI();
+    setAuthEntryState(false, {
+      title: 'Verificando autenticação',
+      text: 'O sistema libera o painel principal apenas depois da autenticação e da sincronização inicial.',
+    });
     setCloudAccessLock(true, {
       title: 'Verificando autenticação',
       text: 'O uso do HEROSPASCOAL fica disponível após conectar seus dados locais à nuvem.',

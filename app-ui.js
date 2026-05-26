@@ -21,6 +21,9 @@
   if (typeof updateActivityForm === 'function') {
     updateActivityForm();
   }
+  if (typeof setActivityFormSubmitLabel === 'function') {
+    setActivityFormSubmitLabel(false);
+  }
 
   // Inicializar opções do mês em Gestão
   populateFinanceMonthOptions();
@@ -33,18 +36,11 @@
   const recurringStartInput = document.getElementById('finance-recurring-start');
   if (recurringStartInput && !recurringStartInput.value)
     recurringStartInput.value = getLocalDateString();
-  const reviewPeriodStartInput = document.getElementById('review-period-start');
-  if (reviewPeriodStartInput && !reviewPeriodStartInput.value) {
-    reviewPeriodStartInput.value = getLocalDateString();
-  }
   if (typeof ensurePlanningState === 'function') {
     ensurePlanningState(appData);
   }
   if (typeof populateObjectiveOptions === 'function') {
     populateObjectiveOptions();
-  }
-  if (typeof updateProjectSelectOptions === 'function') {
-    updateProjectSelectOptions();
   }
   initNutritionForms();
 
@@ -248,12 +244,10 @@ function initEvents() {
   });
   bindManyById('submit', {
      'activity-form': handleActivitySubmit,
-     'shop-item-form': handleShopItemSubmit,
-     'class-form': handleClassSubmit,
-     'objective-form': handleObjectiveSubmit,
-     'project-form': handleProjectSubmit,
-     'review-form': handleReviewSubmit,
-     'finance-form': handleFinanceSubmit,
+      'shop-item-form': handleShopItemSubmit,
+      'class-form': handleClassSubmit,
+      'objective-form': handleObjectiveSubmit,
+      'finance-form': handleFinanceSubmit,
      'finance-budget-form': handleFinanceBudgetSubmit,
      'finance-recurring-form': handleFinanceRecurringSubmit,
     'nutrition-food-form': handleNutritionFoodSubmit,
@@ -411,6 +405,9 @@ function initEvents() {
   });
 
   document.getElementById('activity-category')?.addEventListener('change', function () {
+    if (typeof clearActivityEditState === 'function') {
+      clearActivityEditState();
+    }
     updateActivityForm();
   });
   document.getElementById('activity-schedule-type')?.addEventListener('change', function () {
