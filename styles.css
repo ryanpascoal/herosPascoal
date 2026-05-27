@@ -4169,7 +4169,7 @@ tr:hover {
     width: 100%;
     margin-top: 5px;
   }
-}
+
 
   .level-xp-integrated {
     margin-top: 10px;
@@ -6179,7 +6179,7 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
 
 /* Activity Card Styles */
 .compact-activity-card {
-  display: flex;
+  display: grid;
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
@@ -6188,6 +6188,8 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   border: 1px solid var(--card-border, rgba(96, 165, 250, 0.24));
   margin-bottom: 6px;
   min-height: 44px;
+  grid-auto-flow: column;
+  justify-content: space-between;
 }
 
 .compact-activity-card > * {
@@ -6261,7 +6263,7 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
 
 .activity-actions .complete-btn {
   padding: 6px 10px;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   border-radius: 6px;
   border: none;
   cursor: pointer;
@@ -6276,7 +6278,7 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
 
 .activity-actions .skip-btn {
   padding: 6px 8px;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   border-radius: 6px;
   border: none;
   cursor: pointer;
@@ -6821,7 +6823,7 @@ body.light-theme {
 .compact-activity-card {
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 8px 8px;
   min-height: 58px;
 }
 
@@ -8033,7 +8035,7 @@ body.light-theme #perfil .hero-logs-section .log-icon {
   .activity-actions .complete-study-btn {
     flex: 1 1 calc(50% - 3px);
   }
-}
+
 }
 
 @media (max-width: 560px) {
