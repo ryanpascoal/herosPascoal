@@ -1045,6 +1045,7 @@ function switchTab(tabName) {
   // Remover a classe active de todas as abas
   document.querySelectorAll('.tab-content').forEach((tab) => {
     tab.classList.remove('active');
+    tab.style.display = 'none';
   });
 
   document.querySelectorAll('.nav-item').forEach((item) => {
@@ -1052,7 +1053,11 @@ function switchTab(tabName) {
   });
 
   // Adicionar a classe active à aba selecionada
-  document.getElementById(tabName)?.classList.add('active');
+  const activeTab = document.getElementById(tabName);
+  if (activeTab) {
+    activeTab.classList.add('active');
+    activeTab.style.display = 'block';
+  }
 
   document.querySelector(`.nav-item[data-tab="${tabName}"]`)?.classList.add('active');
 

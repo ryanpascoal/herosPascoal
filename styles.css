@@ -7265,6 +7265,236 @@ body.light-theme .history-card.skipped .mission-details {
   color: #526277;
 }
 
+.tab-content:not(.active) {
+  display: none !important;
+}
+
+.tab-content.active {
+  display: block !important;
+}
+
+#perfil .shop-inventory,
+#perfil .hero-logs-section,
+#perfil .streaks-container,
+#perfil .streak-card,
+#perfil .shop-item,
+#perfil .inventory-item,
+#atividades .calendar-panel,
+#atividades .calendar-details,
+#atividades .calendar-details-item,
+#atividades .calendar-rest-control {
+  background: var(--card-bg) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+#perfil .hero-logs-section,
+#perfil .streaks-container,
+#perfil .shop-inventory,
+#atividades .calendar-panel {
+  border: 1px solid var(--card-border) !important;
+}
+
+#perfil .hero-logs-section .log-item {
+  border-left: 3px solid rgba(56, 189, 248, 0.35) !important;
+  background: rgba(7, 14, 26, 0.78) !important;
+  box-shadow: none !important;
+}
+
+#perfil .hero-logs-section .log-item:nth-child(even) {
+  background: rgba(7, 14, 26, 0.78) !important;
+}
+
+#perfil .hero-logs-section .log-icon {
+  background: rgba(56, 189, 248, 0.1) !important;
+  border: 1px solid rgba(56, 189, 248, 0.18) !important;
+  color: #d8f3ff !important;
+  box-shadow: none !important;
+}
+
+#perfil .hero-logs-section .log-title {
+  color: #f2f7ff;
+}
+
+#perfil .hero-logs-section .log-text {
+  color: var(--gray-color);
+}
+
+#perfil .streaks-container {
+  padding: 20px;
+}
+
+#perfil .streak-card {
+  background: rgba(7, 14, 26, 0.72) !important;
+  box-shadow: none !important;
+}
+
+#perfil .streak-icon {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+#perfil .streak-count {
+  color: #f2f7ff;
+}
+
+#perfil .streak-record {
+  color: var(--gray-color);
+}
+
+#perfil .shop-item,
+#perfil .inventory-item {
+  padding: 16px;
+  border-radius: 18px !important;
+  background: rgba(7, 14, 26, 0.78) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+#perfil .shop-item-header,
+#perfil .shop-item-footer,
+#perfil .shop-item-cost {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#perfil .shop-item-header,
+#perfil .shop-item-footer {
+  justify-content: space-between;
+}
+
+#perfil .shop-item-name,
+#perfil .shop-item-cost {
+  min-width: 0;
+}
+
+#perfil .shop-item-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #f2f7ff;
+}
+
+#perfil .shop-item-level,
+#perfil .shop-item-desc,
+#perfil .inventory-item-desc,
+#perfil .inventory-item-meta {
+  color: var(--gray-color);
+}
+
+#perfil .shop-item-body {
+  display: grid;
+  gap: 14px;
+}
+
+#perfil .buy-btn,
+#perfil .use-btn,
+#perfil .action-btn,
+#perfil .settings-btn,
+#atividades .calendar-action-btn,
+#gestao .finance-delete-btn {
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+#perfil .buy-btn {
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  background: rgba(56, 189, 248, 0.12);
+  color: #dff6ff;
+}
+
+#perfil .buy-btn:hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.28);
+}
+
+#atividades .calendar-panel,
+#atividades .calendar-details {
+  border-radius: 14px !important;
+}
+
+#atividades .calendar-day.today,
+#atividades .calendar-day.selected,
+.calendar-day.streak-day,
+.calendar-day.failure-day,
+body.light-theme .calendar-day.streak-day,
+body.light-theme .calendar-day.failure-day {
+  box-shadow: none !important;
+}
+
+#atividades .calendar-details-item.pending,
+#atividades .calendar-details-item.completed {
+  background: rgba(7, 14, 26, 0.78) !important;
+}
+
+#atividades .calendar-details-item.pending {
+  border-color: rgba(245, 158, 11, 0.24) !important;
+}
+
+#atividades .calendar-details-item.completed {
+  border-color: rgba(34, 197, 94, 0.22) !important;
+  opacity: 1;
+}
+
+body.light-theme .settings-btn,
+body.light-theme .action-btn,
+body.light-theme .buy-btn,
+body.light-theme .use-btn,
+body.light-theme .edit-btn,
+body.light-theme .delete-btn,
+body.light-theme .primary-btn,
+body.light-theme .complete-btn,
+body.light-theme .complete-workout-btn,
+body.light-theme .complete-study-btn,
+body.light-theme .skip-btn,
+body.light-theme .calendar-nav-btn,
+body.light-theme .calendar-rest-btn,
+body.light-theme .calendar-action-btn,
+body.light-theme .finance-delete-btn {
+  color: #162235 !important;
+}
+
+body.light-theme .submit-btn {
+  color: #f8fbff !important;
+}
+
+body.light-theme #perfil .hero-logs-section,
+body.light-theme #perfil .streaks-container,
+body.light-theme #perfil .shop-inventory,
+body.light-theme #perfil .shop-item,
+body.light-theme #perfil .inventory-item,
+body.light-theme #perfil .hero-logs-section .log-item,
+body.light-theme #atividades .calendar-panel,
+body.light-theme #atividades .calendar-details,
+body.light-theme #atividades .calendar-details-item,
+body.light-theme #atividades .calendar-rest-control {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+body.light-theme #perfil .hero-logs-section .log-title,
+body.light-theme #perfil .shop-item-name,
+body.light-theme #perfil .inventory-item-name,
+body.light-theme #perfil .streak-count {
+  color: #162235 !important;
+}
+
+body.light-theme #perfil .hero-logs-section .log-text,
+body.light-theme #perfil .streak-record,
+body.light-theme #perfil .shop-item-level,
+body.light-theme #perfil .shop-item-desc,
+body.light-theme #perfil .inventory-item-desc,
+body.light-theme #perfil .inventory-item-meta {
+  color: #526277 !important;
+}
+
+body.light-theme #perfil .hero-logs-section .log-icon {
+  color: #0f766e !important;
+  background: rgba(15, 118, 110, 0.08) !important;
+  border-color: rgba(15, 118, 110, 0.12) !important;
+}
+
 @media (max-width: 768px) {
   #perfil .profile-header {
     align-items: center;
@@ -7673,6 +7903,115 @@ body.light-theme .history-card.skipped .mission-details {
     width: 100%;
     justify-content: center;
   }
+
+  .main-content {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .main-nav {
+    overflow: hidden;
+  }
+
+  .nav-list {
+    width: 100%;
+  }
+
+  .nav-item {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .nav-item span {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  #perfil .shop-item-header,
+  #perfil .shop-item-footer,
+  #gestao .finance-item,
+  #gestao .finance-item-actions {
+    flex-wrap: wrap;
+  }
+
+  .compact-activity-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+
+  .compact-activity-card > * {
+    min-width: 0;
+  }
+
+  .activity-name {
+    flex: 1 1 calc(100% - 54px);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.25;
+  }
+
+  .activity-due-date {
+    order: 3;
+  }
+
+  .activity-actions {
+    width: 100%;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    white-space: normal;
+  }
+
+  .activity-actions .complete-btn,
+  .activity-actions .skip-btn,
+  .activity-actions .complete-workout-btn,
+  .activity-actions .complete-study-btn,
+  .workout-entries-input {
+    min-width: 0;
+  }
+
+  .activity-actions .complete-btn,
+  .activity-actions .skip-btn,
+  .activity-actions .complete-workout-btn,
+  .activity-actions .complete-study-btn {
+    white-space: normal;
+    text-align: center;
+  }
+
+  .workout-entries-input {
+    flex: 1 1 72px;
+  }
+}
+
+@media (max-width: 560px) {
+  .nav-item {
+    min-height: 50px;
+    padding: 5px 2px;
+  }
+
+  .nav-item span {
+    font-size: 0.56rem;
+    line-height: 1.05;
+  }
+
+  .compact-activity-card {
+    padding: 10px;
+  }
+
+  .activity-actions {
+    justify-content: stretch;
+    gap: 6px;
+  }
+
+  .activity-actions .complete-btn,
+  .activity-actions .skip-btn,
+  .activity-actions .complete-workout-btn,
+  .activity-actions .complete-study-btn {
+    flex: 1 1 calc(50% - 3px);
+  }
+}
 }
 
 @media (max-width: 560px) {
