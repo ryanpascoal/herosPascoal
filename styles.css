@@ -7265,6 +7265,24 @@ body.light-theme .history-card.skipped .mission-details {
   color: #526277;
 }
 
+#gestao .sub-content {
+  display: grid;
+  gap: 16px;
+}
+
+#gestao .sub-tab.active {
+  display: grid;
+  gap: 16px;
+}
+
+#gestao .finance-summary,
+#gestao .finance-filters,
+#gestao .finance-management-grid,
+#gestao .finance-list,
+#gestao .finance-charts {
+  margin-bottom: 0;
+}
+
 .tab-content:not(.active) {
   display: none !important;
 }
@@ -7832,6 +7850,10 @@ body.light-theme #perfil .hero-logs-section .log-icon {
   #estatisticas .record-item {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  #gestao .sub-nav {
+    margin-bottom: 14px;
   }
 
   #gestao .finance-item-actions {

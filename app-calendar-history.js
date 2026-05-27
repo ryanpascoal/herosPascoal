@@ -1066,6 +1066,11 @@ function switchTab(tabName) {
     updateCharts();
   } else if (tabName === 'atividades') {
     renderMissionsCalendar();
+  } else if (tabName === 'gestao') {
+    const financeTabs = document.getElementById('gestao');
+    if (financeTabs && !financeTabs.querySelector('.sub-tab.active')) {
+      switchSubTab('gestao-resumo', financeTabs);
+    }
   } else if (tabName === 'alimentacao') {
     updateNutritionView();
   } else if (tabName === 'perfil') {

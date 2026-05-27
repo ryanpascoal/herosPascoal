@@ -72,54 +72,9 @@
       };
     }
 
-    const safeToleranceMs =
-      Number.isFinite(Number(timeToleranceMs)) && Number(timeToleranceMs) >= 0
-        ? Number(timeToleranceMs)
-        : 1000;
-    const localMs = getTimestampMs(localSavedAt);
-    const remoteMs = getTimestampMs(remoteUpdatedAt);
-
-    if (localMs > 0 && remoteMs > 0) {
-      if (localMs > remoteMs + safeToleranceMs) {
-        return {
-          action: 'push_local',
-          reason: 'local_newer',
-          localHash,
-          remoteHash,
-        };
-      }
-
-      if (remoteMs > localMs + safeToleranceMs) {
-        return {
-          action: 'apply_remote',
-          reason: 'remote_newer',
-          localHash,
-          remoteHash,
-        };
-      }
-    }
-
-    if (localMs > 0 && remoteMs === 0) {
-      return {
-        action: 'push_local',
-        reason: 'local_newer',
-        localHash,
-        remoteHash,
-      };
-    }
-
-    if (remoteMs > 0) {
-      return {
-        action: 'apply_remote',
-        reason: 'remote_preferred',
-        localHash,
-        remoteHash,
-      };
-    }
-
     return {
-      action: 'push_local',
-      reason: 'local_priority_fallback',
+      action: 'apply_remote',
+      reason: 'remote_authoritative',
       localHash,
       remoteHash,
     };

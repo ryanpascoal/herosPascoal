@@ -697,7 +697,7 @@
 
     if (decision.action === 'push_local') {
       updateServerMetaFromLocal();
-      setSyncStatus('Dados locais priorizados. Atualizando nuvem...', 'syncing');
+      setSyncStatus('Primeira sincronização. Enviando dados locais para a nuvem...', 'syncing');
       return {
         hasRemoteData: true,
         shouldPushLocal: true,
@@ -843,7 +843,23 @@
 
       if (cloudReady && currentUser) {
         try {
-          await getProgressRef(currentUser.uid).delete();
+          const resetState =
+            typeof cloneDefaultAppState === 'function'
+              ? cloneDefaultAppState()
+              : JSON.parse(JSON.stringify(APP_DEFAULTS));
+          const nowIso = new Date().toISOString();
+          const payload = {
+            appData: resetState,
+            updatedAt:
+              typeof firebase !== 'undefined' && firebase?.firestore?.FieldValue?.serverTimestamp
+                ? firebase.firestore.FieldValue.serverTimestamp()
+                : nowIso,
+            updatedBy: currentUser.uid,
+            updatedByEmail: currentUser.email || null,
+            updatedBySession: CLIENT_SESSION_ID,
+            serverMeta: resetState.serverMeta || { lastDailyReset: null, lastWeeklyReset: null },
+          };
+          await getProgressRef(currentUser.uid).set(payload, { merge: false });
         } catch (err) {
           console.error('Erro ao limpar progresso remoto:', err);
         }
@@ -1004,7 +1020,7 @@
         });
         setCloudAccessLock(true, {
           title: 'Faça login para continuar',
-          text: 'O modo offline foi desativado. Seus dados locais continuam guardados e terão prioridade ao sincronizar.',
+          text: 'O modo offline foi desativado. Ao entrar, o progresso sincronizado da conta será a fonte principal.',
           actionLabel: 'Ir para login',
         });
         releaseStartupGate();
@@ -1026,7 +1042,7 @@
       });
       setCloudAccessLock(true, {
         title: 'Sincronizando seus dados',
-        text: 'Aguarde enquanto alinhamos seus dados locais com a nuvem. Os dados locais têm prioridade automática.',
+        text: 'Aguarde enquanto carregamos o progresso sincronizado da sua conta.',
         hideAction: true,
       });
 
