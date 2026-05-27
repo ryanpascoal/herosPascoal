@@ -66,8 +66,10 @@ const appData = {
   heroLogs: [],
   statistics: {
     workoutsDone: 0,
+    workoutsFailed: 0,
     workoutsIgnored: 0,
     studiesDone: 0,
+    studiesFailed: 0,
     studiesIgnored: 0,
     worksDone: 0,
     worksFailed: 0,

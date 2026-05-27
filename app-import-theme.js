@@ -699,6 +699,16 @@ function editBook(id) {
   openActivityEditor('book', book);
 }
 
+function deleteBook(id) {
+  deleteNamedEmojiItem({
+    list: appData.books,
+    id,
+    confirmText: 'Tem certeza que deseja excluir este livro?',
+    successText: 'Livro excluído com sucesso!',
+    updateMode: 'activity',
+  });
+}
+
 function editMission(id) {
   const mission = appData.missions.find((m) => m.id === id);
   if (!mission) return;
@@ -740,6 +750,14 @@ function editClass(id) {
     emojiPrompt: 'Novo emoji (opcional):',
     updateMode: 'activity',
   });
+}
+
+function setPrimaryClass(id) {
+  const cls = appData.classes.find((item) => item.id === id);
+  if (!cls) return;
+  appData.hero.primaryClassId = cls.id;
+  updateUI({ mode: 'activity' });
+  showFeedback(`Classe principal definida: ${cls.name}`, 'success');
 }
 
 async function deleteClass(id) {
@@ -1159,15 +1177,23 @@ Object.assign(globalThis, {
   editStudy,
   deleteStudy,
   editBook,
+  deleteBook,
   editMission,
   deleteMission,
   editWork,
   deleteWork,
   editClass,
+  setPrimaryClass,
   deleteClass,
   applyPenalties,
   toggleTheme,
   applySavedTheme,
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    setPrimaryClass,
+  };
+}
 
 

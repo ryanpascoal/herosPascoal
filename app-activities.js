@@ -135,8 +135,7 @@ function getAllTodayActivities() {
 
   (appData.books || []).forEach((book) => {
     if (!book || book.status === 'concluido') return;
-    if (book.status === 'lendo' || book.status === 'quero-ler')
-      items.push({ category: 'book', item: book });
+    if (book.status === 'lendo') items.push({ category: 'book', item: book });
   });
 
   return sortActivityItems(items);
@@ -785,15 +784,143 @@ function updateMaxStreaks() {
   );
 }
 
+function getDailyStatisticsBreakdown(dayData = {}) {
+  const missionsFailed = Number(dayData.missionsMissed || 0);
+  const worksFailed = Number(dayData.worksMissed || 0);
+  const workoutsFailed = Number(dayData.workoutsMissed || 0);
+  const studiesFailed = Number(dayData.studiesMissed || 0);
+  const missionsIgnored = Number(dayData.missionsIgnored || 0);
+  const worksIgnored = Number(dayData.worksIgnored || 0);
+  const workoutsIgnored = Number(dayData.workoutsIgnored || 0);
+  const studiesIgnored = Number(dayData.studiesIgnored || 0);
+
+  return {
+    missions: Number(dayData.missions || 0),
+    works: Number(dayData.works || 0),
+    workouts: Number(dayData.workouts || 0),
+    studies: Number(dayData.studies || 0),
+    missionsFailed,
+    worksFailed,
+    workoutsFailed,
+    studiesFailed,
+    missionsIgnored,
+    worksIgnored,
+    workoutsIgnored,
+    studiesIgnored,
+    missionsMissed: missionsFailed + missionsIgnored,
+    worksMissed: worksFailed + worksIgnored,
+    workoutsMissed: workoutsFailed + workoutsIgnored,
+    studiesMissed: studiesFailed + studiesIgnored,
+    totalXP: Number(dayData.totalXP || 0),
+  };
+}
+
+function buildStatisticsRecordSnapshot(productiveDays = {}) {
+  const snapshot = {
+    maxXpDay: { value: 0, date: '' },
+    maxMissionsDay: { value: 0, date: '' },
+    maxWorksDay: { value: 0, date: '' },
+    maxWorkoutsDay: { value: 0, date: '' },
+    maxStudiesDay: { value: 0, date: '' },
+  };
+
+  Object.entries(productiveDays || {}).forEach(([dateKey, dayData]) => {
+    const breakdown = getDailyStatisticsBreakdown(dayData);
+
+    if (breakdown.totalXP > snapshot.maxXpDay.value) {
+      snapshot.maxXpDay = { value: breakdown.totalXP, date: dateKey };
+    }
+    if (breakdown.missions > snapshot.maxMissionsDay.value) {
+      snapshot.maxMissionsDay = { value: breakdown.missions, date: dateKey };
+    }
+    if (breakdown.works > snapshot.maxWorksDay.value) {
+      snapshot.maxWorksDay = { value: breakdown.works, date: dateKey };
+    }
+    if (breakdown.workouts > snapshot.maxWorkoutsDay.value) {
+      snapshot.maxWorkoutsDay = { value: breakdown.workouts, date: dateKey };
+    }
+    if (breakdown.studies > snapshot.maxStudiesDay.value) {
+      snapshot.maxStudiesDay = { value: breakdown.studies, date: dateKey };
+    }
+  });
+
+  return snapshot;
+}
+
+function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
+  const summaryById = new Map();
+
+  const ensureBucket = (id, fallback = {}) => {
+    const safeId = String(id || fallback.id || fallback.workoutId || '');
+    if (!safeId) return null;
+    if (!summaryById.has(safeId)) {
+      summaryById.set(safeId, {
+        id: safeId,
+        name: fallback.name || 'Treino',
+        emoji: fallback.emoji || '💪',
+        type: fallback.type || '',
+        totalReps: 0,
+        totalDistance: 0,
+        totalTime: 0,
+        timesDone: 0,
+      });
+    }
+    const bucket = summaryById.get(safeId);
+    if (!bucket.name && fallback.name) bucket.name = fallback.name;
+    if ((!bucket.emoji || bucket.emoji === '💪') && fallback.emoji) bucket.emoji = fallback.emoji;
+    if (!bucket.type && fallback.type) bucket.type = fallback.type;
+    return bucket;
+  };
+
+  (workouts || []).forEach((workout) => {
+    ensureBucket(workout?.id, workout);
+  });
+
+  (completedWorkouts || []).forEach((entry) => {
+    if (!entry || entry.failed || entry.skipped) return;
+    const bucket = ensureBucket(entry.workoutId, entry);
+    if (!bucket) return;
+
+    bucket.timesDone += 1;
+
+    if (entry.type === 'repeticao' && Array.isArray(entry.series)) {
+      bucket.totalReps += entry.series.reduce((sum, value) => sum + (parseInt(value, 10) || 0), 0);
+      return;
+    }
+
+    if (entry.type === 'distancia') {
+      bucket.totalDistance += Number(entry.distance || 0);
+      bucket.totalTime += Number(entry.time || 0);
+      return;
+    }
+
+    bucket.totalTime += Number(entry.time || 0);
+  });
+
+  return Array.from(summaryById.values()).sort((a, b) =>
+    String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR')
+  );
+}
+
+function formatRecordValueWithDate(record) {
+  if (!record || !record.value) return '';
+  if (!record.date) return String(record.value);
+  return `${record.value} (${formatDate(record.date)})`;
+}
+
 // Atualizar estatísticas
 function updateStatistics() {
   const statWorkoutsDone = document.getElementById('stat-workouts-done');
   if (statWorkoutsDone) statWorkoutsDone.textContent = appData.statistics.workoutsDone || 0;
+  const statWorkoutsFailed = document.getElementById('stat-workouts-failed');
+  if (statWorkoutsFailed) statWorkoutsFailed.textContent = appData.statistics.workoutsFailed || 0;
   const statWorkoutsIgnored = document.getElementById('stat-workouts-ignored');
   if (statWorkoutsIgnored)
     statWorkoutsIgnored.textContent = appData.statistics.workoutsIgnored || 0;
   const statStudiesDone = document.getElementById('stat-studies-done');
   if (statStudiesDone) statStudiesDone.textContent = appData.statistics.studiesDone || 0;
+  const statStudiesFailed = document.getElementById('stat-studies-failed');
+  if (statStudiesFailed) statStudiesFailed.textContent = appData.statistics.studiesFailed || 0;
   const statStudiesIgnored = document.getElementById('stat-studies-ignored');
   if (statStudiesIgnored) statStudiesIgnored.textContent = appData.statistics.studiesIgnored || 0;
   const statWorksDone = document.getElementById('stat-works-done');
@@ -808,8 +935,8 @@ function updateStatistics() {
   if (statMissionsDone) statMissionsDone.textContent = appData.statistics.missionsDone || 0;
   const statMissionsFailed = document.getElementById('stat-missions-failed');
   if (statMissionsFailed) statMissionsFailed.textContent = appData.statistics.missionsFailed || 0;
-  const statJusticeDone = document.getElementById('stat-justice-done');
-  if (statJusticeDone) statJusticeDone.textContent = appData.statistics.justiceDone || 0;
+  const statMissionsIgnored = document.getElementById('stat-missions-ignored');
+  if (statMissionsIgnored) statMissionsIgnored.textContent = appData.statistics.missionsIgnored || 0;
   if (typeof renderPlanningStatisticsPanel === 'function') {
     renderPlanningStatisticsPanel(typeof getUnifiedTodayActivities === 'function' ? getUnifiedTodayActivities() : []);
   }
@@ -997,35 +1124,53 @@ function getPeriodDateKeys(days, offsetDays) {
 
 function getEventDateKey(entry) {
   if (!entry || typeof entry !== 'object') return '';
-  return entry.completedDate || entry.failedDate || entry.skippedDate || entry.date || '';
+  if (entry.failed) return entry.failedDate || entry.missedDate || entry.date || '';
+  if (entry.skipped) return entry.skippedDate || entry.date || '';
+  return entry.completedDate || entry.date || '';
 }
 
 function getTotalsFromDateKeys(keys) {
   const safeKeys = keys instanceof Set ? keys : new Set();
   const totals = {
     missions: 0,
+    missionsFailed: 0,
+    missionsIgnored: 0,
     missionsMissed: 0,
     works: 0,
+    worksFailed: 0,
+    worksIgnored: 0,
     worksMissed: 0,
     workouts: 0,
+    workoutsFailed: 0,
+    workoutsIgnored: 0,
     workoutsMissed: 0,
     studies: 0,
+    studiesFailed: 0,
+    studiesIgnored: 0,
     studiesMissed: 0,
     totalXP: 0,
   };
 
   const productiveSource = appData.statistics.productiveDays || {};
   safeKeys.forEach((key) => {
-    const data = productiveSource[key] || {};
-    totals.missions += Number(data.missions || 0);
-    totals.missionsMissed += Number(data.missionsMissed || 0);
-    totals.works += Number(data.works || 0);
-    totals.worksMissed += Number(data.worksMissed || 0);
-    totals.workouts += Number(data.workouts || 0);
-    totals.workoutsMissed += Number(data.workoutsMissed || 0);
-    totals.studies += Number(data.studies || 0);
-    totals.studiesMissed += Number(data.studiesMissed || 0);
-    totals.totalXP += Number(data.totalXP || 0);
+    const breakdown = getDailyStatisticsBreakdown(productiveSource[key] || {});
+    totals.missions += breakdown.missions;
+    totals.missionsFailed += breakdown.missionsFailed;
+    totals.missionsIgnored += breakdown.missionsIgnored;
+    totals.missionsMissed += breakdown.missionsMissed;
+    totals.works += breakdown.works;
+    totals.worksFailed += breakdown.worksFailed;
+    totals.worksIgnored += breakdown.worksIgnored;
+    totals.worksMissed += breakdown.worksMissed;
+    totals.workouts += breakdown.workouts;
+    totals.workoutsFailed += breakdown.workoutsFailed;
+    totals.workoutsIgnored += breakdown.workoutsIgnored;
+    totals.workoutsMissed += breakdown.workoutsMissed;
+    totals.studies += breakdown.studies;
+    totals.studiesFailed += breakdown.studiesFailed;
+    totals.studiesIgnored += breakdown.studiesIgnored;
+    totals.studiesMissed += breakdown.studiesMissed;
+    totals.totalXP += breakdown.totalXP;
   });
 
   return totals;
@@ -1088,29 +1233,17 @@ function updateWorkoutDetailsTable() {
 
   tbody.innerHTML = '';
 
-  appData.workouts.forEach((workout) => {
+  buildWorkoutHistorySummary(appData.workouts, appData.completedWorkouts).forEach((workout) => {
     const row = document.createElement('tr');
     const safeWorkoutLabel = escapeHtml(`${workout.emoji || '💪'} ${workout.name || 'Treino'}`);
 
-    let totalReps = 0;
-    let totalDistance = 0;
-    let totalTime = 0;
-    let timesDone = 0;
-
-    if (workout.stats) {
-      totalReps = workout.stats.totalReps || 0;
-      totalDistance = workout.stats.totalDistance || 0;
-      totalTime = workout.stats.totalTime || 0;
-      timesDone = workout.stats.completed || 0;
-    }
-
     row.innerHTML = `
             <td>${safeWorkoutLabel}</td>
-            <td>${workout.type === 'repeticao' ? totalReps : '-'}</td>
-            <td>${workout.type === 'distancia' ? totalDistance.toFixed(2) + ' km' : '-'}</td>
-            <td>${workout.type === 'distancia' ? (totalTime > 0 ? totalTime.toFixed(1) + ' min' : '-') : workout.type === 'maior-tempo' || workout.type === 'menor-tempo' ? totalTime.toFixed(1) + ' min' : '-'}</td>
-            <td>${workout.type === 'distancia' && totalTime > 0 ? ((totalDistance / totalTime) * 60).toFixed(1) + ' km/h' : '-'}</td>
-            <td>${timesDone}</td>
+            <td>${workout.type === 'repeticao' ? workout.totalReps : '-'}</td>
+            <td>${workout.type === 'distancia' ? workout.totalDistance.toFixed(2) + ' km' : '-'}</td>
+            <td>${workout.type === 'distancia' ? (workout.totalTime > 0 ? workout.totalTime.toFixed(1) + ' min' : '-') : workout.type === 'maior-tempo' || workout.type === 'menor-tempo' ? workout.totalTime.toFixed(1) + ' min' : '-'}</td>
+            <td>${workout.type === 'distancia' && workout.totalTime > 0 ? ((workout.totalDistance / workout.totalTime) * 60).toFixed(1) + ' km/h' : '-'}</td>
+            <td>${workout.timesDone}</td>
         `;
 
     tbody.appendChild(row);
@@ -1125,6 +1258,7 @@ function updateRecords() {
   try {
     container.innerHTML = '';
     const stats = appData.statistics || {};
+    const recordSnapshot = buildStatisticsRecordSnapshot(stats.productiveDays || {});
     const records = [];
 
     if (stats.maxStreakGeneral) {
@@ -1148,35 +1282,54 @@ function updateRecords() {
         value: `${stats.maxStreakMental} dias`,
       });
     }
-    if (stats.maxXpDay) {
-      records.push({ emoji: '⭐', label: 'Mais XP em um dia', value: `${stats.maxXpDay} XP` });
+    if (recordSnapshot.maxXpDay.value) {
+      records.push({
+        emoji: '⭐',
+        label: 'Mais XP em um dia',
+        value: formatRecordValueWithDate({
+          value: `${recordSnapshot.maxXpDay.value} XP`,
+          date: recordSnapshot.maxXpDay.date,
+        }),
+      });
     }
-    if (stats.maxMissionsDay) {
+    if (recordSnapshot.maxMissionsDay.value) {
       records.push({
         emoji: '🎯',
         label: 'Mais missões em um dia',
-        value: `${stats.maxMissionsDay}`,
+        value: formatRecordValueWithDate({
+          value: `${recordSnapshot.maxMissionsDay.value}`,
+          date: recordSnapshot.maxMissionsDay.date,
+        }),
       });
     }
-    if (stats.maxWorksDay) {
+    if (recordSnapshot.maxWorksDay.value) {
       records.push({
         emoji: '💼',
         label: 'Mais trabalhos em um dia',
-        value: `${stats.maxWorksDay}`,
+        value: formatRecordValueWithDate({
+          value: `${recordSnapshot.maxWorksDay.value}`,
+          date: recordSnapshot.maxWorksDay.date,
+        }),
       });
     }
-    if (stats.maxWorkoutsDay) {
+    if (recordSnapshot.maxWorkoutsDay.value) {
       records.push({
         emoji: '🏋️',
         label: 'Mais treinos em um dia',
-        value: `${stats.maxWorkoutsDay}`,
+        value: formatRecordValueWithDate({
+          value: `${recordSnapshot.maxWorkoutsDay.value}`,
+          date: recordSnapshot.maxWorkoutsDay.date,
+        }),
       });
     }
-    if (stats.maxStudiesDay) {
+    if (recordSnapshot.maxStudiesDay.value) {
       records.push({
         emoji: '📚',
         label: 'Mais estudos em um dia',
-        value: `${stats.maxStudiesDay}`,
+        value: formatRecordValueWithDate({
+          value: `${recordSnapshot.maxStudiesDay.value}`,
+          date: recordSnapshot.maxStudiesDay.date,
+        }),
       });
     }
     if (stats.booksRead) {
@@ -1216,7 +1369,7 @@ function updateRecords() {
 
     if (records.length === 0) {
       container.innerHTML =
-        '<p class="empty-message">Nenhum record ainda. Complete atividades para estabeleccer records!</p>';
+        '<p class="empty-message">Nenhum record ainda. Complete atividades para estabelecer records!</p>';
       return;
     }
 
@@ -1292,6 +1445,9 @@ Object.assign(globalThis, {
   getPeriodDateKeys,
   getEventDateKey,
   getTotalsFromDateKeys,
+  getDailyStatisticsBreakdown,
+  buildStatisticsRecordSnapshot,
+  buildWorkoutHistorySummary,
   renderPaginatedHistory,
   formatRate,
   getGoalStatusClass,
@@ -1301,3 +1457,13 @@ Object.assign(globalThis, {
   updateRecords,
   updateProductiveDays,
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getEventDateKey,
+    getDailyStatisticsBreakdown,
+    buildStatisticsRecordSnapshot,
+    buildWorkoutHistorySummary,
+    getTotalsFromDateKeys,
+  };
+}

@@ -610,9 +610,10 @@ function handleFinanceSubmit(e) {
   const amount = parseFloat(document.getElementById('finance-amount').value);
   const category = document.getElementById('finance-category').value.trim();
   const description = document.getElementById('finance-desc').value.trim();
+  const date = document.getElementById('finance-date')?.value || getLocalDateString();
 
-  if (!type || isNaN(amount) || amount <= 0) {
-    showFeedback('Informe um valor válido.', 'warn');
+  if (!type || isNaN(amount) || amount <= 0 || !date) {
+    showFeedback('Informe valor e data válidos.', 'warn');
     return;
   }
 
@@ -622,10 +623,12 @@ function handleFinanceSubmit(e) {
     amount,
     category,
     description,
-    date: getLocalDateString(),
+    date,
   });
 
   e.target.reset();
+  const financeDateInput = document.getElementById('finance-date');
+  if (financeDateInput) financeDateInput.value = getLocalDateString();
   updateUI({ mode: 'finance' });
 }
 
@@ -824,6 +827,7 @@ function handleActivitySubmit(e) {
     workout.emoji = emoji || '💪';
     workout.type = workoutType;
     workout.days = selectedDays.length > 0 ? selectedDays : [1, 2, 3, 4, 5];
+    workout.dateAdded = workout.dateAdded || getLocalDateString();
     if (typeof applyPlanningFields === 'function') {
       applyPlanningFields(workout, planningFields);
     }
@@ -836,6 +840,7 @@ function handleActivitySubmit(e) {
     study.emoji = emoji || '📚';
     study.type = studyType;
     study.days = selectedDays.length > 0 ? selectedDays : [1, 2, 3, 4, 5];
+    study.dateAdded = study.dateAdded || getLocalDateString();
     if (typeof applyPlanningFields === 'function') {
       applyPlanningFields(study, planningFields);
     }
@@ -1241,6 +1246,10 @@ function ensureProductiveDaySnapshot(data = {}) {
     missionsMissed: Number(data.missionsMissed || 0),
     worksMissed: Number(data.worksMissed || 0),
     studiesMissed: Number(data.studiesMissed || 0),
+    workoutsIgnored: Number(data.workoutsIgnored || 0),
+    missionsIgnored: Number(data.missionsIgnored || 0),
+    worksIgnored: Number(data.worksIgnored || 0),
+    studiesIgnored: Number(data.studiesIgnored || 0),
     xpMission: Number(data.xpMission || 0),
     xpWork: Number(data.xpWork || 0),
     xpWorkout: Number(data.xpWorkout || 0),
@@ -1284,6 +1293,10 @@ function updateProductiveDay(
   productiveDay.missionsMissed += Number(options.missionsMissed || 0);
   productiveDay.worksMissed += Number(options.worksMissed || 0);
   productiveDay.studiesMissed += Number(options.studiesMissed || 0);
+  productiveDay.workoutsIgnored += Number(options.workoutsIgnored || 0);
+  productiveDay.missionsIgnored += Number(options.missionsIgnored || 0);
+  productiveDay.worksIgnored += Number(options.worksIgnored || 0);
+  productiveDay.studiesIgnored += Number(options.studiesIgnored || 0);
   productiveDay.xpMission += Number(options.xpMission || 0);
   productiveDay.xpWork += Number(options.xpWork || 0);
   productiveDay.xpWorkout += Number(options.xpWorkout || 0);

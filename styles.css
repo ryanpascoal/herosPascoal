@@ -912,6 +912,12 @@ body {
   font-size: 1.02rem;
 }
 
+.streaks-note {
+  margin: -4px 0 16px;
+  color: var(--gray-color);
+  font-size: 0.92rem;
+}
+
 .streaks-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -1329,6 +1335,12 @@ body {
 .edit-btn {
   background-color: var(--warning-color);
   color: white;
+}
+
+.primary-btn {
+  background-color: rgba(20, 184, 166, 0.18);
+  color: #b8fff5;
+  border: 1px solid rgba(56, 189, 248, 0.25);
 }
 
 .delete-btn {
@@ -6484,8 +6496,8 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
 
 /* Visual refresh */
 :root {
-  --primary-color: #ff7a18;
-  --secondary-color: #ffb347;
+  --primary-color: #14b8a6;
+  --secondary-color: #38bdf8;
   --success-color: #34d399;
   --danger-color: #ff6b6b;
   --light-color: #f5f7ff;
@@ -6495,7 +6507,7 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   --light-gray: rgba(255, 255, 255, 0.05);
   --border-radius: 18px;
   --box-shadow: 0 24px 60px rgba(1, 6, 18, 0.34);
-  --glow-primary: 0 18px 40px rgba(255, 122, 24, 0.24);
+  --glow-primary: 0 18px 40px rgba(20, 184, 166, 0.24);
   --glow-secondary: 0 20px 44px rgba(34, 211, 238, 0.18);
   --transition: 180ms ease;
 }
@@ -6504,7 +6516,7 @@ body {
   font-family: 'Manrope', sans-serif;
   color: var(--light-color);
   background:
-    radial-gradient(circle at top left, rgba(255, 122, 24, 0.18), transparent 26%),
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 26%),
     radial-gradient(circle at top right, rgba(56, 189, 248, 0.16), transparent 30%),
     linear-gradient(180deg, #06101c 0%, #091424 38%, #07111d 100%);
   background-attachment: fixed;
@@ -6526,8 +6538,8 @@ body::before {
 }
 
 body.light-theme {
-  --primary-color: #d95f18;
-  --secondary-color: #f29f05;
+  --primary-color: #0f766e;
+  --secondary-color: #0284c7;
   --light-color: #162235;
   --gray-color: #5f7088;
   --card-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(243, 247, 252, 0.98));
@@ -6535,9 +6547,9 @@ body.light-theme {
   --light-gray: rgba(15, 23, 42, 0.04);
   --box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
   background:
-    radial-gradient(circle at top left, rgba(255, 122, 24, 0.12), transparent 28%),
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.12), transparent 28%),
     radial-gradient(circle at top right, rgba(56, 189, 248, 0.14), transparent 30%),
-    linear-gradient(180deg, #f7f4ee 0%, #eef4fb 55%, #f9fbfd 100%);
+    linear-gradient(180deg, #eff8f8 0%, #eef6fb 55%, #f8fcfd 100%);
 }
 
 .auth-screen-brand h1,
@@ -6590,8 +6602,8 @@ body.light-theme {
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: linear-gradient(135deg, rgba(255, 122, 24, 0.22), rgba(56, 189, 248, 0.18));
-  color: #ffd4b0;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.22), rgba(56, 189, 248, 0.18));
+  color: #ccfbf1;
   box-shadow: var(--glow-primary);
 }
 
@@ -6644,7 +6656,7 @@ body.light-theme {
 }
 
 .nav-item.active {
-  background: linear-gradient(135deg, rgba(255, 122, 24, 0.28), rgba(56, 189, 248, 0.22));
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.28), rgba(56, 189, 248, 0.22));
   color: #fffdf9;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: var(--glow-primary) !important;
@@ -6694,7 +6706,7 @@ body.light-theme {
 }
 
 .sub-nav-btn.active {
-  background: linear-gradient(135deg, rgba(255, 122, 24, 0.22), rgba(56, 189, 248, 0.18));
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.22), rgba(56, 189, 248, 0.18));
   box-shadow: var(--glow-primary) !important;
 }
 
@@ -6769,7 +6781,7 @@ body.light-theme {
 .activity-progress-bar {
   padding: 14px 18px;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(255, 122, 24, 0.14), rgba(56, 189, 248, 0.12));
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.14), rgba(56, 189, 248, 0.12));
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -6788,8 +6800,8 @@ body.light-theme {
 }
 
 .activity-progress-bar .progress-fill-inner {
-  background: linear-gradient(90deg, #ff7a18, #ffb347 35%, #4cc9f0 100%);
-  box-shadow: 0 0 24px rgba(255, 122, 24, 0.3) inset;
+  background: linear-gradient(90deg, #14b8a6, #22c55e 35%, #38bdf8 100%);
+  box-shadow: 0 0 24px rgba(20, 184, 166, 0.28) inset;
 }
 
 .activity-filter,
@@ -6822,9 +6834,9 @@ body.light-theme {
 .cloud-sync-grid input:focus,
 .workout-entries-input:focus {
   outline: none;
-  border-color: rgba(255, 179, 71, 0.85) !important;
+  border-color: rgba(56, 189, 248, 0.85) !important;
   box-shadow:
-    0 0 0 3px rgba(255, 179, 71, 0.14),
+    0 0 0 3px rgba(56, 189, 248, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
 }
 
@@ -6848,7 +6860,7 @@ body.light-theme {
 .submit-btn,
 .add-btn,
 .activity-actions .complete-btn {
-  background: linear-gradient(135deg, #ff7a18, #ffb347) !important;
+  background: linear-gradient(135deg, #14b8a6, #38bdf8) !important;
   color: #08111c !important;
   box-shadow: var(--glow-primary) !important;
 }
@@ -6923,7 +6935,7 @@ body.light-theme {
 .workout-display-card:hover,
 .compact-activity-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 179, 71, 0.22) !important;
+  border-color: rgba(20, 184, 166, 0.22) !important;
   box-shadow: 0 22px 40px rgba(2, 8, 23, 0.24) !important;
 }
 

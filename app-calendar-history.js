@@ -418,6 +418,19 @@ function resetCalendarDetails() {
   }
 }
 
+function getCalendarEntryDateKey(entry) {
+  if (!entry || typeof entry !== 'object') return '';
+  if (entry.failed) return entry.failedDate || entry.missedDate || entry.date || '';
+  if (entry.skipped) return entry.skippedDate || entry.date || '';
+  return entry.completedDate || entry.date || '';
+}
+
+function isScheduledTrackerVisibleOnDate(item, dateStr) {
+  if (!item) return false;
+  const availableFrom = item.availableDate || item.dateAdded || getLocalDateString();
+  return dateStr >= availableFrom;
+}
+
 function getCalendarItemsForDate(dateStr) {
   const items = [];
   const dateObj = parseLocalDateString(dateStr);
@@ -470,8 +483,7 @@ function getCalendarItemsForDate(dateStr) {
   appData.completedMissions.forEach((mission) => {
     const typeInfo = getMissionTypeInfo(mission.type);
     if (!typeInfo) return;
-    const completedDate = mission.completedDate || mission.failedDate || mission.skippedDate;
-    if (completedDate === dateStr) {
+    if (getCalendarEntryDateKey(mission) === dateStr) {
       items.push({
         ...typeInfo,
         ...mission,
@@ -523,8 +535,7 @@ function getCalendarItemsForDate(dateStr) {
   appData.completedWorks.forEach((work) => {
     const typeInfo = getWorkTypeInfo(work.type);
     if (!typeInfo) return;
-    const completedDate = work.completedDate || work.failedDate || work.skippedDate;
-    if (completedDate === dateStr) {
+    if (getCalendarEntryDateKey(work) === dateStr) {
       items.push({
         ...typeInfo,
         ...work,
@@ -535,46 +546,50 @@ function getCalendarItemsForDate(dateStr) {
   });
 
   // Treinos do dia (agenda)
-  appData.workouts.forEach((workout) => {
-    if (workout.days && workout.days.includes(dayOfWeek)) {
-      const dailyEntry = appData.dailyWorkouts.find(
-        (entry) => String(entry.workoutId) === String(workout.id) && entry.date === dateStr
-      );
-      items.push({
-        entryKind: 'workout',
-        kindLabel: 'Treino',
-        kindClass: 'workout',
-        typeLabel: getWorkoutTypeName(workout.type),
-        typeClass: 'workout',
-        status: 'pending',
-        id: `workout-${workout.id}`,
-        actionId: dailyEntry?.id ?? null,
-        name: workout.name,
-        emoji: workout.emoji,
-      });
-    }
-  });
+  if (!isRestDay(dateStr)) {
+    appData.workouts.forEach((workout) => {
+      if (!isScheduledTrackerVisibleOnDate(workout, dateStr)) return;
+      if (workout.days && workout.days.includes(dayOfWeek)) {
+        const dailyEntry = appData.dailyWorkouts.find(
+          (entry) => String(entry.workoutId) === String(workout.id) && entry.date === dateStr
+        );
+        items.push({
+          entryKind: 'workout',
+          kindLabel: 'Treino',
+          kindClass: 'workout',
+          typeLabel: getWorkoutTypeName(workout.type),
+          typeClass: 'workout',
+          status: 'pending',
+          id: `workout-${workout.id}`,
+          actionId: dailyEntry?.id ?? null,
+          name: workout.name,
+          emoji: workout.emoji,
+        });
+      }
+    });
 
-  // Estudos do dia (agenda)
-  appData.studies.forEach((study) => {
-    if (study.days && study.days.includes(dayOfWeek)) {
-      const dailyEntry = appData.dailyStudies.find(
-        (entry) => String(entry.studyId) === String(study.id) && entry.date === dateStr
-      );
-      items.push({
-        entryKind: 'study',
-        kindLabel: 'Estudo',
-        kindClass: 'study',
-        typeLabel: study.type === 'logico' ? 'Lógico' : 'Criativo',
-        typeClass: 'study',
-        status: 'pending',
-        id: `study-${study.id}`,
-        actionId: dailyEntry?.id ?? null,
-        name: study.name,
-        emoji: study.emoji,
-      });
-    }
-  });
+    // Estudos do dia (agenda)
+    appData.studies.forEach((study) => {
+      if (!isScheduledTrackerVisibleOnDate(study, dateStr)) return;
+      if (study.days && study.days.includes(dayOfWeek)) {
+        const dailyEntry = appData.dailyStudies.find(
+          (entry) => String(entry.studyId) === String(study.id) && entry.date === dateStr
+        );
+        items.push({
+          entryKind: 'study',
+          kindLabel: 'Estudo',
+          kindClass: 'study',
+          typeLabel: study.type === 'logico' ? 'Lógico' : 'Criativo',
+          typeClass: 'study',
+          status: 'pending',
+          id: `study-${study.id}`,
+          actionId: dailyEntry?.id ?? null,
+          name: study.name,
+          emoji: study.emoji,
+        });
+      }
+    });
+  }
 
   // Treinos concluídos/falhados
   appData.completedWorkouts.forEach((entry) => {
@@ -1049,10 +1064,16 @@ function switchTab(tabName) {
   } else if (tabName === 'alimentacao') {
     updateNutritionView();
   } else if (tabName === 'perfil') {
+    const profileTabs = document.querySelector('.profile-tabs');
+    if (profileTabs && !profileTabs.querySelector('.sub-tab.active')) {
+      switchSubTab('atributos', profileTabs);
+    }
     if (typeof updateAttributes === 'function') updateAttributes();
     if (typeof updateWorkoutsDisplay === 'function') updateWorkoutsDisplay();
     if (typeof updateStudiesDisplay === 'function') updateStudiesDisplay();
     if (typeof updateClassesList === 'function') updateClassesList();
+    if (typeof updateShop === 'function') updateShop();
+    if (typeof updateInventory === 'function') updateInventory();
   }
 }
 
@@ -1495,3 +1516,10 @@ Object.assign(globalThis, {
   closeModal,
   resetAllXpKeepLevels,
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getCalendarEntryDateKey,
+    isScheduledTrackerVisibleOnDate,
+  };
+}

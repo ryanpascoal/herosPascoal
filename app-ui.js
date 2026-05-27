@@ -36,6 +36,8 @@
   const recurringStartInput = document.getElementById('finance-recurring-start');
   if (recurringStartInput && !recurringStartInput.value)
     recurringStartInput.value = getLocalDateString();
+  const financeDateInput = document.getElementById('finance-date');
+  if (financeDateInput && !financeDateInput.value) financeDateInput.value = getLocalDateString();
   if (typeof ensurePlanningState === 'function') {
     ensurePlanningState(appData);
   }
@@ -168,7 +170,7 @@ function initEvents() {
     });
   });
 
-  // Botão editar foto do perfil
+  // Botão editar nome do perfil
   document.querySelector('.edit-profile-btn')?.addEventListener('click', async function () {
     const newName = await askInput('Digite seu nome:', {
       title: 'Editar Perfil',
@@ -560,6 +562,7 @@ function initEvents() {
       else if (category === 'work') deleteWork(id);
       else if (category === 'workout') deleteWorkout(id);
       else if (category === 'study') deleteStudy(id);
+      else if (category === 'book') deleteBook(id);
       return;
     }
 
@@ -735,12 +738,13 @@ function updateClassesList() {
   }
 
   appData.classes.forEach((cls) => {
-    const level = Math.floor(cls.xp / 100);
-    const currentXp = cls.xp % 100;
-    const percentage = (currentXp / 100) * 100;
+    const level = Number.isFinite(cls.level) ? cls.level : Math.floor((cls.xp || 0) / 100);
+    const currentXp = Number.isFinite(cls.xp) ? cls.xp % 100 : 0;
+    const percentage = Math.max(0, Math.min(100, (currentXp / 100) * 100));
     const isPrimary = appData.hero?.primaryClassId === cls.id;
     const safeEmoji = escapeHtml(cls.emoji || '💼');
     const safeName = escapeHtml(cls.name || 'Classe');
+    const primaryButtonLabel = isPrimary ? 'Principal' : 'Definir principal';
 
     const classCard = document.createElement('div');
     classCard.className = 'item-card';
@@ -757,6 +761,7 @@ function updateClassesList() {
                 </div>
             </div>
             <div class="item-actions">
+                <button class="action-btn primary-btn" data-id="${cls.id}" ${isPrimary ? 'disabled' : ''}>${primaryButtonLabel}</button>
                 <button class="action-btn edit-btn" data-id="${cls.id}"><i class="fas fa-edit"></i></button>
                 <button class="action-btn delete-btn" data-id="${cls.id}"><i class="fas fa-trash"></i></button>
             </div>
@@ -769,6 +774,13 @@ function updateClassesList() {
     btn.addEventListener('click', function () {
       const id = parseInt(this.getAttribute('data-id'));
       editClass(id);
+    });
+  });
+
+  container.querySelectorAll('.primary-btn').forEach((btn) => {
+    btn.addEventListener('click', function () {
+      const id = parseInt(this.getAttribute('data-id'));
+      setPrimaryClass(id);
     });
   });
 
@@ -1457,6 +1469,10 @@ async function skipMission(missionId) {
   });
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.missionsIgnored = (appData.statistics.missionsIgnored || 0) + 1;
+  updateProductiveDay(0, 0, 0, 0, 0, {
+    date: todayStr,
+    missionsIgnored: 1,
+  });
   if (!isRoutine) {
     appData.missions.splice(missionIndex, 1);
   }
@@ -1543,6 +1559,10 @@ async function skipWork(workId) {
   });
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.worksIgnored = (appData.statistics.worksIgnored || 0) + 1;
+  updateProductiveDay(0, 0, 0, 0, 0, {
+    date: todayStr,
+    worksIgnored: 1,
+  });
   if (!isRoutine) {
     appData.works.splice(workIndex, 1);
   }
@@ -1587,6 +1607,10 @@ async function skipDailyWorkout(workoutDayId) {
   }
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.workoutsIgnored = (appData.statistics.workoutsIgnored || 0) + 1;
+  updateProductiveDay(0, 0, 0, 0, 0, {
+    date: workoutDay.date || workoutDay.skippedDate,
+    workoutsIgnored: 1,
+  });
 
   addHeroLog(
     'workout',
@@ -1629,6 +1653,10 @@ async function skipDailyStudy(studyDayId) {
   }
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.studiesIgnored = (appData.statistics.studiesIgnored || 0) + 1;
+  updateProductiveDay(0, 0, 0, 0, 0, {
+    date: studyDay.date || studyDay.skippedDate,
+    studiesIgnored: 1,
+  });
 
   addHeroLog('study', `Estudo pulado: ${study.name}`, '1 item de pulo consumido. Sem penalidade.');
 

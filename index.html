@@ -385,7 +385,9 @@
           <div class="profile-header">
             <div class="profile-pic-container">
               <img src="perfil.png" alt="Perfil" class="profile-pic" />
-              <button class="edit-profile-btn"><i class="fas fa-camera"></i></button>
+              <button class="edit-profile-btn" type="button" title="Editar nome">
+                <i class="fas fa-pen"></i>
+              </button>
             </div>
             <div class="profile-info">
               <h2 class="hero-name">Ryan Pascoal</h2>
@@ -404,6 +406,7 @@
           </div>
           <div class="streaks-container">
             <h3><i class="fas fa-fire"></i> Streaks</h3>
+            <p class="streaks-note">Conta apenas dias já fechados sem falhas.</p>
             <div class="streaks-grid">
               <div class="streak-card">
                 <div class="streak-header">
@@ -433,7 +436,7 @@
           </div>
           <div class="profile-tabs">
             <div class="sub-nav">
-              <button class="sub-nav-btn" data-subtab="atributos" data-parent="perfil">
+              <button class="sub-nav-btn active" data-subtab="atributos" data-parent="perfil">
                 Atributos
               </button>
               <button class="sub-nav-btn" data-subtab="treinos" data-parent="perfil">
@@ -447,7 +450,7 @@
               </button>
             </div>
             <div class="sub-content">
-              <div id="perfil-atributos" class="sub-tab">
+              <div id="perfil-atributos" class="sub-tab active">
                 <div class="attributes-grid" id="attributes-container"></div>
               </div>
               <div id="perfil-treinos" class="sub-tab">
@@ -583,7 +586,11 @@
                     <div class="stat-value" id="stat-workouts-done">0</div>
                   </div>
                   <div class="stat-card cat-workout">
-                    <h4><i class="fas fa-times-circle"></i> Treinos Ignorados</h4>
+                    <h4><i class="fas fa-times-circle"></i> Treinos Falhados</h4>
+                    <div class="stat-value" id="stat-workouts-failed">0</div>
+                  </div>
+                  <div class="stat-card cat-workout">
+                    <h4><i class="fas fa-forward"></i> Treinos Ignorados</h4>
                     <div class="stat-value" id="stat-workouts-ignored">0</div>
                   </div>
                   <div class="stat-card cat-study">
@@ -591,7 +598,11 @@
                     <div class="stat-value" id="stat-studies-done">0</div>
                   </div>
                   <div class="stat-card cat-study">
-                    <h4><i class="fas fa-times-circle"></i> Estudos Ignorados</h4>
+                    <h4><i class="fas fa-times-circle"></i> Estudos Falhados</h4>
+                    <div class="stat-value" id="stat-studies-failed">0</div>
+                  </div>
+                  <div class="stat-card cat-study">
+                    <h4><i class="fas fa-forward"></i> Estudos Ignorados</h4>
                     <div class="stat-value" id="stat-studies-ignored">0</div>
                   </div>
                   <div class="stat-card cat-book">
@@ -627,8 +638,8 @@
                     <div class="stat-value" id="stat-missions-failed">0</div>
                   </div>
                   <div class="stat-card">
-                    <h4><i class="fas fa-balance-scale"></i> Justiças Realizadas</h4>
-                    <div class="stat-value" id="stat-justice-done">0</div>
+                    <h4><i class="fas fa-forward"></i> Missões Ignoradas</h4>
+                    <div class="stat-value" id="stat-missions-ignored">0</div>
                   </div>
                 </div>
 
@@ -947,7 +958,7 @@
               <canvas id="finance-category-chart" width="400" height="200"></canvas>
             </div>
             <div class="chart-box">
-              <h4>Saldo Mensal (últimos 6 meses)</h4>
+              <h4>Saldo Mensal (últimos 6 meses, filtros de tipo/categoria)</h4>
               <canvas id="finance-balance-chart" width="400" height="200"></canvas>
             </div>
           </div>
@@ -965,6 +976,10 @@
               <div class="form-group">
                 <label for="finance-amount">Valor (R$)</label>
                 <input type="number" id="finance-amount" min="0" step="0.01" required />
+              </div>
+              <div class="form-group">
+                <label for="finance-date">Data</label>
+                <input type="date" id="finance-date" required />
               </div>
               <div class="form-group">
                 <label for="finance-category">Categoria (opcional)</label>

@@ -85,8 +85,79 @@
   if (projectedEl) projectedEl.textContent = formatBRL(projectedBalance);
 }
 
+function getFinanceActiveFilters() {
+  return {
+    monthFilter: document.getElementById('finance-month')?.value || 'all',
+    typeFilter: document.getElementById('finance-filter-type')?.value || 'all',
+    categoryFilter: (document.getElementById('finance-filter-category')?.value || '')
+      .trim()
+      .toLowerCase(),
+  };
+}
+
+function getAvailableFinanceMonths(currentMonth = getLocalDateString().slice(0, 7)) {
+  const months = new Set([currentMonth]);
+
+  (appData.financeEntries || []).forEach((entry) => {
+    if (entry?.date) months.add(getMonthKey(entry.date));
+  });
+  (appData.financeBudgets || []).forEach((budget) => {
+    if (budget?.month) months.add(String(budget.month));
+  });
+  (appData.financeRecurring || []).forEach((rec) => {
+    if (rec?.startDate) months.add(getMonthKey(rec.startDate));
+    if (rec?.endDate) months.add(getMonthKey(rec.endDate));
+  });
+
+  return Array.from(months)
+    .filter((month) => typeof month === 'string' && /^\d{4}-\d{2}$/.test(month))
+    .sort((a, b) => b.localeCompare(a));
+}
+
+function getFinanceBudgetMonthContext(monthFilter = getFinanceActiveFilters().monthFilter) {
+  const currentMonth = getLocalDateString().slice(0, 7);
+  if (monthFilter === 'all') {
+    return {
+      isAllMonths: true,
+      monthKey: null,
+      fallbackMonthKey: currentMonth,
+    };
+  }
+  return {
+    isAllMonths: false,
+    monthKey: monthFilter || currentMonth,
+    fallbackMonthKey: currentMonth,
+  };
+}
+
+function matchesFinanceEntryFilters(entry, filters) {
+  if (filters.monthFilter !== 'all' && getMonthKey(entry.date) !== filters.monthFilter) return false;
+  if (filters.typeFilter !== 'all' && entry.type !== filters.typeFilter) return false;
+  if (filters.categoryFilter) {
+    const cat = (entry.category || '').toLowerCase();
+    if (!cat.includes(filters.categoryFilter)) return false;
+  }
+  return true;
+}
+
+function getFinanceEntriesForBalanceChart() {
+  const { typeFilter, categoryFilter } = getFinanceActiveFilters();
+  return appData.financeEntries.filter((entry) =>
+    matchesFinanceEntryFilters(entry, {
+      monthFilter: 'all',
+      typeFilter,
+      categoryFilter,
+    })
+  );
+}
+
+function getFinanceEntryActionLabel(entry) {
+  return entry?.recurringId ? 'Ignorar mês' : 'Excluir';
+}
+
 function updateFinanceView() {
   applyRecurringFinanceEntries();
+  populateFinanceMonthOptions();
   updateFinanceSummary();
   renderFinanceBudgets();
   renderFinanceRecurringList();
@@ -151,10 +222,13 @@ function renderFinanceBudgets() {
   const list = document.getElementById('finance-budget-list');
   if (!list) return;
 
-  const monthKey =
-    document.getElementById('finance-month')?.value === 'all'
-      ? getLocalDateString().slice(0, 7)
-      : document.getElementById('finance-month')?.value || getLocalDateString().slice(0, 7);
+  const { isAllMonths, monthKey } = getFinanceBudgetMonthContext();
+
+  if (isAllMonths || !monthKey) {
+    list.innerHTML =
+      '<p class="empty-message">Selecione um mês específico para visualizar os orçamentos por categoria.</p>';
+    return;
+  }
 
   const monthExpenses = appData.financeEntries.filter(
     (e) => e.type === 'expense' && getMonthKey(e.date) === monthKey
@@ -269,6 +343,7 @@ function renderFinanceList() {
     const catLabel = entry.category ? ` • ${escapeHtml(entry.category)}` : '';
     const descLabel = entry.description ? ` • ${escapeHtml(entry.description)}` : '';
     const recurringLabel = entry.recurringId ? ' • Recorrente' : '';
+    const actionLabel = getFinanceEntryActionLabel(entry);
     item.innerHTML = `
             <div>
                 <div class="finance-item-title">${entry.type === 'income' ? 'Receita' : 'Despesa'}</div>
@@ -276,7 +351,7 @@ function renderFinanceList() {
             </div>
             <div class="finance-item-actions">
                 <div class="finance-item-value">${formatBRL(entry.amount)}</div>
-                <button class="finance-delete-btn" data-id="${entry.id}">Excluir</button>
+                <button class="finance-delete-btn" data-id="${entry.id}">${actionLabel}</button>
             </div>
         `;
     list.appendChild(item);
@@ -291,21 +366,8 @@ function renderFinanceList() {
 }
 
 function getFinanceFilteredEntries() {
-  const monthFilter = document.getElementById('finance-month')?.value || 'all';
-  const typeFilter = document.getElementById('finance-filter-type')?.value || 'all';
-  const categoryFilter = (document.getElementById('finance-filter-category')?.value || '')
-    .trim()
-    .toLowerCase();
-
-  return appData.financeEntries.filter((entry) => {
-    if (monthFilter !== 'all' && getMonthKey(entry.date) !== monthFilter) return false;
-    if (typeFilter !== 'all' && entry.type !== typeFilter) return false;
-    if (categoryFilter) {
-      const cat = (entry.category || '').toLowerCase();
-      if (!cat.includes(categoryFilter)) return false;
-    }
-    return true;
-  });
+  const filters = getFinanceActiveFilters();
+  return appData.financeEntries.filter((entry) => matchesFinanceEntryFilters(entry, filters));
 }
 
 function getPreviousMonthKey(monthKey) {
@@ -409,22 +471,7 @@ function populateFinanceMonthOptions() {
 
   const current = getLocalDateString().slice(0, 7);
   const previousValue = select.value || current;
-  const months = new Set([current]);
-
-  (appData.financeEntries || []).forEach((entry) => {
-    if (entry?.date) months.add(getMonthKey(entry.date));
-  });
-  (appData.financeBudgets || []).forEach((budget) => {
-    if (budget?.month) months.add(String(budget.month));
-  });
-  (appData.financeRecurring || []).forEach((rec) => {
-    if (rec?.startDate) months.add(getMonthKey(rec.startDate));
-    if (rec?.endDate) months.add(getMonthKey(rec.endDate));
-  });
-
-  const sortedMonths = Array.from(months)
-    .filter((month) => typeof month === 'string' && /^\d{4}-\d{2}$/.test(month))
-    .sort((a, b) => b.localeCompare(a));
+  const sortedMonths = getAvailableFinanceMonths(current);
 
   select.innerHTML =
     '<option value="all">Todos</option>' +
@@ -473,6 +520,7 @@ function updateFinanceCharts() {
   if (balanceCtx) {
     if (balanceCtx.chart) balanceCtx.chart.destroy();
 
+    const chartEntries = getFinanceEntriesForBalanceChart();
     const months = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
@@ -481,7 +529,7 @@ function updateFinanceCharts() {
     }
 
     const balances = months.map((monthKey) => {
-      const monthEntries = appData.financeEntries.filter((e) => getMonthKey(e.date) === monthKey);
+      const monthEntries = chartEntries.filter((e) => getMonthKey(e.date) === monthKey);
       const inc = monthEntries.filter((e) => e.type === 'income').reduce((s, e) => s + e.amount, 0);
       const exp = monthEntries
         .filter((e) => e.type === 'expense')
@@ -597,14 +645,20 @@ function updateFinanceCharts() {
 }
 
 async function deleteFinanceEntry(entryId) {
-  const confirmed = await askConfirmation('Deseja excluir este lançamento?', {
-    title: 'Excluir lançamento',
-    confirmText: 'Excluir',
-  });
-  if (!confirmed) return;
   const index = appData.financeEntries.findIndex((e) => e.id === entryId);
   if (index === -1) return;
   const entry = appData.financeEntries[index];
+  const isRecurringEntry = Boolean(entry && entry.recurringId && entry.recurringMonth);
+  const confirmed = await askConfirmation(
+    isRecurringEntry
+      ? 'Deseja ignorar esta recorrência apenas neste mês?'
+      : 'Deseja excluir este lançamento?',
+    {
+      title: isRecurringEntry ? 'Ignorar recorrência do mês' : 'Excluir lançamento',
+      confirmText: isRecurringEntry ? 'Ignorar mês' : 'Excluir',
+    }
+  );
+  if (!confirmed) return;
   if (entry && entry.recurringId && entry.recurringMonth) {
     const skipKey = getRecurringSkipKey(entry.recurringId, entry.recurringMonth);
     if (!appData.financeRecurringSkips.includes(skipKey)) {
@@ -751,6 +805,7 @@ function createWorkoutPayload(name, emoji, type, days) {
     emoji: emoji || '??',
     type,
     days: days.length > 0 ? days : [1, 2, 3, 4, 5],
+    dateAdded: getLocalDateString(),
     xp: 0,
     level: 0,
     stats: {
@@ -772,6 +827,7 @@ function createStudyPayload(name, emoji, type, days) {
     emoji: emoji || '??',
     type,
     days: days.length > 0 ? days : [1, 2, 3, 4, 5],
+    dateAdded: getLocalDateString(),
     xp: 0,
     level: 0,
     stats: {
@@ -797,6 +853,12 @@ function createBookPayload(name, emoji, status, author = '') {
 // __appDiaryFinanceBridge: exposes diary/finance APIs for legacy scripts during module migration
 Object.assign(globalThis, {
   updateFinanceSummary,
+  getFinanceActiveFilters,
+  getAvailableFinanceMonths,
+  getFinanceBudgetMonthContext,
+  matchesFinanceEntryFilters,
+  getFinanceEntriesForBalanceChart,
+  getFinanceEntryActionLabel,
   updateFinanceView,
   applyRecurringFinanceEntries,
   renderFinanceBudgets,
@@ -823,3 +885,13 @@ Object.assign(globalThis, {
   createStudyPayload,
   createBookPayload,
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getAvailableFinanceMonths,
+    getFinanceBudgetMonthContext,
+    matchesFinanceEntryFilters,
+    getFinanceEntriesForBalanceChart,
+    getFinanceEntryActionLabel,
+  };
+}

@@ -127,12 +127,32 @@ function getWorkoutEntryMetric(entry) {
   };
 }
 
+function getWorkoutHistoryCatalog() {
+  if (typeof globalThis.buildWorkoutHistorySummary === 'function') {
+    return globalThis.buildWorkoutHistorySummary(appData.workouts, appData.completedWorkouts).map(
+      (item) => ({
+        id: String(item.id),
+        name: item.name || 'Treino',
+        emoji: item.emoji || '💪',
+        type: item.type || '',
+      })
+    );
+  }
+
+  return (Array.isArray(appData.workouts) ? appData.workouts : []).map((workout) => ({
+    id: String(workout.id),
+    name: workout.name || 'Treino',
+    emoji: workout.emoji || '💪',
+    type: workout.type || '',
+  }));
+}
+
 function populateWorkoutEvolutionOptions() {
   const select = document.getElementById('workout-evolution-select');
   if (!select) return;
 
   const previousValue = select.value;
-  const workouts = Array.isArray(appData.workouts) ? appData.workouts.slice() : [];
+  const workouts = getWorkoutHistoryCatalog();
 
   if (workouts.length === 0) {
     select.innerHTML = '<option value="">Nenhum treino cadastrado</option>';
@@ -946,9 +966,7 @@ function updateWorkoutEvolutionChart() {
       return aKey.localeCompare(bKey);
     });
 
-  const workout = (appData.workouts || []).find(
-    (item) => String(item.id) === String(selectedWorkoutId)
-  );
+  const workout = getWorkoutHistoryCatalog().find((item) => String(item.id) === String(selectedWorkoutId));
   const referenceMetric = entries[0] ? getWorkoutEntryMetric(entries[0]) : null;
   const primaryLabel = referenceMetric?.primaryLabel || 'Volume';
 
@@ -1405,14 +1423,18 @@ function getTopNutritionFoods(entries, limit = 8) {
     .slice(0, Math.max(1, Number(limit) || 8));
 }
 
-function getNutritionLogStreak() {
+function getNutritionLogStreak(days = null) {
   const dates = new Set((appData.nutritionStats?.logDates || []).map((v) => String(v)));
   let streak = 0;
   const cursor = new Date();
+  const limit = Number.isFinite(Number(days)) && Number(days) > 0 ? Math.floor(Number(days)) : null;
+  let inspectedDays = 0;
   while (true) {
+    if (limit !== null && inspectedDays >= limit) break;
     const key = getLocalDateString(cursor);
     if (!dates.has(key)) break;
     streak += 1;
+    inspectedDays += 1;
     cursor.setDate(cursor.getDate() - 1);
   }
   return streak;
@@ -1439,10 +1461,10 @@ function renderNutritionReports() {
     .map(String)
     .filter((date) => date >= startStr && date <= todayStr).length;
   const logDays = Array.from(new Set(entries.map((entry) => String(entry.date)))).length;
-  const streak = getNutritionLogStreak();
+  const streak = getNutritionLogStreak(days);
 
   statsGrid.innerHTML = `
-        <div class="stat-card"><h4><i class="fas fa-fire"></i> Streak de registro</h4><div class="stat-value">${streak}</div></div>
+        <div class="stat-card"><h4><i class="fas fa-fire"></i> Streak atual (${days}d)</h4><div class="stat-value">${streak}</div></div>
         <div class="stat-card"><h4><i class="fas fa-calendar-check"></i> Dias com registro</h4><div class="stat-value">${logDays}</div></div>
         <div class="stat-card"><h4><i class="fas fa-bullseye"></i> Metas batidas (${days}d)</h4><div class="stat-value">${goalsHit}</div></div>
         <div class="stat-card"><h4><i class="fas fa-chart-line"></i> Média kcal/dia</h4><div class="stat-value">${avgKcal.toFixed(0)}</div></div>
@@ -1452,6 +1474,8 @@ function renderNutritionReports() {
         <div class="stat-card"><h4><i class="fas fa-list-ol"></i> Registros no período</h4><div class="stat-value">${mealsLogged}</div></div>
     `;
 
+  renderNutritionMealBreakdown(entries);
+
   // Verificar se Chart.js está disponível antes de renderizar gráficos
   if (typeof Chart === 'undefined') return;
 
@@ -1459,7 +1483,6 @@ function renderNutritionReports() {
   updateNutritionMacroSplitChart(entries);
   updateNutritionMealDistributionChart(entries);
   updateNutritionTopFoodsChart(entries);
-  renderNutritionMealBreakdown(entries);
 }
 
 function updateNutritionWeeklyChart(weekData, days = 30) {
@@ -1676,16 +1699,13 @@ function recalcNutritionStats() {
   const logDates = Array.from(
     new Set((appData.nutritionEntries || []).map((entry) => entry.date))
   ).sort();
-  const previousGoalHitSet = new Set(
-    (appData.nutritionStats?.goalHitDates || []).map((v) => String(v))
-  );
   const rewardedGoalSet = new Set(
     (appData.nutritionStats?.rewardedGoalDates || []).map((v) => String(v))
   );
   const goalHitDates = logDates.filter((date) => {
     const totals = calculateNutritionTotals(getNutritionEntriesByDate(date));
     const evaluation = evaluateNutritionGoalStatus(totals);
-    return evaluation.isGoalHit || previousGoalHitSet.has(date) || rewardedGoalSet.has(date);
+    return evaluation.isGoalHit;
   });
   const rewardedMealKeys = Array.from(
     new Set((appData.nutritionStats?.rewardedMealKeys || []).map((v) => String(v)))
@@ -1693,7 +1713,7 @@ function recalcNutritionStats() {
   appData.nutritionStats = {
     logDates,
     goalHitDates,
-    rewardedGoalDates: Array.from(rewardedGoalSet),
+    rewardedGoalDates: Array.from(rewardedGoalSet).filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)),
     rewardedMealKeys,
   };
 }
@@ -1737,6 +1757,32 @@ function recordHydrationDay(dateStr, glasses, goal) {
   }
 }
 
+function getHydrationDisplayStreaks(today = getLocalDateString()) {
+  const hydration = appData.hydration || {};
+  const goal =
+    Number.isFinite(Number(hydration.goal)) && Number(hydration.goal) > 0
+      ? Number(hydration.goal)
+      : 8;
+  const currentStored = Number.isFinite(Number(hydration.currentStreak))
+    ? Number(hydration.currentStreak)
+    : 0;
+  const bestStored = Number.isFinite(Number(hydration.bestStreak))
+    ? Number(hydration.bestStreak)
+    : 0;
+  const glasses = Number.isFinite(Number(hydration.glasses)) ? Number(hydration.glasses) : 0;
+  const lastDate = String(hydration.lastDate || '');
+  const todayGoalHit = lastDate === today && glasses >= goal;
+  const current = currentStored + (todayGoalHit ? 1 : 0);
+  const best = Math.max(bestStored, current);
+
+  return {
+    current,
+    best,
+    goal,
+    todayGoalHit,
+  };
+}
+
 function rolloverHydrationDay(today = getLocalDateString()) {
   if (!appData.hydration || typeof appData.hydration !== 'object') {
     appData.hydration = {
@@ -1755,6 +1801,11 @@ function rolloverHydrationDay(today = getLocalDateString()) {
       ? Number(appData.hydration.goal)
       : 8;
   appData.hydration.goal = goal;
+  if (!Array.isArray(appData.hydration.logDates)) appData.hydration.logDates = [];
+  if (!Array.isArray(appData.hydration.goalHitDates)) appData.hydration.goalHitDates = [];
+  if (!appData.hydration.startDate) {
+    appData.hydration.startDate = appData.hydration.lastDate || today;
+  }
 
   if (appData.hydration.lastDate === today) return;
 
@@ -1798,9 +1849,8 @@ function addHydrationGlass() {
   }
 
   // Atualizar melhor streak
-  if (appData.hydration.currentStreak > appData.hydration.bestStreak) {
-    appData.hydration.bestStreak = appData.hydration.currentStreak;
-  }
+  const streaks = getHydrationDisplayStreaks(today);
+  appData.hydration.bestStreak = Math.max(appData.hydration.bestStreak || 0, streaks.best);
 
   updateHydrationUI();
   saveToLocalStorage();
@@ -1840,6 +1890,7 @@ function updateHydrationUI() {
   const glasses = appData.hydration.glasses || 0;
   const goal = appData.hydration.goal || 8;
   const percentage = Math.min(100, (glasses / goal) * 100);
+  const streaks = getHydrationDisplayStreaks();
 
   if (currentEl) currentEl.textContent = glasses;
   if (goalEl) goalEl.textContent = goal;
@@ -1871,8 +1922,8 @@ function updateHydrationUI() {
   }
 
   // Atualizar streaks
-  if (streakCurrentEl) streakCurrentEl.textContent = appData.hydration.currentStreak || 0;
-  if (streakBestEl) streakBestEl.textContent = appData.hydration.bestStreak || 0;
+  if (streakCurrentEl) streakCurrentEl.textContent = streaks.current;
+  if (streakBestEl) streakBestEl.textContent = streaks.best;
 
   // Atualizar mensagem motivacional
   if (motivationEl) {
@@ -1987,6 +2038,7 @@ Object.assign(globalThis, {
   maybeRewardNutritionGoal,
   updateNutritionCurrentDateLabel,
   recordHydrationDay,
+  getHydrationDisplayStreaks,
   rolloverHydrationDay,
   addHydrationGlass,
   removeHydrationGlass,
@@ -1994,3 +2046,12 @@ Object.assign(globalThis, {
   initHydrationUI,
   updateNutritionView,
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getNutritionLogStreak,
+    recalcNutritionStats,
+    getHydrationDisplayStreaks,
+    rolloverHydrationDay,
+  };
+}
