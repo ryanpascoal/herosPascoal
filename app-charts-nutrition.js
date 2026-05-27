@@ -862,8 +862,8 @@ function updateWorkoutVolumeChart() {
           label: 'Repetições',
           data: weekBuckets.map((week) => week.reps),
           type: 'line',
-          borderColor: '#ff9f40',
-          backgroundColor: 'rgba(255, 159, 64, 0.2)',
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34, 197, 94, 0.2)',
           tension: 0.35,
           yAxisID: 'yReps',
         },
@@ -989,8 +989,8 @@ function updateWorkoutEvolutionChart() {
             const metric = getWorkoutEntryMetric(entry);
             return metric.extraSeries[index]?.value || 0;
           }),
-          borderColor: index === 0 ? '#36a2eb' : '#ff9f40',
-          backgroundColor: index === 0 ? 'rgba(54, 162, 235, 0.2)' : 'rgba(255, 159, 64, 0.2)',
+          borderColor: index === 0 ? '#36a2eb' : '#14b8a6',
+          backgroundColor: index === 0 ? 'rgba(54, 162, 235, 0.2)' : 'rgba(20, 184, 166, 0.2)',
           tension: 0.35,
           fill: false,
           borderDash: index === 0 ? [6, 4] : [],
@@ -1508,8 +1508,8 @@ function updateNutritionWeeklyChart(weekData, days = 30) {
         {
           label: `Kcal consumidas (${days}d)`,
           data: kcal,
-          borderColor: 'rgba(255, 159, 64, 1)',
-          backgroundColor: 'rgba(255, 159, 64, 0.2)',
+          borderColor: 'rgba(56, 189, 248, 1)',
+          backgroundColor: 'rgba(56, 189, 248, 0.2)',
           pointRadius,
           pointHoverRadius: 3,
           tension: 0.25,
@@ -1572,10 +1572,10 @@ function updateNutritionMacroSplitChart(entries) {
         {
           data: hasData ? chartData : [1],
           backgroundColor: hasData
-            ? ['rgba(54, 162, 235, 0.75)', 'rgba(255, 206, 86, 0.75)', 'rgba(255, 99, 132, 0.75)']
+            ? ['rgba(54, 162, 235, 0.75)', 'rgba(34, 197, 94, 0.75)', 'rgba(255, 99, 132, 0.75)']
             : ['rgba(148, 163, 184, 0.5)'],
           borderColor: hasData
-            ? ['rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)', 'rgba(255, 99, 132, 1)']
+            ? ['rgba(54, 162, 235, 1)', 'rgba(34, 197, 94, 1)', 'rgba(255, 99, 132, 1)']
             : ['rgba(148, 163, 184, 1)'],
           borderWidth: 1,
         },
@@ -1608,7 +1608,7 @@ function updateNutritionMealDistributionChart(entries) {
           data: hasData ? filtered.map((item) => Number(item.kcal.toFixed(1))) : [1],
           backgroundColor: hasData
             ? [
-                'rgba(255, 159, 64, 0.75)',
+                'rgba(56, 189, 248, 0.75)',
                 'rgba(75, 192, 192, 0.75)',
                 'rgba(153, 102, 255, 0.75)',
                 'rgba(255, 99, 132, 0.75)',
@@ -1616,7 +1616,7 @@ function updateNutritionMealDistributionChart(entries) {
             : ['rgba(148, 163, 184, 0.5)'],
           borderColor: hasData
             ? [
-                'rgba(255, 159, 64, 1)',
+                'rgba(56, 189, 248, 1)',
                 'rgba(75, 192, 192, 1)',
                 'rgba(153, 102, 255, 1)',
                 'rgba(255, 99, 132, 1)',
@@ -1649,8 +1649,8 @@ function updateNutritionTopFoodsChart(entries) {
         {
           label: 'Kcal acumuladas',
           data: hasData ? topFoods.map((item) => Number(item.kcal.toFixed(0))) : [0],
-          backgroundColor: hasData ? 'rgba(255, 159, 64, 0.7)' : 'rgba(148, 163, 184, 0.45)',
-          borderColor: hasData ? 'rgba(255, 159, 64, 1)' : 'rgba(148, 163, 184, 1)',
+          backgroundColor: hasData ? 'rgba(20, 184, 166, 0.7)' : 'rgba(148, 163, 184, 0.45)',
+          borderColor: hasData ? 'rgba(20, 184, 166, 1)' : 'rgba(148, 163, 184, 1)',
           borderWidth: 1,
         },
       ],
