@@ -114,9 +114,10 @@
     objective.status = normalizeEnum(objective.status, ['active', 'paused', 'completed', 'cancelled'], 'active');
     objective.horizon = normalizeEnum(objective.horizon, ['annual', 'quarter', 'month', 'custom'], 'quarter');
     objective.progress = normalizeProgress(objective.progress);
-    objective.progressMode = normalizeEnum(objective.progressMode, ['manual', 'auto', 'hybrid'], 'hybrid');
+    objective.progressMode = normalizeEnum(objective.progressMode, ['manual', 'auto', 'hybrid'], 'auto');
     objective.targetDate = toIsoDate(objective.targetDate) || '';
     objective.notes = typeof objective.notes === 'string' ? objective.notes : '';
+    objective.completedAt = toIsoDate(objective.completedAt) || '';
     objective.updatedAt = toIsoDate(objective.updatedAt) || objective.updatedAt || getTodayStr();
     return objective;
   }
@@ -313,14 +314,15 @@
       .filter((entry) => isDateWithinWindow(toIsoDate(entry.date) || '', todayStr, windowDays))
       .map((entry) => {
         const sourceItem = resolveFeedbackSourceItem(data, entry);
-        const sourceObjective = getObjectiveById(data, sourceItem?.objectiveId);
+        const sourceObjective =
+          getObjectiveById(data, entry.objectiveId) || getObjectiveById(data, sourceItem?.objectiveId);
         return {
           type: entry.type,
           feedback: entry.feedback || '',
           date: toIsoDate(entry.date) || '',
           itemName: sourceItem?.name || '',
-          objectiveId: normalizeId(sourceObjective?.id),
-          objectiveName: sourceObjective?.name || '',
+          objectiveId: normalizeId(entry.objectiveId) || normalizeId(sourceObjective?.id),
+          objectiveName: entry.objectiveName || sourceObjective?.name || '',
         };
       })
       .filter((entry) => entry.feedback)
@@ -340,12 +342,10 @@
     const consistencyPercent = normalizeProgress(
       Math.max(0, 100 - overdueOpen.length * 12 - recentFailed.length * 10)
     );
-    const feedbackPercent = normalizeProgress(recentFeedbackCount * 20);
     const autoProgress = normalizeProgress(
-      coveragePercent * 0.45 +
-      normalizeProgress((recentCompleted.length / baseCount) * 100) * 0.3 +
-      feedbackPercent * 0.1 +
-      consistencyPercent * 0.15
+      coveragePercent * 0.5 +
+      normalizeProgress((recentCompleted.length / baseCount) * 100) * 0.25 +
+      consistencyPercent * 0.25
     );
 
     return {
@@ -360,10 +360,30 @@
     };
   }
 
+  function completeObjective(id) {
+    ensurePlanningState();
+    const objectiveId = normalizeId(id);
+    if (!objectiveId) return false;
+    const objective = getObjectiveById(globalScope.appData, objectiveId);
+    if (!objective || objective.status === 'completed') return false;
+    if (!globalScope.confirm?.('Marcar este objetivo como concluido?')) return false;
+
+    const todayStr = getTodayStr();
+    objective.status = 'completed';
+    objective.progress = 100;
+    objective.completedAt = todayStr;
+    objective.updatedAt = todayStr;
+    normalizeObjective(objective);
+
+    globalScope.showFeedback?.('Objetivo concluido.', 'success');
+    globalScope.updateUI?.({ mode: 'activity' });
+    return true;
+  }
+
   function resolveEffectiveProgress(manualProgress, autoProgress, progressMode) {
     const safeManual = normalizeProgress(manualProgress);
     const safeAuto = normalizeProgress(autoProgress);
-    const mode = normalizeEnum(progressMode, ['manual', 'auto', 'hybrid'], 'hybrid');
+    const mode = normalizeEnum(progressMode, ['manual', 'auto', 'hybrid'], 'auto');
     if (mode === 'manual') return safeManual;
     if (mode === 'auto') return safeAuto;
     return normalizeProgress((safeManual * 0.6) + (safeAuto * 0.4));
@@ -563,8 +583,6 @@
   function ensurePlanningState(data = globalScope.appData) {
     if (!data || typeof data !== 'object') return data;
     if (!Array.isArray(data.objectives)) data.objectives = [];
-    if (!Array.isArray(data.projects)) data.projects = [];
-    if (!Array.isArray(data.reviews)) data.reviews = [];
 
     data.objectives.forEach(normalizeObjective);
     getActiveActivityCollections(data).forEach(({ item }) => normalizePlanningFields(item));
@@ -578,8 +596,6 @@
     form.reset();
     const editIdInput = document.getElementById('objective-edit-id');
     if (editIdInput) editIdInput.value = '';
-    const progressInput = document.getElementById('objective-progress');
-    if (progressInput) progressInput.value = '0';
   }
 
   function handleObjectiveSubmit(event) {
@@ -593,7 +609,6 @@
     }
 
     const targetDate = toIsoDate(document.getElementById('objective-target-date')?.value) || '';
-    const progress = normalizeProgress(document.getElementById('objective-progress')?.value);
     const editId = normalizeId(document.getElementById('objective-edit-id')?.value);
     const todayStr = getTodayStr();
 
@@ -602,7 +617,6 @@
       if (!objective) return;
       objective.name = name;
       objective.targetDate = targetDate;
-      objective.progress = progress;
       objective.updatedAt = todayStr;
       normalizeObjective(objective);
       globalScope.showFeedback?.('Objetivo atualizado.', 'success');
@@ -614,8 +628,8 @@
           horizon: 'quarter',
           status: 'active',
           targetDate,
-          progress,
-          progressMode: 'hybrid',
+          progress: 0,
+          progressMode: 'auto',
           notes: '',
           createdAt: todayStr,
           updatedAt: todayStr,
@@ -634,11 +648,9 @@
     const editIdInput = document.getElementById('objective-edit-id');
     const nameInput = document.getElementById('objective-name');
     const targetDateInput = document.getElementById('objective-target-date');
-    const progressInput = document.getElementById('objective-progress');
     if (editIdInput) editIdInput.value = objective.id;
     if (nameInput) nameInput.value = objective.name || '';
     if (targetDateInput) targetDateInput.value = objective.targetDate || '';
-    if (progressInput) progressInput.value = String(normalizeProgress(objective.progress));
     nameInput?.focus();
   }
 
@@ -664,29 +676,83 @@
 
   function renderObjectiveList() {
     const container = document.getElementById('objectives-list');
+    const historyContainer = document.getElementById('completed-objectives-list');
     if (!container) return;
-    const objectives = (globalScope.appData?.objectives || []).slice().sort((left, right) =>
-      String(left.name || '').localeCompare(String(right.name || ''), 'pt-BR')
-    );
+    ensurePlanningState();
     const snapshot = buildPlanningSnapshot(globalScope.appData);
+    const activeCards = snapshot.objectiveCards;
+    const completedObjectives = (globalScope.appData?.objectives || [])
+      .filter((objective) => objective.status === 'completed')
+      .slice()
+      .sort((left, right) => {
+        const dateDiff = String(right.completedAt || '').localeCompare(String(left.completedAt || ''));
+        if (dateDiff !== 0) return dateDiff;
+        return String(left.name || '').localeCompare(String(right.name || ''), 'pt-BR');
+      });
 
-    if (objectives.length === 0) {
-      container.innerHTML = '<p class="empty-message">Nenhum objetivo cadastrado.</p>';
+    if (activeCards.length === 0) {
+      container.innerHTML = '<p class="empty-message">Nenhum objetivo ativo.</p>';
+    } else {
+      container.innerHTML = `
+        <h4>Objetivos Ativos</h4>
+        ${activeCards
+          .map((objective) => {
+            const progressValue = objective.effectiveProgress ?? normalizeProgress(objective.progress);
+            return `
+              <div class="planning-item-card">
+                <div class="planning-item-header">
+                  <div>
+                    <div class="planning-item-title">${safeEscape(objective.name || 'Objetivo')}</div>
+                    <div class="planning-item-meta">
+                      <span>${safeEscape(STATUS_LABELS[objective.status] || 'Ativo')}</span>
+                      ${objective.targetDate ? `<span>${safeEscape(formatDate(objective.targetDate))}</span>` : ''}
+                    </div>
+                  </div>
+                  <div class="planning-item-actions">
+                    <button type="button" class="action-btn planning-complete-objective-btn" data-id="${objective.id}" title="Concluir objetivo">
+                      <i class="fas fa-check"></i>
+                    </button>
+                    <button type="button" class="action-btn planning-edit-objective-btn" data-id="${objective.id}">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="action-btn planning-delete-objective-btn" data-id="${objective.id}">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="planning-progress-bar">
+                  <div class="planning-progress-fill" style="width: ${progressValue}%"></div>
+                </div>
+                <div class="planning-item-foot">
+                  <span>${progressValue}% de progresso</span>
+                  <span>${objective.linkedActivitiesOpen || 0} acoes ligadas</span>
+                  <span>${objective.todayActivities || 0} hoje</span>
+                  <span>${objective.overdueOpenCount || 0} atrasadas</span>
+                </div>
+              </div>
+            `;
+          })
+          .join('')}
+      `;
+    }
+
+    if (!historyContainer) return;
+    if (completedObjectives.length === 0) {
+      historyContainer.innerHTML = '';
       return;
     }
 
-    container.innerHTML = objectives
-      .map((objective) => {
-        const card = snapshot.objectiveCards.find((entry) => Number(entry.id) === Number(objective.id));
-        const progressValue = card?.effectiveProgress ?? normalizeProgress(objective.progress);
-        return `
+    historyContainer.innerHTML = `
+      <h4>Historico de Objetivos Concluidos</h4>
+      ${completedObjectives
+        .map((objective) => `
           <div class="planning-item-card">
             <div class="planning-item-header">
               <div>
                 <div class="planning-item-title">${safeEscape(objective.name || 'Objetivo')}</div>
                 <div class="planning-item-meta">
-                  <span>${safeEscape(STATUS_LABELS[objective.status] || 'Ativo')}</span>
-                  ${objective.targetDate ? `<span>${safeEscape(formatDate(objective.targetDate))}</span>` : ''}
+                  <span>${safeEscape(STATUS_LABELS[objective.status] || 'Concluido')}</span>
+                  ${objective.completedAt ? `<span>Concluido em ${safeEscape(formatDate(objective.completedAt))}</span>` : ''}
                 </div>
               </div>
               <div class="planning-item-actions">
@@ -699,18 +765,16 @@
               </div>
             </div>
             <div class="planning-progress-bar">
-              <div class="planning-progress-fill" style="width: ${progressValue}%"></div>
+              <div class="planning-progress-fill" style="width: 100%"></div>
             </div>
             <div class="planning-item-foot">
-              <span>${progressValue}% de progresso</span>
-              <span>${card?.linkedActivitiesOpen || 0} acoes ligadas</span>
-              <span>${card?.todayActivities || 0} hoje</span>
-              <span>${card?.overdueOpenCount || 0} atrasadas</span>
+              <span>100% concluido</span>
+              ${objective.targetDate ? `<span>Prazo ${safeEscape(formatDate(objective.targetDate))}</span>` : ''}
             </div>
           </div>
-        `;
-      })
-      .join('');
+        `)
+        .join('')}
+    `;
   }
 
   function renderPlanningDashboard(todayActivities) {
@@ -842,7 +906,14 @@
     const atRiskObjectives = snapshot.objectiveCards.filter(
       (objective) => objective.overdueOpenCount > 0 || (objective.stalledDays !== null && objective.stalledDays >= 7)
     );
-    const topObjective = snapshot.objectiveCards[0] || null;
+    const topObjective =
+      snapshot.objectiveCards
+        .slice()
+        .sort((left, right) => {
+          const progressDiff = Number(right.effectiveProgress || 0) - Number(left.effectiveProgress || 0);
+          if (progressDiff !== 0) return progressDiff;
+          return String(left.name || '').localeCompare(String(right.name || ''), 'pt-BR');
+        })[0] || null;
 
     return {
       ...snapshot,
@@ -949,6 +1020,13 @@
     globalScope.__planningEventsBound = true;
 
     document.addEventListener('click', function (event) {
+      const completeObjectiveBtn = event.target.closest('.planning-complete-objective-btn');
+      if (completeObjectiveBtn) {
+        const id = normalizeId(completeObjectiveBtn.getAttribute('data-id'));
+        if (id) completeObjective(id);
+        return;
+      }
+
       const editObjectiveBtn = event.target.closest('.planning-edit-objective-btn');
       if (editObjectiveBtn) {
         const id = normalizeId(editObjectiveBtn.getAttribute('data-id'));
@@ -982,6 +1060,7 @@
     renderPlanningDashboard,
     renderPlanningStatisticsPanel,
     handleObjectiveSubmit,
+    completeObjective,
     initPlanningEvents,
     populateObjectiveOptions,
   };

@@ -682,12 +682,16 @@
     const remote = snap.data() || {};
     const remoteAppData = remote.appData && typeof remote.appData === 'object' ? remote.appData : null;
     const syncPolicyApi = getSyncPolicyApi();
+    const localSaveMeta =
+      typeof globalThis.getLocalSaveMeta === 'function' ? globalThis.getLocalSaveMeta() : null;
     const decision =
       typeof syncPolicyApi.resolvePreferredSyncAction === 'function'
         ? syncPolicyApi.resolvePreferredSyncAction({
             localData: buildSerializableData(),
             remoteData: remoteAppData,
             defaultData: typeof cloneDefaultAppState === 'function' ? cloneDefaultAppState() : APP_DEFAULTS,
+            localSavedAt: localSaveMeta?.savedAt || null,
+            remoteUpdatedAt: remote.updatedAt || null,
           })
         : { action: 'apply_remote', reason: 'fallback' };
 

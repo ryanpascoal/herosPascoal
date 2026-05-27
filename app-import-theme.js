@@ -914,12 +914,14 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   }
 
   // Check missions - was there any failed mission on this day?
+  let missionFailureCount = 0;
   if (shouldCheckType('mission')) {
     const failedMissions = appData.completedMissions.filter(
       (m) => m.failedDate === targetDateStr && m.failed && m.penaltyApplied !== true
     );
     if (failedMissions.length > 0) {
       failedTypes.push('mission');
+      missionFailureCount += failedMissions.length;
       failedMissions.forEach((m) => {
         m.penaltyApplied = true;
       });
@@ -931,18 +933,21 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       'missão',
       'mission'
     );
+    missionFailureCount += missedRoutineMissions;
     if (missedRoutineMissions > 0 && !failedTypes.includes('mission')) {
       failedTypes.push('mission');
     }
   }
 
   // Check works - was there any failed work on this day?
+  let workFailureCount = 0;
   if (shouldCheckType('work')) {
     const failedWorks = appData.completedWorks.filter(
       (w) => w.failedDate === targetDateStr && w.failed && w.penaltyApplied !== true
     );
     if (failedWorks.length > 0) {
       failedTypes.push('work');
+      workFailureCount += failedWorks.length;
       failedWorks.forEach((w) => {
         w.penaltyApplied = true;
       });
@@ -954,6 +959,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       'trabalho',
       'work'
     );
+    workFailureCount += missedRoutineWorks;
     if (missedRoutineWorks > 0 && !failedTypes.includes('work')) {
       failedTypes.push('work');
     }
@@ -1008,11 +1014,12 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
 
     // Update statistics
     if (!appData.statistics) appData.statistics = {};
-    if (failedTypes.includes('mission')) {
-      appData.statistics.missionsFailed = (appData.statistics.missionsFailed || 0) + 1;
+    if (missionFailureCount > 0) {
+      appData.statistics.missionsFailed =
+        (appData.statistics.missionsFailed || 0) + missionFailureCount;
     }
-    if (failedTypes.includes('work')) {
-      appData.statistics.worksFailed = (appData.statistics.worksFailed || 0) + 1;
+    if (workFailureCount > 0) {
+      appData.statistics.worksFailed = (appData.statistics.worksFailed || 0) + workFailureCount;
     }
     if (failedTypes.includes('workout')) {
       appData.statistics.workoutsIgnored =
@@ -1147,8 +1154,6 @@ Object.assign(globalThis, {
   formatDate,
   editNamedEmojiItem,
   deleteNamedEmojiItem,
-  validateIsoDateInput,
-  maybeEditItemDeadline,
   editWorkout,
   deleteWorkout,
   editStudy,

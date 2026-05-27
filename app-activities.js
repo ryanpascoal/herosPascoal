@@ -15,70 +15,131 @@
   }
 }
 
-function getAllTodayActivities() {
-  const today = getGameNow();
-  const todayStr = getLocalDateString(today);
-  const dayOfWeek = today.getDay();
-  const items = [];
-
-  (appData.missions || []).forEach((mission) => {
-    if (mission.failed) return;
-    let visible = false;
-    if (isRoutineType(mission.type)) {
-      visible = getRoutineDays(mission).includes(dayOfWeek);
-    } else if (mission.type === 'eventual' && mission.date) {
-      visible = getLocalDateString(parseLocalDateString(mission.date)) >= todayStr;
-    } else if (mission.type === 'epica' && mission.deadline) {
-      visible = getLocalDateString(parseLocalDateString(mission.deadline)) >= todayStr;
-    }
-    if (visible) items.push({ category: 'mission', item: mission });
-  });
-
-  if (!isWorkOffDay(todayStr)) {
-    (appData.works || []).forEach((work) => {
-      if (work.failed) return;
-      let visible = false;
-      if (isRoutineType(work.type)) {
-        visible = getRoutineDays(work).includes(dayOfWeek);
-      } else if (work.type === 'eventual' && work.date) {
-        visible = getLocalDateString(parseLocalDateString(work.date)) >= todayStr;
-      } else if (work.type === 'epica' && work.deadline) {
-        visible = getLocalDateString(parseLocalDateString(work.deadline)) >= todayStr;
-      }
-      if (visible) items.push({ category: 'work', item: work });
-    });
-  }
-
-  if (!isRestDay(todayStr)) {
-    (appData.dailyWorkouts || [])
-      .filter((entry) => entry && entry.date === todayStr)
-      .forEach((entry) => {
-        const workout = (appData.workouts || []).find(
-          (item) => String(item.id) === String(entry.workoutId)
-        );
-        if (workout) items.push({ category: 'workout', item: workout, dailyEntry: entry });
-      });
-
-    (appData.dailyStudies || [])
-      .filter((entry) => entry && entry.date === todayStr)
-      .forEach((entry) => {
-        const study = (appData.studies || []).find(
-          (item) => String(item.id) === String(entry.studyId)
-        );
-        if (study) items.push({ category: 'study', item: study, dailyEntry: entry });
-      });
-  }
-
-  (appData.books || []).forEach((book) => {
-    if (!book || book.status === 'concluido') return;
-    if (book.status === 'lendo' || book.status === 'quero ler')
-      items.push({ category: 'book', item: book });
-  });
-
+function sortActivityItems(items) {
   if (typeof comparePlannedActivities === 'function') {
     return items.sort(comparePlannedActivities);
   }
   return items.sort((a, b) => String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR'));
+}
+
+function isScheduledItemVisibleToday(item, todayStr, dayOfWeek, completedList, options = {}) {
+  if (!item || item.failed) return false;
+
+  if (isRoutineType(item.type)) {
+    const isScheduledToday = getRoutineDays(item).includes(dayOfWeek);
+    if (!isScheduledToday) return false;
+    if (options.excludeResolvedRoutine === true) {
+      return !wasItemLoggedForDate(item, completedList, todayStr);
+    }
+    return true;
+  }
+
+  if (item.type === 'eventual' && item.date) {
+    return getLocalDateString(parseLocalDateString(item.date)) >= todayStr;
+  }
+
+  if (item.type === 'epica' && item.deadline) {
+    return getLocalDateString(parseLocalDateString(item.deadline)) >= todayStr;
+  }
+
+  return false;
+}
+
+function collectVisibleScheduledItems(config) {
+  const {
+    sourceList,
+    category,
+    completedList,
+    todayStr,
+    dayOfWeek,
+    excludeCompleted = false,
+    excludeResolvedRoutine = false,
+  } = config;
+  const items = [];
+
+  (sourceList || []).forEach((item) => {
+    if (!item) return;
+    if (excludeCompleted && item.completed) return;
+    if (
+      isScheduledItemVisibleToday(item, todayStr, dayOfWeek, completedList, {
+        excludeResolvedRoutine,
+      })
+    ) {
+      items.push({ category, item });
+    }
+  });
+
+  return items;
+}
+
+function collectDailyTrackerItems(config) {
+  const { sourceList, itemList, category, idKey, todayStr, pendingOnly = false } = config;
+  const items = [];
+
+  (sourceList || [])
+    .filter((entry) => {
+      if (!entry || entry.date !== todayStr) return false;
+      if (!pendingOnly) return true;
+      return !entry.completed && !entry.skipped;
+    })
+    .forEach((entry) => {
+      const item = (itemList || []).find((candidate) => String(candidate.id) === String(entry[idKey]));
+      if (item) items.push({ category, item, dailyEntry: entry });
+    });
+
+  return items;
+}
+
+function getAllTodayActivities() {
+  const today = getGameNow();
+  const todayStr = getLocalDateString(today);
+  const dayOfWeek = today.getDay();
+  const items = collectVisibleScheduledItems({
+    sourceList: appData.missions,
+    category: 'mission',
+    completedList: appData.completedMissions,
+    todayStr,
+    dayOfWeek,
+  });
+
+  if (!isWorkOffDay(todayStr)) {
+    items.push(
+      ...collectVisibleScheduledItems({
+        sourceList: appData.works,
+        category: 'work',
+        completedList: appData.completedWorks,
+        todayStr,
+        dayOfWeek,
+      })
+    );
+  }
+
+  if (!isRestDay(todayStr)) {
+    items.push(
+      ...collectDailyTrackerItems({
+        sourceList: appData.dailyWorkouts,
+        itemList: appData.workouts,
+        category: 'workout',
+        idKey: 'workoutId',
+        todayStr,
+      }),
+      ...collectDailyTrackerItems({
+        sourceList: appData.dailyStudies,
+        itemList: appData.studies,
+        category: 'study',
+        idKey: 'studyId',
+        todayStr,
+      })
+    );
+  }
+
+  (appData.books || []).forEach((book) => {
+    if (!book || book.status === 'concluido') return;
+    if (book.status === 'lendo' || book.status === 'quero-ler')
+      items.push({ category: 'book', item: book });
+  });
+
+  return sortActivityItems(items);
 }
 
 function updateActivityProgressBar() {
@@ -124,58 +185,49 @@ function getUnifiedTodayActivities() {
   const today = getGameNow();
   const todayStr = getLocalDateString(today);
   const dayOfWeek = today.getDay();
-  const items = [];
-
-  (appData.missions || []).forEach((mission) => {
-    if (mission.completed || mission.failed) return;
-    let visible = false;
-    if (isRoutineType(mission.type)) {
-      visible =
-        getRoutineDays(mission).includes(dayOfWeek) &&
-        !wasItemLoggedForDate(mission, appData.completedMissions, todayStr);
-    } else if (mission.type === 'eventual' && mission.date) {
-      visible = getLocalDateString(parseLocalDateString(mission.date)) >= todayStr;
-    } else if (mission.type === 'epica' && mission.deadline) {
-      visible = getLocalDateString(parseLocalDateString(mission.deadline)) >= todayStr;
-    }
-    if (visible) items.push({ category: 'mission', item: mission });
+  const items = collectVisibleScheduledItems({
+    sourceList: appData.missions,
+    category: 'mission',
+    completedList: appData.completedMissions,
+    todayStr,
+    dayOfWeek,
+    excludeCompleted: true,
+    excludeResolvedRoutine: true,
   });
 
   if (!isWorkOffDay(todayStr)) {
-    (appData.works || []).forEach((work) => {
-      if (work.completed || work.failed) return;
-      let visible = false;
-      if (isRoutineType(work.type)) {
-        visible =
-          getRoutineDays(work).includes(dayOfWeek) &&
-          !wasItemLoggedForDate(work, appData.completedWorks, todayStr);
-      } else if (work.type === 'eventual' && work.date) {
-        visible = getLocalDateString(parseLocalDateString(work.date)) >= todayStr;
-      } else if (work.type === 'epica' && work.deadline) {
-        visible = getLocalDateString(parseLocalDateString(work.deadline)) >= todayStr;
-      }
-      if (visible) items.push({ category: 'work', item: work });
-    });
+    items.push(
+      ...collectVisibleScheduledItems({
+        sourceList: appData.works,
+        category: 'work',
+        completedList: appData.completedWorks,
+        todayStr,
+        dayOfWeek,
+        excludeCompleted: true,
+        excludeResolvedRoutine: true,
+      })
+    );
   }
 
   if (!isRestDay(todayStr)) {
-    (appData.dailyWorkouts || [])
-      .filter((entry) => entry && entry.date === todayStr && !entry.completed && !entry.skipped)
-      .forEach((entry) => {
-        const workout = (appData.workouts || []).find(
-          (item) => String(item.id) === String(entry.workoutId)
-        );
-        if (workout) items.push({ category: 'workout', item: workout, dailyEntry: entry });
-      });
-
-    (appData.dailyStudies || [])
-      .filter((entry) => entry && entry.date === todayStr && !entry.completed && !entry.skipped)
-      .forEach((entry) => {
-        const study = (appData.studies || []).find(
-          (item) => String(item.id) === String(entry.studyId)
-        );
-        if (study) items.push({ category: 'study', item: study, dailyEntry: entry });
-      });
+    items.push(
+      ...collectDailyTrackerItems({
+        sourceList: appData.dailyWorkouts,
+        itemList: appData.workouts,
+        category: 'workout',
+        idKey: 'workoutId',
+        todayStr,
+        pendingOnly: true,
+      }),
+      ...collectDailyTrackerItems({
+        sourceList: appData.dailyStudies,
+        itemList: appData.studies,
+        category: 'study',
+        idKey: 'studyId',
+        todayStr,
+        pendingOnly: true,
+      })
+    );
   }
 
   (appData.books || []).forEach((book) => {
@@ -183,10 +235,7 @@ function getUnifiedTodayActivities() {
     if (book.status === 'lendo') items.push({ category: 'book', item: book });
   });
 
-  if (typeof comparePlannedActivities === 'function') {
-    return items.sort(comparePlannedActivities);
-  }
-  return items.sort((a, b) => String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR'));
+  return sortActivityItems(items);
 }
 
 function getUnifiedHistoryActivities() {

@@ -51,11 +51,9 @@ function startApp() {
   window.__appStarted = true;
 
   // 1. Primeiro: carregar dados salvos
-  getGlobalHook('loadFromLocalStorage', loadFromLocalStorage)();
-  if (typeof globalThis.rebuildProductiveDaysFromHistory === 'function') {
-    globalThis.rebuildProductiveDaysFromHistory();
+  if (typeof window.loadFromLocalStorage === 'function') {
+    window.loadFromLocalStorage();
   }
-  normalizeActivityDays();
   runDeferredStartupResets();
 
     // 2. Verificar e recriar missÃƒÆ’Ã‚Âµes diÃƒÆ’Ã‚Â¡rias para HOJE (coloque AQUI!)
@@ -116,42 +114,16 @@ function cloneDefaultAppState() {
 }
 
 function replaceAppState(source) {
-  const nextState = cloneDefaultAppState();
-  if (source && typeof source === 'object') {
-    Object.assign(nextState, JSON.parse(JSON.stringify(source)));
-  }
+  const nextState =
+    source && typeof source === 'object' ? JSON.parse(JSON.stringify(source)) : cloneDefaultAppState();
   Object.keys(appData).forEach((key) => delete appData[key]);
   Object.assign(appData, nextState);
 }
 
 function finalizeLoadedState() {
-  normalizeActivityDays();
   if (typeof populateFinanceMonthOptions === 'function') {
     populateFinanceMonthOptions();
   }
-}
-
-function normalizeActivityDays() {
-  const normalizeListDays = (list) => {
-    if (!Array.isArray(list)) return;
-    list.forEach((item) => {
-      if (!item) return;
-      const sourceDays = Array.isArray(item.days) ? item.days : [];
-      const normalized = Array.from(
-        new Set(
-          sourceDays
-            .map(normalizeWeekdayValue)
-            .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
-        )
-      );
-      item.days = normalized.length > 0 ? normalized : [1, 2, 3, 4, 5];
-    });
-  };
-
-  normalizeListDays(appData.workouts);
-  normalizeListDays(appData.studies);
-  normalizeListDays(appData.missions);
-  normalizeListDays(appData.works);
 }
 
 const LOCAL_CACHE_HISTORY_LIMIT = 240;
@@ -749,12 +721,10 @@ function generateDailyActivities() {
 // __appCoreBridge: exposes core APIs for legacy scripts during module migration
 Object.assign(globalThis, {
   startApp,
-  loadFromLocalStorage,
   cloneDefaultAppState,
   replaceAppState,
   finalizeLoadedState,
   normalizeWeekdayValue,
-  normalizeActivityDays,
   buildLocalCachePayload,
   checkDailyReset,
   checkWeeklyReset,

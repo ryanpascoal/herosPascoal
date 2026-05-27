@@ -628,7 +628,6 @@ function updateUI(options = {}) {
     if (typeof ensurePlanningState === 'function') {
       ensurePlanningState(appData);
     }
-    normalizeActivityDays();
     generateDailyActivities();
 
     // Atualizar cartões do perfil
@@ -1456,10 +1455,8 @@ async function skipMission(missionId) {
     skippedDate: todayStr,
     reason: 'Atividade pulada (1 item de pulo consumido)',
   });
-  updateProductiveDay(0, 0, 0, 0, 0, {
-    date: todayStr,
-    missionsMissed: 1,
-  });
+  if (!appData.statistics) appData.statistics = {};
+  appData.statistics.missionsIgnored = (appData.statistics.missionsIgnored || 0) + 1;
   if (!isRoutine) {
     appData.missions.splice(missionIndex, 1);
   }
@@ -1544,10 +1541,6 @@ async function skipWork(workId) {
     skippedDate: todayStr,
     reason: 'Atividade pulada (1 item de pulo consumido)',
   });
-  updateProductiveDay(0, 0, 0, 0, 0, {
-    date: todayStr,
-    worksMissed: 1,
-  });
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.worksIgnored = (appData.statistics.worksIgnored || 0) + 1;
   if (!isRoutine) {
@@ -1592,10 +1585,8 @@ async function skipDailyWorkout(workoutDayId) {
       reason: 'Atividade pulada (1 item de pulo consumido)',
     });
   }
-  updateProductiveDay(0, 0, 0, 0, 0, {
-    date: workoutDay.date,
-    workoutsMissed: 1,
-  });
+  if (!appData.statistics) appData.statistics = {};
+  appData.statistics.workoutsIgnored = (appData.statistics.workoutsIgnored || 0) + 1;
 
   addHeroLog(
     'workout',
@@ -1636,10 +1627,8 @@ async function skipDailyStudy(studyDayId) {
       reason: 'Atividade pulada (1 item de pulo consumido)',
     });
   }
-  updateProductiveDay(0, 0, 0, 0, 0, {
-    date: studyDay.date,
-    studiesMissed: 1,
-  });
+  if (!appData.statistics) appData.statistics = {};
+  appData.statistics.studiesIgnored = (appData.statistics.studiesIgnored || 0) + 1;
 
   addHeroLog('study', `Estudo pulado: ${study.name}`, '1 item de pulo consumido. Sem penalidade.');
 

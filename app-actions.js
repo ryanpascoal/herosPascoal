@@ -325,6 +325,8 @@ function handleWorkoutCompletion() {
     appData.feedbacks.push({
       type: 'workout',
       activityId: workoutDay.workoutId,
+      objectiveId: workout.objectiveId || null,
+      objectiveName: workout.objectiveId ? appData.objectives.find((objective) => objective.id === workout.objectiveId)?.name || '' : '',
       feedback: feedback,
       date: new Date().toISOString(),
     });
@@ -471,6 +473,8 @@ function completeStudy(studyDayId, feedbackText = '') {
     appData.feedbacks.push({
       type: 'study',
       activityId: studyDay.studyId,
+      objectiveId: study.objectiveId || null,
+      objectiveName: study.objectiveId ? appData.objectives.find((objective) => objective.id === study.objectiveId)?.name || '' : '',
       feedback: feedbackText,
       date: new Date().toISOString(),
     });
@@ -547,6 +551,8 @@ function completeBook(bookId, feedbackText = '') {
     appData.feedbacks.push({
       type: 'book',
       activityId: bookId,
+      objectiveId: book.objectiveId || null,
+      objectiveName: book.objectiveId ? appData.objectives.find((objective) => objective.id === book.objectiveId)?.name || '' : '',
       feedback: feedbackText,
       date: new Date().toISOString(),
     });
@@ -897,6 +903,8 @@ function completeMission(missionId, feedbackText = '') {
     appData.feedbacks.push({
       type: 'mission',
       activityId: missionId,
+      objectiveId: mission.objectiveId || null,
+      objectiveName: mission.objectiveId ? appData.objectives.find((objective) => objective.id === mission.objectiveId)?.name || '' : '',
       feedback: feedbackText,
       date: new Date().toISOString(),
     });
@@ -989,6 +997,8 @@ function completeWork(workId, feedbackText = '') {
     appData.feedbacks.push({
       type: 'work',
       activityId: workId,
+      objectiveId: work.objectiveId || null,
+      objectiveName: work.objectiveId ? appData.objectives.find((objective) => objective.id === work.objectiveId)?.name || '' : '',
       feedback: feedbackText,
       date: new Date().toISOString(),
     });
@@ -1282,69 +1292,6 @@ function updateProductiveDay(
   productiveDay.totalXP += Number(xp || 0);
 }
 
-function rebuildProductiveDaysFromHistory() {
-  if (!appData.statistics) appData.statistics = {};
-
-  const rebuilt = {};
-
-  const registerEntry = (entry, counts) => {
-    const dateKey =
-      entry?.completedDate || entry?.failedDate || entry?.skippedDate || entry?.date || '';
-    if (!dateKey) return;
-    const day = rebuilt[dateKey] || ensureProductiveDaySnapshot();
-    day.workouts += Number(counts.workouts || 0);
-    day.missions += Number(counts.missions || 0);
-    day.works += Number(counts.works || 0);
-    day.studies += Number(counts.studies || 0);
-    day.workoutsMissed += Number(counts.workoutsMissed || 0);
-    day.missionsMissed += Number(counts.missionsMissed || 0);
-    day.worksMissed += Number(counts.worksMissed || 0);
-    day.studiesMissed += Number(counts.studiesMissed || 0);
-    day.xpMission += Number(counts.xpMission || 0);
-    day.xpWork += Number(counts.xpWork || 0);
-    day.xpWorkout += Number(counts.xpWorkout || 0);
-    day.xpStudy += Number(counts.xpStudy || 0);
-    day.xpBook += Number(counts.xpBook || 0);
-    rebuilt[dateKey] = day;
-  };
-
-  (appData.completedMissions || []).forEach((entry) => {
-    registerEntry(
-      entry,
-      entry.failed || entry.skipped
-        ? { missionsMissed: 1 }
-        : { missions: 1, xpMission: entry.type === 'epica' ? 20 : 1 }
-    );
-  });
-  (appData.completedWorks || []).forEach((entry) => {
-    registerEntry(
-      entry,
-      entry.failed || entry.skipped
-        ? { worksMissed: 1 }
-        : { works: 1, xpWork: entry.type === 'epica' ? 20 : 1 }
-    );
-  });
-  (appData.completedWorkouts || []).forEach((entry) => {
-    registerEntry(
-      entry,
-      entry.failed || entry.skipped ? { workoutsMissed: 1 } : { workouts: 1, xpWorkout: 3 }
-    );
-  });
-  (appData.completedStudies || []).forEach((entry) => {
-    registerEntry(
-      entry,
-      entry.failed || entry.skipped
-        ? { studiesMissed: 1 }
-        : { studies: 1, xpStudy: entry.applied ? 3 : 1 }
-    );
-  });
-  (appData.books || []).forEach((book) => {
-    if (!book?.completed || !book?.dateCompleted) return;
-    registerEntry(book, { xpBook: 20 });
-  });
-  appData.statistics.productiveDays = rebuilt;
-}
-
 // Comprar item (atualizado para verificar nível)
 function buyItem(itemId) {
   const item = appData.shopItems.find((i) => i.id === itemId);
@@ -1617,7 +1564,6 @@ Object.assign(globalThis, {
   cleanupOldDailyWorks,
   ensureProductiveDayEntry,
   updateProductiveDay,
-  rebuildProductiveDaysFromHistory,
   buyItem,
   getMysteryGiftPool,
   useItem,

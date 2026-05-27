@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Controle de Atividades</title>
+    <title>HEROSPASCOAL</title>
     <link rel="icon" type="image/png" href="perfil.png" />
     <link rel="stylesheet" href="styles.css" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Montserrat:wght@400;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
     <link
@@ -133,8 +133,8 @@
                   <option value="book">Livros</option>
                 </select>
               </div>
-              <div id="planning-dashboard" class="planning-dashboard"></div>
               <div class="missions-list" id="daily-activities"></div>
+              <div id="planning-dashboard" class="planning-dashboard"></div>
             </div>
 
             <div id="atividades-calendario" class="sub-tab">
@@ -364,17 +364,12 @@
                       <label for="objective-target-date">Prazo</label>
                       <input type="date" id="objective-target-date" />
                     </div>
-
-                    <div class="form-group">
-                      <label for="objective-progress">Progresso (%)</label>
-                      <input type="number" id="objective-progress" min="0" max="100" value="0" />
-                    </div>
-
                   </div>
 
                   <button type="submit" class="submit-btn">Salvar Objetivo</button>
                 </form>
                 <div class="items-list planning-items-list" id="objectives-list"></div>
+                <div class="items-list planning-items-list" id="completed-objectives-list"></div>
               </div>
 
               <div class="existing-items">

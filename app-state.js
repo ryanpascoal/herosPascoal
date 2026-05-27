@@ -75,6 +75,7 @@ const appData = {
     booksRead: 0,
     missionsDone: 0,
     missionsFailed: 0,
+    missionsIgnored: 0,
     justiceDone: 0,
     maxStreakGeneral: 0,
     maxStreakPhysical: 0,

@@ -739,26 +739,6 @@ function createUniqueId(...lists) {
   return candidate;
 }
 
-function normalizeEntityIds(list) {
-  if (!Array.isArray(list)) return;
-  const used = new Set();
-  let candidate = Date.now();
-
-  list.forEach((item) => {
-    if (!item || typeof item !== 'object') return;
-    let id = Number(item.id);
-    if (!Number.isFinite(id) || used.has(String(id))) {
-      while (used.has(String(candidate))) {
-        candidate += 1;
-      }
-      id = candidate;
-      candidate += 1;
-    }
-    item.id = id;
-    used.add(String(id));
-  });
-}
-
 function getCheckedDays(selector) {
   const dayCheckboxes = document.querySelectorAll(selector);
   return Array.from(dayCheckboxes).map((cb) => parseInt(cb.value, 10));
@@ -838,7 +818,6 @@ Object.assign(globalThis, {
   handleFinanceRecurringSubmit,
   deleteFinanceRecurring,
   createUniqueId,
-  normalizeEntityIds,
   getCheckedDays,
   createWorkoutPayload,
   createStudyPayload,
