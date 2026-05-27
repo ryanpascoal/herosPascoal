@@ -6825,6 +6825,225 @@ body.light-theme {
   min-height: 58px;
 }
 
+#perfil {
+  display: grid;
+  gap: 20px;
+}
+
+#perfil .profile-header {
+  padding: 24px;
+  gap: 24px;
+}
+
+#perfil .profile-pic-container {
+  flex-shrink: 0;
+}
+
+#perfil .profile-info {
+  display: grid;
+  gap: 10px;
+  align-content: center;
+}
+
+#perfil .hero-name {
+  margin-bottom: 0;
+}
+
+#perfil .level-xp-integrated {
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(7, 14, 26, 0.78);
+}
+
+#perfil .streaks-container {
+  padding: 22px;
+  background: var(--card-bg) !important;
+}
+
+#perfil .streaks-grid {
+  gap: 16px;
+}
+
+#perfil .streak-card {
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: 3px solid rgba(56, 189, 248, 0.55) !important;
+  background: rgba(7, 14, 26, 0.88) !important;
+}
+
+#perfil .streak-card:nth-child(1) {
+  border-left-color: #fb7185 !important;
+}
+
+#perfil .streak-card:nth-child(2) {
+  border-left-color: #22c55e !important;
+}
+
+#perfil .streak-card:nth-child(3) {
+  border-left-color: #38bdf8 !important;
+}
+
+#perfil .profile-tabs .sub-content,
+#perfil .shop-inventory .sub-content {
+  display: grid;
+  gap: 16px;
+  min-height: 0;
+}
+
+#perfil .profile-tabs .sub-tab.active,
+#perfil .shop-inventory .sub-tab.active {
+  display: grid;
+  gap: 16px;
+}
+
+#perfil .workouts-display,
+#perfil .studies-display,
+#perfil .existing-items,
+#perfil .cloud-sync-card {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(7, 14, 26, 0.72);
+}
+
+#perfil .workouts-display h3,
+#perfil .studies-display h3,
+#perfil .existing-items h3,
+#perfil .cloud-sync-card h4 {
+  margin-bottom: 0;
+}
+
+#perfil .attributes-grid {
+  gap: 16px;
+}
+
+#perfil .attribute-card {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid rgba(56, 189, 248, 0.6);
+  background: rgba(7, 14, 26, 0.88);
+}
+
+#perfil .attribute-name {
+  color: #f2f7ff;
+  font-weight: 600;
+}
+
+#perfil .attribute-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#perfil .attribute-fill {
+  border-radius: inherit;
+}
+
+#perfil .logs-container {
+  gap: 12px;
+  max-height: 420px;
+}
+
+#perfil .log-item {
+  border-left: 3px solid rgba(56, 189, 248, 0.35) !important;
+  background: rgba(7, 14, 26, 0.72) !important;
+}
+
+#perfil .settings-section {
+  display: grid;
+  gap: 16px;
+}
+
+#perfil .settings-section > br {
+  display: none;
+}
+
+#perfil .cloud-sync-card {
+  margin-top: 0;
+}
+
+#perfil .cloud-sync-note {
+  color: rgba(226, 232, 240, 0.76);
+}
+
+#perfil .cloud-user-label {
+  color: #d6e1f0;
+}
+
+.mission-status,
+.history-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.completed-status {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(74, 222, 128, 0.24);
+  color: #86efac;
+}
+
+.failed-status {
+  background: rgba(248, 113, 113, 0.14);
+  border-color: rgba(252, 165, 165, 0.24);
+  color: #fca5a5;
+}
+
+.skipped-status {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(251, 191, 36, 0.24);
+  color: #fcd34d;
+}
+
+.history-list .mission-card.completed,
+.history-card.completed {
+  border-left-color: #22c55e !important;
+  background:
+    linear-gradient(135deg, rgba(34, 197, 94, 0.14), rgba(34, 197, 94, 0) 52%),
+    rgba(7, 14, 26, 0.9) !important;
+}
+
+.history-list .mission-card.failed,
+.history-card.failed {
+  border-left-color: #f87171 !important;
+  background:
+    linear-gradient(135deg, rgba(248, 113, 113, 0.16), rgba(248, 113, 113, 0) 52%),
+    rgba(7, 14, 26, 0.9) !important;
+}
+
+.history-list .mission-card.skipped,
+.history-card.skipped {
+  border-left-color: #f59e0b !important;
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(245, 158, 11, 0) 52%),
+    rgba(7, 14, 26, 0.9) !important;
+}
+
+.history-list .mission-card.completed .mission-details,
+.history-card.completed .mission-details {
+  color: #d7f7e3;
+}
+
+.history-list .mission-card.failed .mission-details,
+.history-card.failed .mission-details {
+  color: #ffd6dd;
+}
+
+.history-list .mission-card.skipped .mission-details,
+.history-card.skipped .mission-details {
+  color: #ffe5b0;
+}
+
 .xp-fill,
 .xp-fill-integrated,
 .boss-bar-fill,
@@ -6962,6 +7181,523 @@ body.light-theme .workout-entries-input {
   background: rgba(255, 255, 255, 0.98) !important;
   border-color: rgba(15, 23, 42, 0.12) !important;
   color: #162235 !important;
+}
+
+body.light-theme #perfil .level-xp-integrated,
+body.light-theme #perfil .streaks-container,
+body.light-theme #perfil .workouts-display,
+body.light-theme #perfil .studies-display,
+body.light-theme #perfil .existing-items,
+body.light-theme #perfil .cloud-sync-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+body.light-theme #perfil .attribute-card,
+body.light-theme #perfil .streak-card,
+body.light-theme #perfil .log-item {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+body.light-theme #perfil .attribute-name,
+body.light-theme #perfil .streak-title,
+body.light-theme #perfil .level-label,
+body.light-theme #perfil .cloud-user-label {
+  color: #162235;
+}
+
+body.light-theme #perfil .attribute-bar {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+body.light-theme #perfil .cloud-sync-note,
+body.light-theme #perfil .streak-record,
+body.light-theme #perfil .streaks-note {
+  color: #526277;
+}
+
+body.light-theme .completed-status {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(22, 163, 74, 0.22);
+  color: #166534;
+}
+
+body.light-theme .failed-status {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(220, 38, 38, 0.2);
+  color: #b91c1c;
+}
+
+body.light-theme .skipped-status {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(217, 119, 6, 0.2);
+  color: #b45309;
+}
+
+body.light-theme .history-list .mission-card.completed,
+body.light-theme .history-card.completed {
+  background:
+    linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0) 52%),
+    rgba(255, 255, 255, 0.98) !important;
+}
+
+body.light-theme .history-list .mission-card.failed,
+body.light-theme .history-card.failed {
+  background:
+    linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0) 52%),
+    rgba(255, 255, 255, 0.98) !important;
+}
+
+body.light-theme .history-list .mission-card.skipped,
+body.light-theme .history-card.skipped {
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0) 52%),
+    rgba(255, 255, 255, 0.98) !important;
+}
+
+body.light-theme .history-list .mission-card.completed .mission-details,
+body.light-theme .history-card.completed .mission-details,
+body.light-theme .history-list .mission-card.failed .mission-details,
+body.light-theme .history-card.failed .mission-details,
+body.light-theme .history-list .mission-card.skipped .mission-details,
+body.light-theme .history-card.skipped .mission-details {
+  color: #526277;
+}
+
+@media (max-width: 768px) {
+  #perfil .profile-header {
+    align-items: center;
+    padding: 18px 14px;
+    gap: 16px;
+  }
+
+  #perfil .profile-info,
+  #perfil .level-xp-integrated,
+  #perfil .profile-tabs,
+  #perfil .shop-inventory,
+  #perfil .hero-logs-section,
+  #perfil .settings-section,
+  #perfil .streaks-container {
+    min-width: 0;
+  }
+
+  #perfil .profile-info {
+    width: 100%;
+    justify-items: stretch;
+    text-align: center;
+  }
+
+  #perfil .hero-name,
+  #perfil .cloud-sync-note,
+  #perfil .cloud-user-label,
+  #perfil .streak-record,
+  #perfil .streak-count,
+  #perfil .display-name span:last-child,
+  #perfil .attribute-name span:last-child,
+  #perfil .item-name,
+  #perfil .item-level,
+  #perfil .item-type {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  #perfil .streaks-container,
+  #perfil .workouts-display,
+  #perfil .studies-display,
+  #perfil .existing-items,
+  #perfil .cloud-sync-card {
+    padding: 16px 14px;
+  }
+
+  #perfil .streaks-grid,
+  #perfil .attributes-grid,
+  #perfil .workouts-grid,
+  #perfil .studies-grid,
+  #perfil .items-grid,
+  #perfil .inventory-grid,
+  #perfil .settings-options,
+  #perfil .cloud-sync-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #perfil .attribute-header,
+  #perfil .display-card-header,
+  #perfil .display-details,
+  #perfil .item-card,
+  #perfil .item-info,
+  #perfil .item-actions,
+  #perfil .cloud-sync-meta {
+    min-width: 0;
+  }
+
+  #perfil .attribute-header,
+  #perfil .display-card-header,
+  #perfil .display-details {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  #perfil .attribute-meta,
+  #perfil .display-type {
+    max-width: 100%;
+  }
+
+  #perfil .display-type {
+    white-space: normal;
+    text-align: left;
+  }
+
+  #perfil .display-days,
+  #perfil .display-record {
+    width: 100%;
+  }
+
+  #perfil .item-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  #perfil .item-info {
+    align-items: flex-start;
+  }
+
+  #perfil .item-info > div {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  #perfil .item-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  #perfil .item-actions .action-btn {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  #perfil .settings-btn {
+    justify-content: flex-start;
+    text-align: left;
+    white-space: normal;
+  }
+
+  #perfil .cloud-sync-meta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #perfil .cloud-status,
+  #perfil .cloud-user-label {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 560px) {
+  #perfil {
+    gap: 14px;
+  }
+
+  #perfil .profile-header,
+  #perfil .profile-tabs,
+  #perfil .shop-inventory,
+  #perfil .hero-logs-section,
+  #perfil .settings-section,
+  #perfil .streaks-container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  #perfil .profile-pic {
+    width: 88px;
+    height: 88px;
+  }
+
+  #perfil .edit-profile-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  #perfil .hero-name {
+    font-size: 1.2rem;
+    line-height: 1.15;
+  }
+
+  #perfil .level-xp-integrated,
+  #perfil .streak-card,
+  #perfil .attribute-card,
+  #perfil .workout-display-card,
+  #perfil .study-display-card,
+  #perfil .log-item {
+    border-radius: 16px !important;
+  }
+
+  #perfil .level-xp-header {
+    align-items: flex-start;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  #perfil .level-label,
+  #perfil .xp-text {
+    width: 100%;
+  }
+
+  #perfil .attribute-header,
+  #perfil .display-card-header,
+  #perfil .streak-header {
+    gap: 8px;
+  }
+
+  #perfil .attribute-meta {
+    align-items: flex-start;
+  }
+
+  #perfil .display-name {
+    width: 100%;
+  }
+
+  #perfil .display-name,
+  #perfil .attribute-name {
+    align-items: flex-start;
+  }
+
+  #perfil .display-emoji {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  #atividades .planning-meta-grid,
+  #gestao .finance-filters,
+  #gestao .finance-management-grid,
+  #estatisticas .stats-advanced-grid,
+  #alimentacao .nutrition-grid,
+  #alimentacao .nutrition-goal-status,
+  #alimentacao .nutrition-reports-charts,
+  #alimentacao .nutrition-stats-grid,
+  #alimentacao .nutrition-macros-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #atividades .form-container,
+  #gestao .finance-form,
+  #estatisticas .stat-card,
+  #estatisticas .chart-box,
+  #alimentacao .nutrition-card,
+  #alimentacao .hydration-container,
+  #alimentacao .existing-items {
+    min-width: 0;
+  }
+
+  #atividades .activity-progress-bar .progress-text,
+  #atividades .planning-item-actions,
+  #atividades .calendar-today-title,
+  #gestao .finance-budget-top,
+  #gestao .finance-item,
+  #gestao .finance-item-actions,
+  #estatisticas .record-item,
+  #alimentacao .nutrition-day-head,
+  #alimentacao .nutrition-reports-toolbar,
+  #alimentacao .hydration-actions {
+    min-width: 0;
+  }
+
+  #atividades .activity-progress-bar .progress-text {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    justify-content: center;
+  }
+
+  #atividades .days-selector {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  #atividades .attributes-selector {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #atividades .day-checkbox,
+  #atividades .attribute-checkbox,
+  #atividades .checkbox-label,
+  #atividades .planning-item-title,
+  #atividades .focus-item-name,
+  #atividades .focus-objective-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  #atividades .planning-item-actions {
+    flex-wrap: wrap;
+  }
+
+  #atividades .planning-item-actions .action-btn,
+  #atividades .planning-item-actions .submit-btn {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  #atividades .calendar-today-title {
+    flex-wrap: wrap;
+  }
+
+  #atividades .calendar-today-main,
+  #atividades .calendar-today-actions {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #atividades .calendar-action-btn {
+    min-width: 0;
+    white-space: normal;
+    justify-content: center;
+  }
+
+  #gestao .finance-card,
+  #estatisticas .stat-card,
+  #estatisticas .record-item,
+  #alimentacao .nutrition-summary-card,
+  #alimentacao .nutrition-goal-item {
+    overflow: hidden;
+  }
+
+  #gestao .finance-label,
+  #gestao .finance-value,
+  #gestao .finance-delta,
+  #gestao .finance-item-title,
+  #gestao .finance-item-meta,
+  #gestao .finance-budget-title,
+  #estatisticas .stat-card h4,
+  #estatisticas .stat-value,
+  #estatisticas .stats-advanced-content,
+  #estatisticas .record-item,
+  #alimentacao .nutrition-entry-meta,
+  #alimentacao .nutrition-food-meta,
+  #alimentacao .nutrition-summary-card .value,
+  #alimentacao .nutrition-goal-item,
+  #alimentacao .custom-autocomplete-item .food-name,
+  #alimentacao .custom-autocomplete-item .food-brand,
+  #alimentacao .custom-autocomplete-item .food-macros {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  #gestao .finance-value,
+  #estatisticas .stat-value {
+    font-size: clamp(1.2rem, 5vw, 1.7rem);
+  }
+
+  #gestao .finance-budget-top,
+  #gestao .finance-item,
+  #estatisticas .record-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  #gestao .finance-item-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  #gestao .finance-delete-btn,
+  #gestao .finance-item-actions .action-btn {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  #estatisticas .goal-config {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #estatisticas .goal-config label,
+  #estatisticas .goal-config input,
+  #estatisticas .goal-config button {
+    min-width: 0;
+  }
+
+  #estatisticas .chart-box h4,
+  #estatisticas .records-container h3,
+  #estatisticas .detailed-stats h4 {
+    overflow-wrap: anywhere;
+  }
+
+  #alimentacao .nutrition-food-list .item-card,
+  #alimentacao .nutrition-day-list .item-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #alimentacao .nutrition-reports-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  #alimentacao .nutrition-reports-toolbar .form-group,
+  #alimentacao .nutrition-day-head > *,
+  #alimentacao .hydration-bar-container,
+  #alimentacao .hydration-actions,
+  #alimentacao .hydration-info {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #alimentacao .hydration-count {
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
+  }
+
+  #alimentacao .hydration-label {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  #alimentacao .hydration-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  #alimentacao .hydration-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+  #atividades .days-selector,
+  #atividades .attributes-selector {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #gestao .finance-card,
+  #estatisticas .stat-card,
+  #estatisticas .chart-box,
+  #alimentacao .nutrition-card,
+  #alimentacao .hydration-container {
+    padding: 14px 12px;
+  }
+
+  #alimentacao .nutrition-macro-chip,
+  #alimentacao .nutrition-summary-card,
+  #alimentacao .nutrition-goal-item {
+    padding: 10px;
+  }
+
+  #alimentacao .hydration-info {
+    padding: 12px;
+  }
 }
 
 body.light-theme .settings-btn,

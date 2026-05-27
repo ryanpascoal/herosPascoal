@@ -382,7 +382,9 @@ function renderUnifiedActivitiesHistory() {
     ({ category, item }) => {
       const categoryMeta = getActivityCategoryMeta(category);
       const card = document.createElement('div');
-      card.className = `mission-card ${item.failed ? 'failed' : item.skipped ? 'skipped' : 'completed'}`;
+      card.className = `mission-card history-card compact-history ${
+        item.failed ? 'failed' : item.skipped ? 'skipped' : 'completed'
+      }`;
       const statusText = item.failed ? 'FALHOU' : item.skipped ? 'PULADO' : 'CONCLUÍDO';
       const statusClass = item.failed
         ? 'failed-status'
