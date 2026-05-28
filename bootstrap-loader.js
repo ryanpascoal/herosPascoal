@@ -1,6 +1,8 @@
 ﻿(function () {
   'use strict';
 
+  const APP_ASSET_VERSION = '2026-05-28-2';
+
   const LEGACY_LOCAL_ORDER = [
     'saveManager.js',
     'app-state.js',
@@ -26,7 +28,9 @@
   function loadScriptSequentially(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = src;
+      script.src = /^https?:\/\//i.test(src)
+        ? src
+        : new URL(`${src}?v=${APP_ASSET_VERSION}`, window.location.href).href;
       script.async = false;
       script.onload = () => resolve();
       script.onerror = () => reject(new Error(`Falha ao carregar script: ${src}`));
@@ -61,7 +65,7 @@
   function loadModuleBootstrap() {
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = 'app-bootstrap.js';
+    script.src = `app-bootstrap.js?v=${APP_ASSET_VERSION}`;
     document.head.appendChild(script);
   }
 

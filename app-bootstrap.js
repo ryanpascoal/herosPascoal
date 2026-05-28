@@ -1,5 +1,7 @@
 ﻿const LOCAL_SCRIPT_ORDER = ['saveManager.js'];
 
+const APP_ASSET_VERSION = '2026-05-28-2';
+
 const AUTH_SCRIPT_ORDER = [
   'https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js',
@@ -43,7 +45,9 @@ function resolveScriptUrl(src) {
   if (/^https?:\/\//i.test(src)) {
     return src;
   }
-  return new URL(src, window.location.href).href;
+  const url = new URL(src, window.location.href);
+  url.searchParams.set('v', APP_ASSET_VERSION);
+  return url.href;
 }
 
 function loadScriptSequentially(src) {
@@ -78,7 +82,7 @@ async function loadCoreScripts() {
 
   // First phase: module side-effects (state + pure rules + migrated bridges)
   for (const src of coreModules) {
-    await import(src);
+    await import(`${src}?v=${APP_ASSET_VERSION}`);
   }
 
   // Second phase: required local scripts (fail-fast)
