@@ -1,10 +1,13 @@
 ﻿const LOCAL_SCRIPT_ORDER = ['saveManager.js'];
 
-const EXTERNAL_SCRIPT_ORDER = [
+const AUTH_SCRIPT_ORDER = [
   'https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js',
   'cloud-sync.js',
+];
+
+const OPTIONAL_EXTERNAL_SCRIPT_ORDER = [
   'https://cdn.jsdelivr.net/npm/chart.js',
 ];
 
@@ -84,24 +87,18 @@ async function loadCoreScripts() {
   }
 }
 
-async function loadExternalScriptsBestEffort() {
-  for (const src of EXTERNAL_SCRIPT_ORDER) {
+async function loadAuthScripts() {
+  for (const src of AUTH_SCRIPT_ORDER) {
+    await loadScriptSequentially(src);
+  }
+}
+
+async function loadOptionalExternalScriptsBestEffort() {
+  for (const src of OPTIONAL_EXTERNAL_SCRIPT_ORDER) {
     try {
       await loadScriptSequentially(src);
     } catch (error) {
       console.warn(`Script externo indisponível: ${src}`, error);
-      if (src === 'cloud-sync.js') {
-        window.setBootstrapAuthGate?.(true, {
-          title: 'Sincronização indisponível',
-          text: 'O cloud-sync não carregou. O aplicativo permanece bloqueado para evitar uso offline.',
-          statusText: 'Falha ao carregar autenticação',
-          statusKind: 'err',
-        });
-        window.__cloudSyncBootstrapPending = false;
-        if (typeof window.runDeferredStartupResets === 'function') {
-          window.runDeferredStartupResets();
-        }
-      }
     }
   }
 }
@@ -121,6 +118,23 @@ async function runAppBootstrap() {
   await loadCoreScripts();
   window.__cloudSyncBootstrapPending = true;
 
+  try {
+    await loadAuthScripts();
+  } catch (error) {
+    console.warn('Falha ao carregar camada de autenticação:', error);
+    window.setBootstrapAuthGate?.(true, {
+      title: 'Sincronização indisponível',
+      text: 'A camada de login em nuvem não carregou. O aplicativo permanece bloqueado para evitar uso offline.',
+      statusText: 'Falha ao carregar autenticação',
+      statusKind: 'err',
+    });
+    window.__cloudSyncBootstrapPending = false;
+    if (typeof window.runDeferredStartupResets === 'function') {
+      window.runDeferredStartupResets();
+    }
+    return;
+  }
+
   if (typeof applySavedTheme === 'function') {
     applySavedTheme();
   }
@@ -131,8 +145,8 @@ async function runAppBootstrap() {
     console.error('startApp não está disponível. Verifique a ordem dos scripts.');
   }
 
-  // Não bloqueia a inicialização principal por falhas de CDN.
-  loadExternalScriptsBestEffort().catch((error) => {
+  // Bibliotecas opcionais não devem travar a autenticação ou a entrada no app.
+  loadOptionalExternalScriptsBestEffort().catch((error) => {
     console.warn('Falha ao carregar scripts externos:', error);
   });
 }
