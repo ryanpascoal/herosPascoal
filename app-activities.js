@@ -356,9 +356,16 @@ function renderUnifiedTodayActivities() {
     card.className = 'compact-activity-card';
     card.innerHTML = `
       <div class="activity-color-bar ${leftColorClass}"></div>
-      <span class="activity-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
-      <span class="activity-name">${escapeHtml(item.name || 'Atividade')}</span>
-      ${dueDateHtml}
+      <div class="activity-main">
+        <span class="activity-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
+        <span class="activity-name">${escapeHtml(item.name || 'Atividade')}</span>
+      </div>
+      <div class="activity-meta">
+        ${
+          dueDateHtml ||
+          '<span class="activity-due-date activity-due-date-empty" aria-hidden="true">Sem prazo</span>'
+        }
+      </div>
       <div class="activity-actions">
         ${actionContent}
         ${skipButton}
@@ -402,6 +409,12 @@ function renderUnifiedActivitiesHistory() {
               ? getBookActivityStatusLabel(item)
               : getMissionTypeName(item.type);
       const eventDate = getEventDateKey(item);
+      const workoutDetailLines =
+        category === 'workout'
+          ? getWorkoutHistoryDetailLines(item)
+              .map((detail) => `<p>${detail}</p>`)
+              .join('')
+          : '';
       card.innerHTML = `
         <div class="mission-header">
           <div class="mission-name">
@@ -414,6 +427,7 @@ function renderUnifiedActivitiesHistory() {
         <div class="mission-details">
           <p>Tipo: ${typeLabel}</p>
           <p>Data: ${formatDate(eventDate)}</p>
+          ${workoutDetailLines}
           ${category === 'book' && item.author ? `<p>Autor: ${escapeHtml(item.author)}</p>` : ''}
           ${item.reason ? `<p class="mission-reason">Motivo: ${escapeHtml(item.reason)}</p>` : ''}
           ${item.feedback ? `<p class="mission-feedback">Feedback: ${escapeHtml(item.feedback)}</p>` : ''}
@@ -849,6 +863,18 @@ function buildStatisticsRecordSnapshot(productiveDays = {}) {
   return snapshot;
 }
 
+function getWorkoutSummaryFromStats(workout = {}) {
+  const stats = workout?.stats;
+  if (!stats || typeof stats !== 'object') return null;
+
+  return {
+    totalReps: Number(stats.totalReps || 0),
+    totalDistance: Number(stats.totalDistance || 0),
+    totalTime: Number(stats.totalTime || 0),
+    timesDone: Number(stats.completed || 0),
+  };
+}
+
 function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
   const summaryById = new Map();
 
@@ -865,6 +891,7 @@ function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
         totalDistance: 0,
         totalTime: 0,
         timesDone: 0,
+        fromStats: false,
       });
     }
     const bucket = summaryById.get(safeId);
@@ -875,13 +902,24 @@ function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
   };
 
   (workouts || []).forEach((workout) => {
-    ensureBucket(workout?.id, workout);
+    const bucket = ensureBucket(workout?.id, workout);
+    if (!bucket) return;
+
+    const statsSummary = getWorkoutSummaryFromStats(workout);
+    if (!statsSummary) return;
+
+    bucket.totalReps = statsSummary.totalReps;
+    bucket.totalDistance = statsSummary.totalDistance;
+    bucket.totalTime = statsSummary.totalTime;
+    bucket.timesDone = statsSummary.timesDone;
+    bucket.fromStats = true;
   });
 
   (completedWorkouts || []).forEach((entry) => {
     if (!entry || entry.failed || entry.skipped) return;
     const bucket = ensureBucket(entry.workoutId, entry);
     if (!bucket) return;
+    if (bucket.fromStats) return;
 
     bucket.timesDone += 1;
 
@@ -899,9 +937,75 @@ function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
     bucket.totalTime += Number(entry.time || 0);
   });
 
-  return Array.from(summaryById.values()).sort((a, b) =>
-    String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR')
-  );
+  return Array.from(summaryById.values())
+    .map(({ fromStats, ...bucket }) => bucket)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR'));
+}
+
+function formatWorkoutTotalMinutes(totalTimeSeconds) {
+  const safeSeconds = Number(totalTimeSeconds || 0);
+  if (!Number.isFinite(safeSeconds) || safeSeconds <= 0) return '-';
+  return `${(safeSeconds / 60).toFixed(1)} min`;
+}
+
+function formatWorkoutDuration(totalTimeSeconds) {
+  const safeSeconds = Math.max(0, Math.round(Number(totalTimeSeconds || 0)));
+  if (!Number.isFinite(safeSeconds) || safeSeconds <= 0) return '';
+
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+
+  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+  if (minutes > 0) return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+  return `${seconds}s`;
+}
+
+function formatWorkoutAverageSpeed(totalDistanceKm, totalTimeSeconds) {
+  const safeDistance = Number(totalDistanceKm || 0);
+  const safeSeconds = Number(totalTimeSeconds || 0);
+  if (!Number.isFinite(safeDistance) || safeDistance <= 0 || !Number.isFinite(safeSeconds) || safeSeconds <= 0) {
+    return '-';
+  }
+
+  return `${((safeDistance * 3600) / safeSeconds).toFixed(1)} km/h`;
+}
+
+function getWorkoutHistoryDetailLines(item = {}) {
+  if (!item || item.failed || item.skipped) return [];
+
+  if (item.type === 'repeticao' && Array.isArray(item.series)) {
+    const series = item.series.map((value) => parseInt(value, 10) || 0);
+    const totalReps = series.reduce((sum, value) => sum + value, 0);
+    return [`Séries: ${series.join(' / ')}`, `Total repetições: ${totalReps}`];
+  }
+
+  if (item.type === 'distancia') {
+    const details = [];
+    const distance = Number(item.distance || 0);
+    const time = Number(item.time || 0);
+
+    if (Number.isFinite(distance) && distance > 0) {
+      details.push(`Distância: ${distance.toFixed(2)} km`);
+    }
+    if (Number.isFinite(time) && time > 0) {
+      details.push(`Tempo: ${formatWorkoutDuration(time)}`);
+    }
+    if (Number.isFinite(distance) && distance > 0 && Number.isFinite(time) && time > 0) {
+      details.push(`Velocidade média: ${formatWorkoutAverageSpeed(distance, time)}`);
+    }
+
+    return details;
+  }
+
+  if (item.type === 'maior-tempo' || item.type === 'menor-tempo') {
+    const time = Number(item.time || 0);
+    if (Number.isFinite(time) && time > 0) {
+      return [`Tempo: ${formatWorkoutDuration(time)}`];
+    }
+  }
+
+  return [];
 }
 
 function formatRecordValueWithDate(record) {
@@ -1238,13 +1342,18 @@ function updateWorkoutDetailsTable() {
   buildWorkoutHistorySummary(appData.workouts, appData.completedWorkouts).forEach((workout) => {
     const row = document.createElement('tr');
     const safeWorkoutLabel = escapeHtml(`${workout.emoji || '💪'} ${workout.name || 'Treino'}`);
+    const totalTimeLabel =
+      workout.timesDone > 0 &&
+      (workout.type === 'distancia' || workout.type === 'maior-tempo' || workout.type === 'menor-tempo')
+        ? formatWorkoutTotalMinutes(workout.totalTime)
+        : '-';
 
     row.innerHTML = `
             <td>${safeWorkoutLabel}</td>
             <td>${workout.type === 'repeticao' ? workout.totalReps : '-'}</td>
             <td>${workout.type === 'distancia' ? workout.totalDistance.toFixed(2) + ' km' : '-'}</td>
-            <td>${workout.type === 'distancia' ? (workout.totalTime > 0 ? workout.totalTime.toFixed(1) + ' min' : '-') : workout.type === 'maior-tempo' || workout.type === 'menor-tempo' ? workout.totalTime.toFixed(1) + ' min' : '-'}</td>
-            <td>${workout.type === 'distancia' && workout.totalTime > 0 ? ((workout.totalDistance / workout.totalTime) * 60).toFixed(1) + ' km/h' : '-'}</td>
+            <td>${totalTimeLabel}</td>
+            <td>${workout.type === 'distancia' ? formatWorkoutAverageSpeed(workout.totalDistance, workout.totalTime) : '-'}</td>
             <td>${workout.timesDone}</td>
         `;
 
@@ -1450,6 +1559,7 @@ Object.assign(globalThis, {
   getDailyStatisticsBreakdown,
   buildStatisticsRecordSnapshot,
   buildWorkoutHistorySummary,
+  getWorkoutHistoryDetailLines,
   renderPaginatedHistory,
   formatRate,
   getGoalStatusClass,
@@ -1466,6 +1576,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getDailyStatisticsBreakdown,
     buildStatisticsRecordSnapshot,
     buildWorkoutHistorySummary,
+    getWorkoutHistoryDetailLines,
     getTotalsFromDateKeys,
   };
 }

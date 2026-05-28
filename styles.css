@@ -6827,6 +6827,200 @@ body.light-theme {
   min-height: 58px;
 }
 
+#atividades .missions-list,
+#atividades .history-list,
+#atividades .items-list {
+  gap: 8px;
+}
+
+#atividades .compact-activity-card {
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 6px;
+  padding: 8px 10px;
+  min-height: 50px;
+}
+
+#atividades .compact-activity-card > * {
+  min-width: 0;
+}
+
+#atividades .activity-color-bar {
+  grid-row: 1 / -1;
+  height: 100%;
+  min-height: 32px;
+}
+
+#atividades .activity-main {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+#atividades .activity-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+}
+
+#atividades .activity-name {
+  min-width: 0;
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+#atividades .activity-meta {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 78px;
+}
+
+#atividades .activity-due-date {
+  display: inline-flex;
+  align-items: center;
+  min-width: 68px;
+  justify-content: center;
+  text-align: center;
+}
+
+#atividades .activity-due-date-empty {
+  visibility: hidden;
+}
+
+#atividades .activity-actions {
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 98px;
+}
+
+#atividades .activity-actions .complete-btn,
+#atividades .activity-actions .skip-btn {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+#atividades .activity-actions .complete-btn {
+  padding: 0 10px;
+}
+
+#atividades .activity-actions .skip-btn {
+  min-width: 34px;
+  padding: 0;
+}
+
+#atividades .study-checkbox {
+  width: 16px;
+  height: 16px;
+}
+
+#atividades #completed-activities .history-card {
+  padding: 10px 12px;
+}
+
+#atividades #completed-activities .mission-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+#atividades #completed-activities .mission-name {
+  min-width: 0;
+}
+
+#atividades #completed-activities .mission-name span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#atividades #completed-activities .mission-status {
+  min-width: 92px;
+}
+
+#atividades #completed-activities .mission-type {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  text-align: center;
+}
+
+#atividades #completed-activities .mission-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 0;
+}
+
+#atividades #completed-activities .mission-reason,
+#atividades #completed-activities .mission-feedback {
+  flex: 1 1 100%;
+}
+
+#atividades #activities-list .item-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+#atividades #activities-list .item-info {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+#atividades #activities-list .item-info > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+#atividades #activities-list .item-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+}
+
+#atividades #activities-list .item-name {
+  line-height: 1.2;
+}
+
+#atividades #activities-list .item-type,
+#atividades #activities-list .item-author {
+  font-size: 0.78rem;
+  line-height: 1.2;
+  color: var(--gray-color);
+}
+
+#atividades #activities-list .item-actions {
+  justify-content: flex-end;
+  min-width: 72px;
+}
+
+#atividades #activities-list .item-actions .action-btn {
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 #perfil {
   display: grid;
   gap: 20px;
@@ -8036,6 +8230,50 @@ body.light-theme #perfil .hero-logs-section .log-icon {
     flex: 1 1 calc(50% - 3px);
   }
 
+  #atividades .compact-activity-card {
+    grid-template-columns: 6px minmax(0, 1fr);
+    padding: 8px 10px;
+  }
+
+  #atividades .activity-main,
+  #atividades .activity-meta,
+  #atividades .activity-actions {
+    grid-column: 2;
+  }
+
+  #atividades .activity-meta,
+  #atividades .activity-actions {
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  #atividades .activity-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  #atividades .activity-actions .complete-btn,
+  #atividades .activity-actions .skip-btn {
+    flex: 0 0 auto;
+  }
+
+  #atividades #completed-activities .mission-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  #atividades #completed-activities .mission-type {
+    grid-column: 2;
+  }
+
+  #atividades #activities-list .item-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #atividades #activities-list .item-actions {
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
 }
 
 @media (max-width: 560px) {
@@ -8562,5 +8800,3 @@ body.light-theme .activity-due-date {
     min-height: 38px;
   }
 }
-
-
