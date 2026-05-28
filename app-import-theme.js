@@ -667,7 +667,7 @@ function editWorkout(id) {
   openActivityEditor('workout', workout);
 }
 
-function deleteWorkout(id) {
+function deleteWorkoutLegacy(id) {
   deleteNamedEmojiItem({
     list: appData.workouts,
     id,
@@ -675,6 +675,16 @@ function deleteWorkout(id) {
     successText: 'Treino excluído com sucesso!',
     confirmText: 'Tem certeza que deseja excluir esta tarefa?',
     successText: 'Tarefa excluída com sucesso!',
+    updateMode: 'activity',
+  });
+}
+
+function deleteWorkout(id) {
+  deleteNamedEmojiItem({
+    list: appData.workouts,
+    id,
+    confirmText: 'Tem certeza que deseja excluir este treino?',
+    successText: 'Treino excluído com sucesso!',
     updateMode: 'activity',
   });
 }
@@ -717,10 +727,12 @@ function editMission(id) {
   openActivityEditor('mission', mission);
 }
 
-function deleteMission(id) {
+function deleteMissionLegacy(id) {
   deleteNamedEmojiItem({
     list: appData.missions,
     id,
+    confirmText: 'Tem certeza que deseja excluir esta tarefa?',
+    successText: 'Tarefa excluída com sucesso!',
     confirmText: 'Tem certeza que deseja excluir esta missão?',
     successText: 'Missão excluída com sucesso!',
     updateMode: 'activity',
