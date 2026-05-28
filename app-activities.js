@@ -1,7 +1,7 @@
 ﻿function getActivityCategoryMeta(category) {
   switch (category) {
     case 'mission':
-      return { label: 'Missão', emoji: '🎯', className: 'mission' };
+      return { label: 'Tarefa', emoji: '🎯', className: 'mission' };
     case 'work':
       return { label: 'Trabalho', emoji: '💼', className: 'work-kind' };
     case 'workout':
@@ -1083,8 +1083,8 @@ function updateAdvancedStatistics() {
   const weeklyPrevious = getPeriodTotals(7, 7);
   if (weeklyCompareEl) {
     weeklyCompareEl.innerHTML = `
-            <p>Missões: ${weeklyCurrent.missions} (${formatTrendHtml(weeklyCurrent.missions, weeklyPrevious.missions)})</p>
-            <p>Falhas/Ignoradas Missões: ${weeklyCurrent.missionsMissed} (${formatTrendHtml(weeklyCurrent.missionsMissed, weeklyPrevious.missionsMissed, true)})</p>
+            <p>Tarefas: ${weeklyCurrent.missions} (${formatTrendHtml(weeklyCurrent.missions, weeklyPrevious.missions)})</p>
+            <p>Falhas/Ignoradas Tarefas: ${weeklyCurrent.missionsMissed} (${formatTrendHtml(weeklyCurrent.missionsMissed, weeklyPrevious.missionsMissed, true)})</p>
             <p>Trabalhos: ${weeklyCurrent.works} (${formatTrendHtml(weeklyCurrent.works, weeklyPrevious.works)})</p>
             <p>Falhas/Ignorados Trabalhos: ${weeklyCurrent.worksMissed} (${formatTrendHtml(weeklyCurrent.worksMissed, weeklyPrevious.worksMissed, true)})</p>
             <p>Treinos: ${weeklyCurrent.workouts} (${formatTrendHtml(weeklyCurrent.workouts, weeklyPrevious.workouts)})</p>
@@ -1104,8 +1104,8 @@ function updateAdvancedStatistics() {
   const monthPrevious = getMonthTotals(getPreviousMonthKey(getLocalDateString().slice(0, 7)));
   if (monthlyCompareEl) {
     monthlyCompareEl.innerHTML = `
-            <p>Missões: ${monthCurrent.missions} (${formatTrendHtml(monthCurrent.missions, monthPrevious.missions)})</p>
-            <p>Falhas/Ignoradas Missões: ${monthCurrent.missionsMissed} (${formatTrendHtml(monthCurrent.missionsMissed, monthPrevious.missionsMissed, true)})</p>
+            <p>Tarefas: ${monthCurrent.missions} (${formatTrendHtml(monthCurrent.missions, monthPrevious.missions)})</p>
+            <p>Falhas/Ignoradas Tarefas: ${monthCurrent.missionsMissed} (${formatTrendHtml(monthCurrent.missionsMissed, monthPrevious.missionsMissed, true)})</p>
             <p>Trabalhos: ${monthCurrent.works} (${formatTrendHtml(monthCurrent.works, monthPrevious.works)})</p>
             <p>Falhas/Ignorados Trabalhos: ${monthCurrent.worksMissed} (${formatTrendHtml(monthCurrent.worksMissed, monthPrevious.worksMissed, true)})</p>
             <p>Treinos: ${monthCurrent.workouts} (${formatTrendHtml(monthCurrent.workouts, monthPrevious.workouts)})</p>
@@ -1131,11 +1131,11 @@ function updateAdvancedStatistics() {
   const monthStudiesPlanned = monthCurrent.studies + monthCurrent.studiesMissed;
   if (adherenceEl) {
     adherenceEl.innerHTML = `
-            <p>7 dias - Missões: ${formatRate(weeklyCurrent.missions, weekMissionsPlanned)}</p>
+            <p>7 dias - Tarefas: ${formatRate(weeklyCurrent.missions, weekMissionsPlanned)}</p>
             <p>7 dias - Trabalhos: ${formatRate(weeklyCurrent.works, weekWorksPlanned)}</p>
             <p>7 dias - Treinos: ${formatRate(weeklyCurrent.workouts, weekWorkoutsPlanned)}</p>
             <p>7 dias - Estudos: ${formatRate(weeklyCurrent.studies, weekStudiesPlanned)}</p>
-            <p>Mês - Missões: ${formatRate(monthCurrent.missions, monthMissionsPlanned)}</p>
+            <p>Mês - Tarefas: ${formatRate(monthCurrent.missions, monthMissionsPlanned)}</p>
             <p>Mês - Trabalhos: ${formatRate(monthCurrent.works, monthWorksPlanned)}</p>
             <p>Mês - Treinos: ${formatRate(monthCurrent.workouts, monthWorkoutsPlanned)}</p>
             <p>Mês - Estudos: ${formatRate(monthCurrent.studies, monthStudiesPlanned)}</p>
@@ -1151,7 +1151,7 @@ function updateAdvancedStatistics() {
   if (goalsStatusEl) {
     const goals = appData.statisticsGoals || { missions: 60, workouts: 20, studies: 20, works: 30 };
     goalsStatusEl.innerHTML = `
-            <p class="${getGoalStatusClass(weeklyCurrent.missions, goals.missions)}">Missões: ${weeklyCurrent.missions}/${goals.missions}</p>
+            <p class="${getGoalStatusClass(weeklyCurrent.missions, goals.missions)}">Tarefas: ${weeklyCurrent.missions}/${goals.missions}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.works, goals.works)}">Trabalhos: ${weeklyCurrent.works}/${goals.works}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.workouts, goals.workouts)}">Treinos: ${weeklyCurrent.workouts}/${goals.workouts}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.studies, goals.studies)}">Estudos: ${weeklyCurrent.studies}/${goals.studies}</p>
@@ -1406,7 +1406,7 @@ function updateRecords() {
     if (recordSnapshot.maxMissionsDay.value) {
       records.push({
         emoji: '🎯',
-        label: 'Mais missões em um dia',
+        label: 'Mais tarefas em um dia',
         value: formatRecordValueWithDate({
           value: `${recordSnapshot.maxMissionsDay.value}`,
           date: recordSnapshot.maxMissionsDay.date,
@@ -1470,7 +1470,7 @@ function updateRecords() {
     if (stats.missionsDone) {
       records.push({
         emoji: '🎯',
-        label: 'Missões concluídas no total',
+        label: 'Tarefas concluídas no total',
         value: `${stats.missionsDone}`,
       });
     }

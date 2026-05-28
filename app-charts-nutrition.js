@@ -242,7 +242,7 @@ function updateActivitiesChart() {
   }, 0);
 
   const data = {
-    labels: ['Missões', 'Trabalhos', 'Treinos', 'Estudos', 'Livros'],
+    labels: ['Tarefas', 'Trabalhos', 'Treinos', 'Estudos', 'Livros'],
     datasets: [
       {
         label: `Atividades Realizadas (${periodDays} dias)`,
@@ -394,14 +394,14 @@ function updateWeeklyChart() {
       labels: labels,
       datasets: [
         {
-          label: 'Missões',
+          label: 'Tarefas',
           data: missionsData,
           borderColor: CATEGORY_COLORS.mission.border,
           backgroundColor: CATEGORY_COLORS.mission.soft,
           tension: 0.4,
         },
         {
-          label: 'Meta Missões',
+          label: 'Meta Tarefas',
           data: missionGoalData,
           borderColor: CATEGORY_COLORS.mission.goal,
           backgroundColor: CATEGORY_COLORS.mission.soft,
@@ -511,7 +511,7 @@ function updateFailuresChart() {
   ctx.chart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ['Missões', 'Trabalhos', 'Treinos', 'Estudos'],
+      labels: ['Tarefas', 'Trabalhos', 'Treinos', 'Estudos'],
       datasets: [
         {
           label: `Falhas/Ignorados (${periodDays} dias)`,
@@ -557,7 +557,7 @@ function updateCompletedVsFailedChart() {
 
   const periodDays = getSelectedStatsChartPeriodDays();
   const periodKeys = new Set(getStatsChartPeriodDateKeys(periodDays));
-  const categories = ['Missões', 'Trabalhos', 'Treinos', 'Estudos'];
+  const categories = ['Tarefas', 'Trabalhos', 'Treinos', 'Estudos'];
   const periodTotals =
     typeof globalThis.getTotalsFromDateKeys === 'function'
       ? globalThis.getTotalsFromDateKeys(periodKeys)
@@ -648,7 +648,7 @@ function updateAdherenceRateChart() {
 
   const periodDays = getSelectedStatsChartPeriodDays();
   const periodKeys = new Set(getStatsChartPeriodDateKeys(periodDays));
-  const categories = ['Missões', 'Trabalhos', 'Treinos', 'Estudos'];
+  const categories = ['Tarefas', 'Trabalhos', 'Treinos', 'Estudos'];
   const periodTotals =
     typeof globalThis.getTotalsFromDateKeys === 'function'
       ? globalThis.getTotalsFromDateKeys(periodKeys)
@@ -754,7 +754,7 @@ function updateXpBySourceChart() {
   ctx.chart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ['Missões', 'Trabalhos', 'Treinos', 'Estudos', 'Livros'],
+      labels: ['Tarefas', 'Trabalhos', 'Treinos', 'Estudos', 'Livros'],
       datasets: [
         {
           label: `XP estimado por fonte (${periodDays} dias)`,
@@ -1426,7 +1426,11 @@ function getTopNutritionFoods(entries, limit = 8) {
 function getNutritionLogStreak(days = null) {
   const dates = new Set((appData.nutritionStats?.logDates || []).map((v) => String(v)));
   let streak = 0;
-  const cursor = new Date();
+  const todayKey = getLocalDateString();
+  const cursor =
+    typeof parseLocalDateString === 'function'
+      ? parseLocalDateString(todayKey)
+      : getDateFromKey(todayKey);
   const limit = Number.isFinite(Number(days)) && Number(days) > 0 ? Math.floor(Number(days)) : null;
   let inspectedDays = 0;
   while (true) {

@@ -1365,10 +1365,10 @@ function failMission(missionId, reason = '', options = {}) {
 
   addHeroLog(
     'mission',
-    `Missão falhada: ${mission.name}`,
+    `Tarefa falhada: ${mission.name}`,
     `Falha registrada para ${penaltyDate}. Penalidades aplicadas no pipeline diário.`
   );
-  showFeedback(`Missão "${mission.name}" falhou (${penaltyDate}).`, 'error', 3200);
+  showFeedback(`Tarefa "${mission.name}" falhou (${penaltyDate}).`, 'error', 3200);
 }
 
 // Atualizar missões

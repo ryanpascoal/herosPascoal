@@ -292,8 +292,8 @@ function ensureCalendarDetailsFilterOptions() {
   const baseOptions = [
     { value: 'all', label: 'Todos' },
     { value: 'routine', label: 'Rotinas' },
-    { value: 'eventual', label: 'Missões eventuais' },
-    { value: 'epic', label: 'Missões épicas' },
+    { value: 'eventual', label: 'Tarefas eventuais' },
+    { value: 'epic', label: 'Tarefas épicas' },
     { value: 'workout', label: 'Treinos' },
     { value: 'study', label: 'Estudos' },
     { value: 'work', label: 'Trabalhos' },
@@ -400,7 +400,7 @@ function resetCalendarDetails() {
   if (!detailsTitle || !detailsList) return;
 
   detailsTitle.textContent = 'Detalhes do dia';
-  detailsList.innerHTML = '<p class="empty-message">Selecione um dia para ver as missões.</p>';
+  detailsList.innerHTML = '<p class="empty-message">Selecione um dia para ver as tarefas.</p>';
 
   if (restStatus && restToggle) {
     restStatus.textContent = 'Dia normal';
@@ -658,7 +658,7 @@ function getMissionTypeInfo(type) {
   switch (type) {
     case 'rotina':
       return {
-        kindLabel: 'Missão',
+        kindLabel: 'Tarefa',
         kindClass: 'kind',
         type: 'routine',
         typeLabel: 'Rotina',
@@ -666,7 +666,7 @@ function getMissionTypeInfo(type) {
       };
     case 'eventual':
       return {
-        kindLabel: 'Missão',
+        kindLabel: 'Tarefa',
         kindClass: 'kind',
         type: 'eventual',
         typeLabel: 'Eventual',
@@ -674,7 +674,7 @@ function getMissionTypeInfo(type) {
       };
     case 'epica':
       return {
-        kindLabel: 'Missão',
+        kindLabel: 'Tarefa',
         kindClass: 'kind',
         type: 'epic',
         typeLabel: 'Épica',

@@ -673,6 +673,8 @@ function deleteWorkout(id) {
     id,
     confirmText: 'Tem certeza que deseja excluir este treino?',
     successText: 'Treino excluído com sucesso!',
+    confirmText: 'Tem certeza que deseja excluir esta tarefa?',
+    successText: 'Tarefa excluída com sucesso!',
     updateMode: 'activity',
   });
 }
@@ -721,6 +723,16 @@ function deleteMission(id) {
     id,
     confirmText: 'Tem certeza que deseja excluir esta missão?',
     successText: 'Missão excluída com sucesso!',
+    updateMode: 'activity',
+  });
+}
+
+function deleteMission(id) {
+  deleteNamedEmojiItem({
+    list: appData.missions,
+    id,
+    confirmText: 'Tem certeza que deseja excluir esta tarefa?',
+    successText: 'Tarefa excluída com sucesso!',
     updateMode: 'activity',
   });
 }
