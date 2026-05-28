@@ -8232,7 +8232,10 @@ body.light-theme #perfil .hero-logs-section .log-icon {
 
   #atividades .compact-activity-card {
     grid-template-columns: 6px minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    align-items: start;
     padding: 8px 10px;
+    overflow: hidden;
   }
 
   #atividades .activity-main,
@@ -8249,9 +8252,12 @@ body.light-theme #perfil .hero-logs-section .log-icon {
 
   #atividades .activity-actions {
     width: 100%;
-    flex-wrap: wrap;
-    align-items: stretch;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
     gap: 6px;
+    min-width: 0;
+    overflow: hidden;
   }
 
   #atividades .activity-actions .study-checkbox {
@@ -8262,13 +8268,16 @@ body.light-theme #perfil .hero-logs-section .log-icon {
   #atividades .activity-actions .complete-btn,
   #atividades .activity-actions .skip-btn {
     min-width: 0;
-    max-width: 100%;
+    max-width: none;
     font-size: 0.72rem;
   }
 
   #atividades .activity-actions .complete-btn {
-    flex: 1 1 120px;
+    flex: 1 1 auto;
     padding: 0 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   #atividades .activity-actions .skip-btn {
@@ -8906,6 +8915,9 @@ body.light-theme .activity-due-date {
   #atividades .compact-activity-card {
     row-gap: 8px;
     padding: 9px;
+    grid-template-columns: 6px minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    overflow: hidden;
   }
 
   #atividades .activity-main {
@@ -8936,17 +8948,21 @@ body.light-theme .activity-due-date {
 
   #atividades .activity-actions {
     justify-content: flex-start;
-    row-gap: 6px;
+    flex-wrap: nowrap;
+    row-gap: 0;
   }
 
   #atividades .activity-actions .complete-btn,
   #atividades .activity-actions .complete-workout-btn,
   #atividades .activity-actions .complete-study-btn {
-    flex: 1 1 110px;
+    flex: 1 1 auto;
     min-height: 36px;
     font-size: 0.7rem;
     line-height: 1.1;
     padding: 0 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   #atividades .activity-actions .skip-btn {
@@ -9029,7 +9045,7 @@ body.light-theme .activity-due-date {
   #atividades .activity-actions .complete-btn,
   #atividades .activity-actions .complete-workout-btn,
   #atividades .activity-actions .complete-study-btn {
-    flex-basis: 100%;
+    flex: 1 1 auto;
     font-size: 0.68rem;
   }
 
