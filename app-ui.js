@@ -1342,7 +1342,7 @@ function failMission(missionId, reason = '', options = {}) {
   // Mover para missões concluídas (com status de falha)
   appData.completedMissions.push({
     ...mission,
-    completedDate: todayStr,
+    completedDate: penaltyDate,
     failedDate: penaltyDate,
     failed: true,
     penaltyApplied: false,
@@ -1474,7 +1474,7 @@ function failWork(workId, reason = '', options = {}) {
   if (alreadyFailedForDate) return;
   appData.completedWorks.push({
     ...work,
-    completedDate: todayStr,
+    completedDate: penaltyDate,
     failedDate: penaltyDate,
     failed: true,
     penaltyApplied: false,
