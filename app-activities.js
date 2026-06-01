@@ -567,6 +567,11 @@ const HISTORY_PAGE_SIZE = 20;
 const historyPaginationState = globalThis.historyPaginationState || {};
 globalThis.historyPaginationState = historyPaginationState;
 
+function resetHistoryPage(containerId) {
+  if (!containerId) return;
+  historyPaginationState[containerId] = 1;
+}
+
 function renderPaginatedHistory(container, items, renderItem, emptyMessage, rerender) {
   if (!container) return;
 
@@ -1608,6 +1613,8 @@ Object.assign(globalThis, {
   getUnifiedManagedActivities,
   updateUnifiedActivities,
   renderUnifiedTodayActivities,
+  renderUnifiedActivitiesHistory,
+  resetHistoryPage,
   wasItemLoggedForDate,
   isOneOffScheduledItemOverdue,
   checkOverdueWorks,

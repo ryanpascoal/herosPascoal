@@ -137,6 +137,9 @@ function initEvents() {
   });
 
   document.getElementById('activity-history-filter')?.addEventListener('change', function () {
+    if (typeof resetHistoryPage === 'function') {
+      resetHistoryPage('completed-activities');
+    }
     if (typeof renderUnifiedActivitiesHistory === 'function') {
       renderUnifiedActivitiesHistory();
     }
