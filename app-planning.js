@@ -392,6 +392,12 @@
   function comparePlannedActivities(left, right) {
     const leftItem = left?.item || {};
     const rightItem = right?.item || {};
+    const leftIsUrgentWork = left?.category === 'work' && leftItem.urgent === true;
+    const rightIsUrgentWork = right?.category === 'work' && rightItem.urgent === true;
+
+    if (leftIsUrgentWork !== rightIsUrgentWork) {
+      return leftIsUrgentWork ? -1 : 1;
+    }
 
     const priorityDiff =
       (PRIORITY_ORDER[rightItem.priority || 'medium'] || 0) - (PRIORITY_ORDER[leftItem.priority || 'medium'] || 0);

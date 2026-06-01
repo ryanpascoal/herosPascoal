@@ -22,6 +22,31 @@ function sortActivityItems(items) {
   return items.sort((a, b) => String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR'));
 }
 
+function isUrgentWorkActivity(entry) {
+  return entry?.category === 'work' && entry?.item?.urgent === true;
+}
+
+function compareManagedActivityEntries(left, right) {
+  const leftIsUrgentWork = isUrgentWorkActivity(left);
+  const rightIsUrgentWork = isUrgentWorkActivity(right);
+
+  if (leftIsUrgentWork !== rightIsUrgentWork) {
+    return leftIsUrgentWork ? -1 : 1;
+  }
+
+  if (leftIsUrgentWork && rightIsUrgentWork && typeof comparePlannedActivities === 'function') {
+    const plannedDiff = comparePlannedActivities(left, right);
+    if (plannedDiff !== 0) return plannedDiff;
+  }
+
+  return String(left?.item?.name || '').localeCompare(String(right?.item?.name || ''), 'pt-BR');
+}
+
+function getEmergencyBadgeHtml(entry, className = 'activity-emergency-badge') {
+  if (!isUrgentWorkActivity(entry)) return '';
+  return `<span class="${className}">Urgente</span>`;
+}
+
 function getScheduledItemDueDateKey(item) {
   if (!item) return '';
   if (item.type === 'eventual' && item.date) {
@@ -278,7 +303,7 @@ function getUnifiedManagedActivities() {
     ...(appData.workouts || []).map((item) => ({ category: 'workout', item })),
     ...(appData.studies || []).map((item) => ({ category: 'study', item })),
     ...(appData.books || []).map((item) => ({ category: 'book', item })),
-  ].sort((a, b) => String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR'));
+  ].sort(compareManagedActivityEntries);
 }
 
 function renderUnifiedTodayActivities() {
@@ -297,12 +322,14 @@ function renderUnifiedTodayActivities() {
   }
 
   items.forEach(({ category, item, dailyEntry }) => {
+    const activityEntry = { category, item };
     const categoryMeta = getActivityCategoryMeta(category);
     let leftColorClass = 'activity-color-mission';
     if (category === 'work') leftColorClass = 'activity-color-work';
     else if (category === 'workout') leftColorClass = 'activity-color-workout';
     else if (category === 'study') leftColorClass = 'activity-color-study';
     else if (category === 'book') leftColorClass = 'activity-color-book';
+    const emergencyBadgeHtml = getEmergencyBadgeHtml(activityEntry);
 
     const isWorkout = category === 'workout';
     const isStudy = category === 'study';
@@ -371,12 +398,15 @@ function renderUnifiedTodayActivities() {
         : '';
 
     const card = document.createElement('div');
-    card.className = 'compact-activity-card';
+    card.className = `compact-activity-card${isUrgentWorkActivity(activityEntry) ? ' compact-activity-card-emergency' : ''}`;
     card.innerHTML = `
       <div class="activity-color-bar ${leftColorClass}"></div>
       <div class="activity-main">
         <span class="activity-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
-        <span class="activity-name">${escapeHtml(item.name || 'Atividade')}</span>
+        <div class="activity-name-row">
+          <span class="activity-name">${escapeHtml(item.name || 'Atividade')}</span>
+          ${emergencyBadgeHtml}
+        </div>
       </div>
       <div class="activity-meta">
         ${
@@ -469,6 +499,7 @@ function renderUnifiedActivitiesList() {
   }
 
   items.forEach(({ category, item }) => {
+    const activityEntry = { category, item };
     const categoryMeta = getActivityCategoryMeta(category);
     const planningMeta =
       typeof getActivityPlanningMeta === 'function' ? getActivityPlanningMeta(item) : null;
@@ -491,13 +522,17 @@ function renderUnifiedActivitiesList() {
           .map((part) => `<div class="item-type">${escapeHtml(part)}</div>`)
           .join('')
       : '';
+    const emergencyBadgeHtml = getEmergencyBadgeHtml(activityEntry, 'item-emergency-badge');
     const card = document.createElement('div');
-    card.className = 'item-card';
+    card.className = `item-card${isUrgentWorkActivity(activityEntry) ? ' item-card-emergency' : ''}`;
     card.innerHTML = `
       <div class="item-info">
         <span class="item-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
           <div>
-            <div class="item-name">${escapeHtml(item.name || 'Atividade')}</div>
+            <div class="item-name-row">
+              <div class="item-name">${escapeHtml(item.name || 'Atividade')}</div>
+              ${emergencyBadgeHtml}
+            </div>
             <div class="item-type">${categoryMeta.label} - ${secondary}</div>
             ${category === 'book' && item.author ? `<div class="item-author">${escapeHtml(item.author)}</div>` : ''}
             ${planningLine}
@@ -1599,10 +1634,13 @@ Object.assign(globalThis, {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    compareManagedActivityEntries,
     getEventDateKey,
     getScheduledItemDueDateKey,
     getOneOffScheduledFailureDateKey,
+    getEmergencyBadgeHtml,
     isOneOffScheduledItemOverdue,
+    isUrgentWorkActivity,
     getDailyStatisticsBreakdown,
     buildStatisticsRecordSnapshot,
     buildWorkoutHistorySummary,
