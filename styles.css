@@ -958,6 +958,10 @@ body {
   color: #38bdf8;
 }
 
+.streak-icon.nutrition {
+  color: #f59e0b;
+}
+
 .streak-title {
   font-weight: 600;
   color: #f2f7ff;
@@ -7079,6 +7083,10 @@ body.light-theme {
 
 #perfil .streak-card:nth-child(3) {
   border-left-color: #38bdf8 !important;
+}
+
+#perfil .streak-card:nth-child(4) {
+  border-left-color: #f59e0b !important;
 }
 
 #perfil .profile-tabs .sub-content,

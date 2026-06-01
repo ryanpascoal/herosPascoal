@@ -1143,11 +1143,21 @@ function updateStreaks() {
       general: 0,
       physical: 0,
       mental: 0,
+      nutrition: 0,
       lastGeneralCheck: null,
       lastPhysicalCheck: null,
       lastMentalCheck: null,
+      lastNutritionCheck: null,
     };
   }
+  appData.hero.streak.general = Number(appData.hero.streak.general || 0);
+  appData.hero.streak.physical = Number(appData.hero.streak.physical || 0);
+  appData.hero.streak.mental = Number(appData.hero.streak.mental || 0);
+  appData.hero.streak.nutrition = Number(appData.hero.streak.nutrition || 0);
+  appData.hero.streak.lastGeneralCheck = appData.hero.streak.lastGeneralCheck || null;
+  appData.hero.streak.lastPhysicalCheck = appData.hero.streak.lastPhysicalCheck || null;
+  appData.hero.streak.lastMentalCheck = appData.hero.streak.lastMentalCheck || null;
+  appData.hero.streak.lastNutritionCheck = appData.hero.streak.lastNutritionCheck || null;
 
   const updateStreakType = (streakKey, lastCheckKey, hasFailureFn, hasActivityFn) => {
     const lastCheckStr = appData.hero.streak[lastCheckKey];
@@ -1179,6 +1189,12 @@ function updateStreaks() {
   updateStreakType('general', 'lastGeneralCheck', hasGeneralFailure, checkDailyActivity);
   updateStreakType('physical', 'lastPhysicalCheck', hasWorkoutFailure, checkWorkoutActivity);
   updateStreakType('mental', 'lastMentalCheck', hasStudyFailure, checkStudyActivity);
+  updateStreakType(
+    'nutrition',
+    'lastNutritionCheck',
+    hasNutritionHydrationFailure,
+    checkNutritionHydrationActivity
+  );
 }
 
 // Modificar checkWorkoutActivity() e checkStudyActivity() para verificar o dia anterior:
@@ -1236,12 +1252,30 @@ function hasGeneralFailure(dateStr) {
     (m) => m.failed && m.failedDate === targetDateStr
   );
   const workFailed = appData.completedWorks.some((w) => w.failed && w.failedDate === targetDateStr);
+  const productiveDay = appData.statistics?.productiveDays?.[targetDateStr] || {};
   return (
     missionFailed ||
     workFailed ||
+    Number(productiveDay.nutritionFailed || 0) > 0 ||
+    Number(productiveDay.hydrationFailed || 0) > 0 ||
     hasWorkoutFailure(targetDateStr) ||
     hasStudyFailure(targetDateStr)
   );
+}
+
+function hasNutritionHydrationFailure(dateStr) {
+  const targetDateStr = dateStr || getLocalDateString();
+  const productiveDay = appData.statistics?.productiveDays?.[targetDateStr] || {};
+  return (
+    Number(productiveDay.nutritionFailed || 0) > 0 || Number(productiveDay.hydrationFailed || 0) > 0
+  );
+}
+
+function checkNutritionHydrationActivity(dateStr) {
+  const targetDateStr = dateStr || getLocalDateString();
+  const hasNutritionLog = (appData.nutritionStats?.logDates || []).includes(targetDateStr);
+  const hydrationGoalHit = (appData.hydration?.goalHitDates || []).includes(targetDateStr);
+  return hasNutritionLog && hydrationGoalHit;
 }
 
 // Verificar se houve estudo no dia
@@ -1416,9 +1450,19 @@ async function skipMission(missionId) {
 
   const mission = appData.missions[missionIndex];
   const isRoutine = isRoutineType(mission.type);
+  const todayStr = getLocalDateString();
+  const routineAlreadyResolvedToday =
+    isRoutine &&
+    appData.completedMissions.some(
+      (entry) =>
+        String(entry.originalId || entry.id) === String(mission.originalId || mission.id) &&
+        (entry.completedDate === todayStr ||
+          entry.failedDate === todayStr ||
+          entry.skippedDate === todayStr)
+    );
+  if (routineAlreadyResolvedToday) return;
   if (!(await tryConsumeSkipItem(`a missao "${mission.name}"`))) return;
 
-  const todayStr = getLocalDateString();
   appData.completedMissions.push({
     ...mission,
     completed: false,
@@ -1506,9 +1550,19 @@ async function skipWork(workId) {
 
   const work = appData.works[workIndex];
   const isRoutine = isRoutineType(work.type);
+  const todayStr = getLocalDateString();
+  const routineAlreadyResolvedToday =
+    isRoutine &&
+    appData.completedWorks.some(
+      (entry) =>
+        String(entry.originalId || entry.id) === String(work.originalId || work.id) &&
+        (entry.completedDate === todayStr ||
+          entry.failedDate === todayStr ||
+          entry.skippedDate === todayStr)
+    );
+  if (routineAlreadyResolvedToday) return;
   if (!(await tryConsumeSkipItem(`o trabalho "${work.name}"`))) return;
 
-  const todayStr = getLocalDateString();
   appData.completedWorks.push({
     ...work,
     completed: false,
@@ -1662,3 +1716,12 @@ Object.assign(globalThis, {
   skipDailyWorkout,
   skipDailyStudy,
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    hasGeneralFailure,
+    hasNutritionHydrationFailure,
+    checkNutritionHydrationActivity,
+    updateStreaks,
+  };
+}

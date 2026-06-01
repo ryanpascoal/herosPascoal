@@ -1787,6 +1787,25 @@ function getHydrationDisplayStreaks(today = getLocalDateString()) {
   };
 }
 
+function maybeRewardHydrationGoal(dateStr) {
+  if (!dateStr) return false;
+  if (!appData.hydration || typeof appData.hydration !== 'object') return false;
+  if (!Array.isArray(appData.hydration.rewardedGoalDates)) {
+    appData.hydration.rewardedGoalDates = [];
+  }
+  const today = getLocalDateString();
+  if (dateStr !== today) return false;
+  if (!appData.hydration.goalHitDates?.includes(dateStr)) return false;
+  if (appData.hydration.rewardedGoalDates.includes(dateStr)) return false;
+
+  appData.hydration.rewardedGoalDates.push(dateStr);
+  addXP(1);
+  addAttributeXP(2, 1);
+  appData.hero.coins += 1;
+  addHeroLog('system', 'Meta de hidratação batida', `${dateStr}: bônus +1 XP e +1 moeda.`);
+  return true;
+}
+
 function rolloverHydrationDay(today = getLocalDateString()) {
   if (!appData.hydration || typeof appData.hydration !== 'object') {
     appData.hydration = {
@@ -1798,6 +1817,7 @@ function rolloverHydrationDay(today = getLocalDateString()) {
       startDate: today,
       logDates: [],
       goalHitDates: [],
+      rewardedGoalDates: [],
     };
   }
   const goal =
@@ -1807,6 +1827,7 @@ function rolloverHydrationDay(today = getLocalDateString()) {
   appData.hydration.goal = goal;
   if (!Array.isArray(appData.hydration.logDates)) appData.hydration.logDates = [];
   if (!Array.isArray(appData.hydration.goalHitDates)) appData.hydration.goalHitDates = [];
+  if (!Array.isArray(appData.hydration.rewardedGoalDates)) appData.hydration.rewardedGoalDates = [];
   if (!appData.hydration.startDate) {
     appData.hydration.startDate = appData.hydration.lastDate || today;
   }
@@ -1855,13 +1876,20 @@ function addHydrationGlass() {
   // Atualizar melhor streak
   const streaks = getHydrationDisplayStreaks(today);
   appData.hydration.bestStreak = Math.max(appData.hydration.bestStreak || 0, streaks.best);
+  recordHydrationDay(today, appData.hydration.glasses, appData.hydration.goal);
+  const rewardedToday = maybeRewardHydrationGoal(today);
 
   updateHydrationUI();
   saveToLocalStorage();
 
   // Feedback se atingiu a meta
   if (appData.hydration.glasses >= appData.hydration.goal) {
-    showFeedback(`🎉 Meta diária atingida! ${appData.hydration.goal} copos de água!`, 'success');
+    showFeedback(
+      rewardedToday
+        ? `🎉 Meta diária atingida! +1 XP e +1 moeda por ${appData.hydration.goal} copos de água!`
+        : `🎉 Meta diária atingida! ${appData.hydration.goal} copos de água!`,
+      'success'
+    );
   } else {
     showFeedback('💧 +1 copo de água!', 'info');
   }
@@ -2040,6 +2068,7 @@ Object.assign(globalThis, {
   renderNutritionMealBreakdown,
   recalcNutritionStats,
   maybeRewardNutritionGoal,
+  maybeRewardHydrationGoal,
   updateNutritionCurrentDateLabel,
   recordHydrationDay,
   getHydrationDisplayStreaks,
@@ -2057,5 +2086,7 @@ if (typeof module !== 'undefined' && module.exports) {
     recalcNutritionStats,
     getHydrationDisplayStreaks,
     rolloverHydrationDay,
+    addHydrationGlass,
+    maybeRewardHydrationGoal,
   };
 }

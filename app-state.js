@@ -11,9 +11,11 @@ const appData = {
       general: 0,
       physical: 0,
       mental: 0,
+      nutrition: 0,
       lastGeneralCheck: null,
       lastPhysicalCheck: null,
       lastMentalCheck: null,
+      lastNutritionCheck: null,
     },
   },
   attributes: [
@@ -82,6 +84,7 @@ const appData = {
     maxStreakGeneral: 0,
     maxStreakPhysical: 0,
     maxStreakMental: 0,
+    maxStreakNutrition: 0,
     workoutDetails: {},
     studyDetails: {},
     productiveDays: {},
@@ -127,6 +130,7 @@ const appData = {
     startDate: null,
     logDates: [],
     goalHitDates: [],
+    rewardedGoalDates: [],
   },
 };
 const APP_DEFAULTS = JSON.parse(JSON.stringify(appData));

@@ -22,6 +22,31 @@ function sortActivityItems(items) {
   return items.sort((a, b) => String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR'));
 }
 
+function getScheduledItemDueDateKey(item) {
+  if (!item) return '';
+  if (item.type === 'eventual' && item.date) {
+    return getLocalDateString(parseLocalDateString(item.date));
+  }
+  if (item.type === 'epica' && item.deadline) {
+    return getLocalDateString(parseLocalDateString(item.deadline));
+  }
+  return '';
+}
+
+function isOneOffScheduledItemOverdue(item, todayStr = getLocalDateString()) {
+  if (!item || isRoutineType(item.type)) return false;
+  const dueDateKey = getScheduledItemDueDateKey(item);
+  return Boolean(dueDateKey) && dueDateKey < todayStr;
+}
+
+function getOneOffScheduledFailureDateKey(item) {
+  const dueDateKey = getScheduledItemDueDateKey(item);
+  if (!dueDateKey) return '';
+  const failureDate = parseLocalDateString(dueDateKey);
+  failureDate.setDate(failureDate.getDate() + 1);
+  return getLocalDateString(failureDate);
+}
+
 function isScheduledItemVisibleToday(item, todayStr, dayOfWeek, completedList, options = {}) {
   if (!item || item.failed) return false;
 
@@ -34,15 +59,8 @@ function isScheduledItemVisibleToday(item, todayStr, dayOfWeek, completedList, o
     return true;
   }
 
-  if (item.type === 'eventual' && item.date) {
-    return getLocalDateString(parseLocalDateString(item.date)) >= todayStr;
-  }
-
-  if (item.type === 'epica' && item.deadline) {
-    return getLocalDateString(parseLocalDateString(item.deadline)) >= todayStr;
-  }
-
-  return false;
+  const dueDateKey = getScheduledItemDueDateKey(item);
+  return Boolean(dueDateKey) && dueDateKey >= todayStr;
 }
 
 function collectVisibleScheduledItems(config) {
@@ -634,20 +652,15 @@ function checkOverdueWorks(options = {}) {
   appData.works.forEach((work) => {
     if (work.completed || work.failed) return;
 
-    // Eventuais
-    if (work.type === 'eventual' && work.date) {
-      const workDateStr = getLocalDateString(parseLocalDateString(work.date));
-      if (workDateStr < todayStr) {
-        overdueToFail.push({ id: work.id, reason: 'Falha no dia seguinte ao prazo (eventual)' });
-      }
-    }
-
-    // Épicas
-    if (work.type === 'epica' && work.deadline) {
-      const deadlineStr = getLocalDateString(parseLocalDateString(work.deadline));
-      if (deadlineStr < todayStr) {
-        overdueToFail.push({ id: work.id, reason: 'Falha no dia seguinte ao prazo (Épica)' });
-      }
+    if (isOneOffScheduledItemOverdue(work, todayStr)) {
+      overdueToFail.push({
+        id: work.id,
+        reason:
+          work.type === 'epica'
+            ? 'Falha no dia seguinte ao prazo (Épica)'
+            : 'Falha no dia seguinte ao prazo (eventual)',
+        missedDate: getOneOffScheduledFailureDateKey(work),
+      });
     }
 
     if (!skipWeekly && isRoutineType(work.type)) {
@@ -705,20 +718,15 @@ function checkOverdueMissions(options = {}) {
   appData.missions.forEach((mission) => {
     if (mission.completed || mission.failed) return;
 
-    // Eventuais
-    if (mission.type === 'eventual' && mission.date) {
-      const missionDateStr = getLocalDateString(parseLocalDateString(mission.date));
-      if (missionDateStr < todayStr) {
-        overdueToFail.push({ id: mission.id, reason: 'Falha no dia seguinte ao prazo (eventual)' });
-      }
-    }
-
-    // Épicas
-    if (mission.type === 'epica' && mission.deadline) {
-      const deadlineStr = getLocalDateString(parseLocalDateString(mission.deadline));
-      if (deadlineStr < todayStr) {
-        overdueToFail.push({ id: mission.id, reason: 'Falha no dia seguinte ao prazo (Épica)' });
-      }
+    if (isOneOffScheduledItemOverdue(mission, todayStr)) {
+      overdueToFail.push({
+        id: mission.id,
+        reason:
+          mission.type === 'epica'
+            ? 'Falha no dia seguinte ao prazo (Épica)'
+            : 'Falha no dia seguinte ao prazo (eventual)',
+        missedDate: getOneOffScheduledFailureDateKey(mission),
+      });
     }
 
     if (!skipWeekly && isRoutineType(mission.type)) {
@@ -772,16 +780,21 @@ function updateStreaksDisplay() {
   if (physicalEl) physicalEl.textContent = `${appData.hero.streak.physical} dias`;
   const mentalEl = document.getElementById('streak-mental');
   if (mentalEl) mentalEl.textContent = `${appData.hero.streak.mental} dias`;
+  const nutritionEl = document.getElementById('streak-nutrition');
+  if (nutritionEl) nutritionEl.textContent = `${appData.hero.streak.nutrition || 0} dias`;
 
   const generalRecord = document.getElementById('streak-general-record');
   const physicalRecord = document.getElementById('streak-physical-record');
   const mentalRecord = document.getElementById('streak-mental-record');
+  const nutritionRecord = document.getElementById('streak-nutrition-record');
   if (generalRecord)
     generalRecord.textContent = `Recorde: ${appData.statistics.maxStreakGeneral || 0} dias`;
   if (physicalRecord)
     physicalRecord.textContent = `Recorde: ${appData.statistics.maxStreakPhysical || 0} dias`;
   if (mentalRecord)
     mentalRecord.textContent = `Recorde: ${appData.statistics.maxStreakMental || 0} dias`;
+  if (nutritionRecord)
+    nutritionRecord.textContent = `Recorde: ${appData.statistics.maxStreakNutrition || 0} dias`;
 }
 
 function updateMaxStreaks() {
@@ -797,6 +810,10 @@ function updateMaxStreaks() {
   appData.statistics.maxStreakMental = Math.max(
     appData.statistics.maxStreakMental || 0,
     appData.hero.streak.mental || 0
+  );
+  appData.statistics.maxStreakNutrition = Math.max(
+    appData.statistics.maxStreakNutrition || 0,
+    appData.hero.streak.nutrition || 0
   );
 }
 
@@ -1393,6 +1410,13 @@ function updateRecords() {
         value: `${stats.maxStreakMental} dias`,
       });
     }
+    if (stats.maxStreakNutrition) {
+      records.push({
+        emoji: '🥗',
+        label: 'Maior streak de nutrição',
+        value: `${stats.maxStreakNutrition} dias`,
+      });
+    }
     if (recordSnapshot.maxXpDay.value) {
       records.push({
         emoji: '⭐',
@@ -1535,6 +1559,8 @@ function updateProductiveDays() {
 // __appActivitiesBridge: exposes activity APIs for legacy scripts during module migration
 Object.assign(globalThis, {
   getActivityCategoryMeta,
+  getScheduledItemDueDateKey,
+  getOneOffScheduledFailureDateKey,
   getUnifiedTodayActivities,
   getAllTodayActivities,
   getUnifiedHistoryActivities,
@@ -1542,6 +1568,7 @@ Object.assign(globalThis, {
   updateUnifiedActivities,
   renderUnifiedTodayActivities,
   wasItemLoggedForDate,
+  isOneOffScheduledItemOverdue,
   checkOverdueWorks,
   checkOverdueMissions,
   updateStreaksDisplay,
@@ -1573,6 +1600,9 @@ Object.assign(globalThis, {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getEventDateKey,
+    getScheduledItemDueDateKey,
+    getOneOffScheduledFailureDateKey,
+    isOneOffScheduledItemOverdue,
     getDailyStatisticsBreakdown,
     buildStatisticsRecordSnapshot,
     buildWorkoutHistorySummary,

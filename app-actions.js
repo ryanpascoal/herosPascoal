@@ -55,6 +55,32 @@
   }
 }
 
+function getOneOffScheduleValidationMessage(scheduleType, dueValue, todayStr = getLocalDateString()) {
+  if (scheduleType !== 'eventual' && scheduleType !== 'epica') return '';
+
+  const normalizedDueValue = String(dueValue || '').trim();
+  const itemLabel = scheduleType === 'epica' ? 'atividade épica' : 'atividade eventual';
+  if (!normalizedDueValue) {
+    return `Informe o prazo da ${itemLabel}.`;
+  }
+
+  const isOverdue =
+    typeof isOneOffScheduledItemOverdue === 'function'
+      ? isOneOffScheduledItemOverdue(
+          scheduleType === 'epica'
+            ? { type: scheduleType, deadline: normalizedDueValue }
+            : { type: scheduleType, date: normalizedDueValue },
+          todayStr
+        )
+      : normalizedDueValue < todayStr;
+
+  if (isOverdue) {
+    return `O prazo da ${itemLabel} não pode ficar no passado.`;
+  }
+
+  return '';
+}
+
 // Manipular novo treino
 function handleNewWorkout() {
   const name = document.getElementById('modal-item-name').value.trim();
@@ -714,6 +740,8 @@ function handleActivitySubmit(e) {
   const name = document.getElementById('activity-name')?.value?.trim();
   const emoji = document.getElementById('activity-emoji')?.value?.trim();
   const scheduleType = document.getElementById('activity-schedule-type')?.value || 'rotina';
+  const dateValue = document.getElementById('activity-date')?.value || '';
+  const deadlineValue = document.getElementById('activity-deadline')?.value || '';
   const daySelector =
     '#activity-days-container input[type="checkbox"]:checked:not([data-select-all])';
   const selectedDays = Array.from(document.querySelectorAll(daySelector)).map((cb) =>
@@ -747,6 +775,17 @@ function handleActivitySubmit(e) {
     return;
   }
 
+  if (category === 'mission' || category === 'work') {
+    const scheduleValidationMessage = getOneOffScheduleValidationMessage(
+      scheduleType,
+      scheduleType === 'epica' ? deadlineValue : dateValue
+    );
+    if (scheduleValidationMessage) {
+      showFeedback(scheduleValidationMessage, 'warn');
+      return;
+    }
+  }
+
   if (category === 'mission') {
     const attributes = Array.from(
       document.querySelectorAll('#activity-attributes input[type="checkbox"]:checked')
@@ -773,9 +812,9 @@ function handleActivitySubmit(e) {
       targetMission.days = selectedDays;
       targetMission.originalId = targetMission.originalId || targetMission.id;
     } else if (scheduleType === 'eventual') {
-      targetMission.date = document.getElementById('activity-date')?.value || getLocalDateString();
+      targetMission.date = dateValue || getLocalDateString();
     } else {
-      targetMission.deadline = document.getElementById('activity-deadline')?.value || '';
+      targetMission.deadline = deadlineValue;
     }
     if (typeof applyPlanningFields === 'function') {
       applyPlanningFields(targetMission, planningFields);
@@ -811,9 +850,9 @@ function handleActivitySubmit(e) {
       targetWork.days = selectedDays;
       targetWork.originalId = targetWork.originalId || targetWork.id;
     } else if (scheduleType === 'eventual') {
-      targetWork.date = document.getElementById('activity-date')?.value || getLocalDateString();
+      targetWork.date = dateValue || getLocalDateString();
     } else {
-      targetWork.deadline = document.getElementById('activity-deadline')?.value || '';
+      targetWork.deadline = deadlineValue;
     }
     if (typeof applyPlanningFields === 'function') {
       applyPlanningFields(targetWork, planningFields);
@@ -1255,6 +1294,8 @@ function ensureProductiveDaySnapshot(data = {}) {
     xpWorkout: Number(data.xpWorkout || 0),
     xpStudy: Number(data.xpStudy || 0),
     xpBook: Number(data.xpBook || 0),
+    nutritionFailed: Number(data.nutritionFailed || 0),
+    hydrationFailed: Number(data.hydrationFailed || 0),
     totalXP: Number(data.totalXP || 0),
   };
 }
@@ -1302,6 +1343,8 @@ function updateProductiveDay(
   productiveDay.xpWorkout += Number(options.xpWorkout || 0);
   productiveDay.xpStudy += Number(options.xpStudy || 0);
   productiveDay.xpBook += Number(options.xpBook || 0);
+  productiveDay.nutritionFailed += Number(options.nutritionFailed || 0);
+  productiveDay.hydrationFailed += Number(options.hydrationFailed || 0);
   productiveDay.totalXP += Number(xp || 0);
 }
 
@@ -1585,3 +1628,9 @@ Object.assign(globalThis, {
   addClassXP,
   generateHeroLogs,
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getOneOffScheduleValidationMessage,
+  };
+}

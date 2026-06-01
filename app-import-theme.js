@@ -815,6 +815,20 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   const targetDateStr = dateStr;
   const onlyTypes = Array.isArray(options.onlyTypes) ? new Set(options.onlyTypes) : null;
   const shouldCheckType = (type) => !onlyTypes || onlyTypes.has(type);
+  const todayStr = getLocalDateString();
+  const getItemAvailableFromDateKey = (item) =>
+    String(item?.availableDate || item?.dateAdded || todayStr || '').trim();
+  const isItemAvailableOnDate = (item, dateKey) => {
+    const availableFrom = getItemAvailableFromDateKey(item);
+    return !availableFrom || availableFrom <= dateKey;
+  };
+  const getFailurePenaltyItemCount = (summary = {}) =>
+    Number(summary.missionFailureCount || 0) +
+    Number(summary.workFailureCount || 0) +
+    Number(summary.workoutFailureCount || 0) +
+    Number(summary.studyFailureCount || 0) +
+    Number(summary.nutritionFailureCount || 0) +
+    Number(summary.hydrationFailureCount || 0);
 
   if (isRestDay(targetDateStr)) {
     return;
@@ -828,6 +842,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         isRoutineType(item.type) &&
         !item.completed &&
         !item.failed &&
+        isItemAvailableOnDate(item, targetDateStr) &&
         getRoutineDays(item).includes(dayOfWeek)
     );
     if (missed.length === 0) return 0;
@@ -877,7 +892,10 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   } else if (shouldCheckType('workout')) {
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const scheduledWorkouts = appData.workouts.filter(
-      (w) => Array.isArray(w.days) && w.days.some((d) => normalizeWeekdayValue(d) === dayOfWeek)
+      (w) =>
+        Array.isArray(w.days) &&
+        w.days.some((d) => normalizeWeekdayValue(d) === dayOfWeek) &&
+        isItemAvailableOnDate(w, targetDateStr)
     );
     if (scheduledWorkouts.length > 0) {
       const hasWorkoutEntry = (workoutId) =>
@@ -922,7 +940,10 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   } else if (shouldCheckType('study')) {
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const scheduledStudies = appData.studies.filter(
-      (s) => Array.isArray(s.days) && s.days.some((d) => normalizeWeekdayValue(d) === dayOfWeek)
+      (s) =>
+        Array.isArray(s.days) &&
+        s.days.some((d) => normalizeWeekdayValue(d) === dayOfWeek) &&
+        isItemAvailableOnDate(s, targetDateStr)
     );
     if (scheduledStudies.length > 0) {
       const hasStudyEntry = (studyId) =>
@@ -1036,6 +1057,17 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     }
   }
 
+  const nutritionFailureCount = failedTypes.includes('nutrition') ? 1 : 0;
+  const hydrationFailureCount = failedTypes.includes('hydration') ? 1 : 0;
+  const totalPenaltyItems = getFailurePenaltyItemCount({
+    missionFailureCount,
+    workFailureCount,
+    workoutFailureCount: failedWorkouts.length,
+    studyFailureCount: failedStudies.length,
+    nutritionFailureCount,
+    hydrationFailureCount,
+  });
+
   // Apply streak and XP penalties based on the types that failed
   if (failedTypes.length > 0) {
     // Reset streaks
@@ -1052,7 +1084,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     }
 
     // Remove XP from Disciplina attribute
-    addAttributeXP(6, -1);
+    addAttributeXP(6, -totalPenaltyItems);
 
     // Update statistics
     if (!appData.statistics) appData.statistics = {};
@@ -1137,6 +1169,13 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         studiesMissed: failedStudies.length,
       });
     }
+    if ((nutritionFailureCount > 0 || hydrationFailureCount > 0) && typeof updateProductiveDay === 'function') {
+      updateProductiveDay(0, 0, 0, 0, 0, {
+        date: targetDateStr,
+        nutritionFailed: nutritionFailureCount,
+        hydrationFailed: hydrationFailureCount,
+      });
+    }
 
     const failedTypesLabel =
       failedTypes
@@ -1151,7 +1190,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         .join(', ');
 
     applyCoinPenalty({
-      requestedAmount: failedTypes.length,
+      requestedAmount: totalPenaltyItems,
       failMessage: `Atividades não concluídas: ${failedTypesLabel}.`,
       failLogTitle: 'Atividades n\u00e3o conclu\u00eddas',
       failLogContent: `Tipos com falha: ${failedTypes.join(', ')}. Streaks resetados e disciplina reduzida.`,
@@ -1217,6 +1256,7 @@ Object.assign(globalThis, {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     setPrimaryClass,
+    applyPenalties,
   };
 }
 
