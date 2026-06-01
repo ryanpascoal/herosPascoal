@@ -847,6 +847,8 @@
             typeof cloneDefaultAppState === 'function'
               ? cloneDefaultAppState()
               : JSON.parse(JSON.stringify(APP_DEFAULTS));
+          const preservedFoodItems = appData?.foodItems ? JSON.parse(JSON.stringify(appData.foodItems)) : [];
+          resetState.foodItems = preservedFoodItems;
           const nowIso = new Date().toISOString();
           const payload = {
             appData: resetState,
