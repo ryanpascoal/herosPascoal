@@ -136,6 +136,12 @@ function initEvents() {
     }
   });
 
+  document.getElementById('activity-history-filter')?.addEventListener('change', function () {
+    if (typeof renderUnifiedActivitiesHistory === 'function') {
+      renderUnifiedActivitiesHistory();
+    }
+  });
+
   document.querySelectorAll('.nav-item').forEach((item) => {
     item.addEventListener('click', function () {
       const tab = this.getAttribute('data-tab');

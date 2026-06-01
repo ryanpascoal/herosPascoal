@@ -306,13 +306,19 @@ function getUnifiedManagedActivities() {
   ].sort(compareManagedActivityEntries);
 }
 
+function getSelectedActivityFilter(filterId = 'activity-filter') {
+  return document.getElementById(filterId)?.value || 'all';
+}
+
+function filterActivitiesByCategory(items, filterId = 'activity-filter') {
+  const filter = getSelectedActivityFilter(filterId);
+  return items.filter((entry) => filter === 'all' || entry.category === filter);
+}
+
 function renderUnifiedTodayActivities() {
   const container = document.getElementById('daily-activities');
   if (!container) return;
-  const filter = document.getElementById('activity-filter')?.value || 'all';
-  const items = getUnifiedTodayActivities().filter(
-    (i) => filter === 'all' || i.category === filter
-  );
+  const items = filterActivitiesByCategory(getUnifiedTodayActivities(), 'activity-filter');
   const skipCount = getSkipItemCount();
 
   container.innerHTML = '';
@@ -430,7 +436,7 @@ function renderUnifiedTodayActivities() {
 function renderUnifiedActivitiesHistory() {
   const container = document.getElementById('completed-activities');
   if (!container) return;
-  const items = getUnifiedHistoryActivities();
+  const items = filterActivitiesByCategory(getUnifiedHistoryActivities(), 'activity-history-filter');
   renderPaginatedHistory(
     container,
     items,
@@ -483,7 +489,7 @@ function renderUnifiedActivitiesHistory() {
       `;
       return card;
     },
-    'Nenhuma atividade concluída ainda.',
+    'Nenhuma atividade no histórico para este filtro.',
     renderUnifiedActivitiesHistory
   );
 }
