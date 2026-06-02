@@ -8326,17 +8326,29 @@ body.light-theme #perfil .hero-logs-section .log-icon {
   }
 
   #atividades .activity-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
     gap: 6px;
     min-width: 0;
     margin-left: 0;
     overflow: visible;
   }
 
+  #atividades .activity-actions:has(.skip-btn) {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  #atividades .activity-actions:has(.study-checkbox) {
+    grid-template-columns: 18px minmax(0, 1fr);
+  }
+
+  #atividades .activity-actions:has(.study-checkbox):has(.skip-btn) {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+  }
+
   #atividades .activity-actions .study-checkbox {
-    flex: 0 0 18px;
+    grid-column: 1;
     align-self: center;
   }
 
@@ -8352,15 +8364,34 @@ body.light-theme #perfil .hero-logs-section .log-icon {
   #atividades .activity-actions .complete-btn,
   #atividades .activity-actions .complete-workout-btn,
   #atividades .activity-actions .complete-study-btn {
-    flex: 1 1 120px;
+    grid-column: 1;
+    width: 100%;
     padding: 0 8px;
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
   }
 
+  #atividades .activity-actions:has(.skip-btn) .complete-btn,
+  #atividades .activity-actions:has(.skip-btn) .complete-workout-btn,
+  #atividades .activity-actions:has(.skip-btn) .complete-study-btn {
+    grid-column: 1;
+  }
+
+  #atividades .activity-actions:has(.study-checkbox) .complete-btn,
+  #atividades .activity-actions:has(.study-checkbox) .complete-workout-btn,
+  #atividades .activity-actions:has(.study-checkbox) .complete-study-btn {
+    grid-column: 2;
+  }
+
   #atividades .activity-actions .skip-btn {
-    flex: 0 0 38px;
+    grid-column: 2;
+    width: 38px;
+    justify-self: start;
+  }
+
+  #atividades .activity-actions:has(.study-checkbox) .skip-btn {
+    grid-column: 3;
   }
 
   #atividades #completed-activities .mission-header {
