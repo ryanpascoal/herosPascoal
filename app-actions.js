@@ -1162,13 +1162,14 @@ function cleanupOldDailyMissions() {
       mission.dateAdded < todayStr
     ) {
       const failedDate = mission.dateAdded;
-      const alreadyLogged = appData.completedMissions.some(
+      const alreadyResolved = appData.completedMissions.some(
         (entry) =>
-          entry.failed &&
-          (entry.failedDate === failedDate || entry.completedDate === failedDate) &&
-          (entry.originalId || entry.id) === (mission.originalId || mission.id)
+          String(entry.originalId || entry.id) === String(mission.originalId || mission.id) &&
+          (entry.completedDate === failedDate ||
+            entry.failedDate === failedDate ||
+            entry.skippedDate === failedDate)
       );
-      if (!alreadyLogged) {
+      if (!alreadyResolved) {
         appData.completedMissions.push({
           ...mission,
           completedDate: failedDate,
@@ -1249,13 +1250,14 @@ function cleanupOldDailyWorks() {
       work.dateAdded < todayStr
     ) {
       const failedDate = work.dateAdded;
-      const alreadyLogged = appData.completedWorks.some(
+      const alreadyResolved = appData.completedWorks.some(
         (entry) =>
-          entry.failed &&
-          (entry.failedDate === failedDate || entry.completedDate === failedDate) &&
-          (entry.originalId || entry.id) === (work.originalId || work.id)
+          String(entry.originalId || entry.id) === String(work.originalId || work.id) &&
+          (entry.completedDate === failedDate ||
+            entry.failedDate === failedDate ||
+            entry.skippedDate === failedDate)
       );
-      if (!alreadyLogged) {
+      if (!alreadyResolved) {
         appData.completedWorks.push({
           ...work,
           completedDate: failedDate,
@@ -1632,5 +1634,7 @@ Object.assign(globalThis, {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getOneOffScheduleValidationMessage,
+    cleanupOldDailyMissions,
+    cleanupOldDailyWorks,
   };
 }
