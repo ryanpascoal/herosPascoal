@@ -296,7 +296,7 @@ function getWeekKey(date) {
   return `${weekYear}-W${weekNo}`;
 }
 
-function addHeroLog(type, title, content) {
+function addHeroLog(type, title, content, meta = null) {
   if (!appData.heroLogs) appData.heroLogs = [];
   // Usar data local com horÃƒÆ’Ã‚Â¡rio correto
   const now = new Date();
@@ -308,13 +308,26 @@ function addHeroLog(type, title, content) {
     now.getMinutes(),
     now.getSeconds()
   );
-  appData.heroLogs.push({
+  const normalizedMeta =
+    meta && typeof meta === 'object'
+      ? {
+          category: String(meta.category || '').trim(),
+          sourceId: String(meta.sourceId || '').trim(),
+          eventDateKey: String(meta.eventDateKey || '').trim(),
+          status: String(meta.status || '').trim(),
+        }
+      : null;
+  const logEntry = {
     id: createUniqueId(appData.heroLogs),
     type,
     title,
     content,
     date: localDate.toISOString(),
-  });
+  };
+  if (normalizedMeta && Object.values(normalizedMeta).some(Boolean)) {
+    logEntry.meta = normalizedMeta;
+  }
+  appData.heroLogs.push(logEntry);
   // Manter logs sob controle
   if (appData.heroLogs.length > 200) {
     appData.heroLogs = appData.heroLogs.slice(-200);

@@ -422,7 +422,7 @@ function getCalendarEntryDateKey(entry) {
   if (!entry || typeof entry !== 'object') return '';
   if (entry.failed) return entry.failedDate || entry.missedDate || entry.date || '';
   if (entry.skipped) return entry.skippedDate || entry.date || '';
-  return entry.completedDate || entry.date || '';
+  return entry.completedDate || entry.dateCompleted || entry.date || '';
 }
 
 function isScheduledTrackerVisibleOnDate(item, dateStr) {

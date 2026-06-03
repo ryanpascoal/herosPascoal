@@ -144,6 +144,42 @@ function initEvents() {
       renderUnifiedActivitiesHistory();
     }
   });
+  document.getElementById('activity-history-date')?.addEventListener('change', function () {
+    if (typeof resetHistoryPage === 'function') {
+      resetHistoryPage('completed-activities');
+    }
+    if (typeof renderUnifiedActivitiesHistory === 'function') {
+      renderUnifiedActivitiesHistory();
+    }
+    if (typeof renderTimelineDayControls === 'function') {
+      renderTimelineDayControls();
+    }
+  });
+  document.getElementById('activity-history-date-clear')?.addEventListener('click', function () {
+    const dateInput = document.getElementById('activity-history-date');
+    if (dateInput) dateInput.value = '';
+    if (typeof resetHistoryPage === 'function') {
+      resetHistoryPage('completed-activities');
+    }
+    if (typeof renderUnifiedActivitiesHistory === 'function') {
+      renderUnifiedActivitiesHistory();
+    }
+    if (typeof renderTimelineDayControls === 'function') {
+      renderTimelineDayControls();
+    }
+  });
+  document.getElementById('timeline-rest-day-toggle')?.addEventListener('click', function () {
+    const targetDateKey =
+      typeof getTimelineControlDateKey === 'function' ? getTimelineControlDateKey() : getLocalDateString();
+    if (!targetDateKey || typeof toggleRestDay !== 'function') return;
+    toggleRestDay(targetDateKey);
+  });
+  document.getElementById('timeline-work-off-toggle')?.addEventListener('click', function () {
+    const targetDateKey =
+      typeof getTimelineControlDateKey === 'function' ? getTimelineControlDateKey() : getLocalDateString();
+    if (!targetDateKey || typeof toggleWorkOffDay !== 'function') return;
+    toggleWorkOffDay(targetDateKey);
+  });
 
   document.querySelectorAll('.nav-item').forEach((item) => {
     item.addEventListener('click', function () {
@@ -1412,7 +1448,13 @@ function failMission(missionId, reason = '', options = {}) {
   addHeroLog(
     'mission',
     `Tarefa falhada: ${mission.name}`,
-    `Falha registrada para ${penaltyDate}. Penalidades aplicadas no pipeline diário.`
+    `Falha registrada para ${penaltyDate}. Penalidades aplicadas no pipeline diário.`,
+    {
+      category: 'mission',
+      sourceId: String(mission.originalId || mission.id || ''),
+      eventDateKey: penaltyDate,
+      status: 'failed',
+    }
   );
   showFeedback(`Tarefa "${mission.name}" falhou (${penaltyDate}).`, 'error', 3200);
 }
@@ -1496,7 +1538,13 @@ async function skipMission(missionId) {
   addHeroLog(
     'mission',
     `Missao pulada: ${mission.name}`,
-    '1 item de pulo consumido. Sem penalidade.'
+    '1 item de pulo consumido. Sem penalidade.',
+    {
+      category: 'mission',
+      sourceId: String(mission.originalId || mission.id || ''),
+      eventDateKey: todayStr,
+      status: 'skipped',
+    }
   );
 
   updateUI({ mode: 'activity' });
@@ -1552,7 +1600,13 @@ function failWork(workId, reason = '', options = {}) {
   addHeroLog(
     'mission',
     `Trabalho falhado: ${work.name}`,
-    `Falha registrada para ${penaltyDate}. Penalidades aplicadas no pipeline diário.`
+    `Falha registrada para ${penaltyDate}. Penalidades aplicadas no pipeline diário.`,
+    {
+      category: 'work',
+      sourceId: String(work.originalId || work.id || ''),
+      eventDateKey: penaltyDate,
+      status: 'failed',
+    }
   );
 }
 
@@ -1596,7 +1650,13 @@ async function skipWork(workId) {
   addHeroLog(
     'mission',
     `Trabalho pulado: ${work.name}`,
-    '1 item de pulo consumido. Sem penalidade.'
+    '1 item de pulo consumido. Sem penalidade.',
+    {
+      category: 'work',
+      sourceId: String(work.originalId || work.id || ''),
+      eventDateKey: todayStr,
+      status: 'skipped',
+    }
   );
 
   updateUI({ mode: 'activity' });
@@ -1641,7 +1701,13 @@ async function skipDailyWorkout(workoutDayId) {
   addHeroLog(
     'workout',
     `Treino pulado: ${workout.name}`,
-    '1 item de pulo consumido. Sem penalidade.'
+    '1 item de pulo consumido. Sem penalidade.',
+    {
+      category: 'workout',
+      sourceId: String(workoutDay.workoutId || workout.id || ''),
+      eventDateKey: String(workoutDay.skippedDate || workoutDay.date || ''),
+      status: 'skipped',
+    }
   );
 
   updateUI({ mode: 'activity' });
@@ -1684,7 +1750,12 @@ async function skipDailyStudy(studyDayId) {
     studiesIgnored: 1,
   });
 
-  addHeroLog('study', `Estudo pulado: ${study.name}`, '1 item de pulo consumido. Sem penalidade.');
+  addHeroLog('study', `Estudo pulado: ${study.name}`, '1 item de pulo consumido. Sem penalidade.', {
+    category: 'study',
+    sourceId: String(studyDay.studyId || study.id || ''),
+    eventDateKey: String(studyDay.skippedDate || studyDay.date || ''),
+    status: 'skipped',
+  });
 
   updateUI({ mode: 'activity' });
   showFeedback(`Estudo "${study.name}" pulado sem penalidade.`, 'info');

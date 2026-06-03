@@ -453,7 +453,17 @@ function handleWorkoutCompletion() {
   // Atualizar dia produtivo
   updateProductiveDay(1, 0, 0, xpGained, 0, { xpWorkout: xpGained });
 
-  addHeroLog('workout', `Treino concluído: ${workout.name}`, `+${xpGained} XP, +1 moeda`);
+  addHeroLog(
+    'workout',
+    `Treino concluído: ${workout.name}`,
+    `+${xpGained} XP, +1 moeda`,
+    {
+      category: 'workout',
+      sourceId: String(workoutDay.workoutId || workout.id || ''),
+      eventDateKey: getLocalDateString(),
+      status: 'completed',
+    }
+  );
 
   updateUI({ mode: 'activity' });
   celebrateAction({
@@ -585,7 +595,13 @@ function completeStudy(studyDayId, feedbackText = '') {
   addHeroLog(
     'study',
     `Estudo concluído: ${study.name}`,
-    `+${xpGained} XP, +1 moeda${studyDay.applied ? ' (aplicado)' : ''}`
+    `+${xpGained} XP, +1 moeda${studyDay.applied ? ' (aplicado)' : ''}`,
+    {
+      category: 'study',
+      sourceId: String(studyDay.studyId || study.id || ''),
+      eventDateKey: getLocalDateString(),
+      status: 'completed',
+    }
   );
 
   updateUI({ mode: 'activity' });
@@ -607,7 +623,9 @@ function completeBook(bookId, feedbackText = '') {
 
   book.completed = true;
   book.status = 'concluido';
-  book.dateCompleted = getLocalDateString();
+  const completedDateKey = getLocalDateString();
+  book.dateCompleted = completedDateKey;
+  book.completedDate = completedDateKey;
   book.feedback = feedbackText;
 
   if (feedbackText) {
@@ -631,7 +649,12 @@ function completeBook(bookId, feedbackText = '') {
   appData.statistics.booksRead = (appData.statistics.booksRead || 0) + 1;
   updateProductiveDay(0, 0, 0, 20, 0, { xpBook: 20 });
 
-  addHeroLog('book', `Livro concluído: ${book.name}`, '+20 XP');
+  addHeroLog('book', `Livro concluído: ${book.name}`, '+20 XP', {
+    category: 'book',
+    sourceId: String(book.id || ''),
+    eventDateKey: completedDateKey,
+    status: 'completed',
+  });
 
   showFeedback('Livro concluído com sucesso!', 'success');
   updateUI();
@@ -1095,7 +1118,13 @@ function completeMission(missionId, feedbackText = '') {
   addHeroLog(
     'mission',
     `Missão concluída: ${mission.name}`,
-    `+${xpGained} XP, +${coinsGained} moeda(s)`
+    `+${xpGained} XP, +${coinsGained} moeda(s)`,
+    {
+      category: 'mission',
+      sourceId: String(mission.originalId || mission.id || ''),
+      eventDateKey: todayStr,
+      status: 'completed',
+    }
   );
 
   // 5. ATUALIZAR UI IMEDIATAMENTE (ANTES DO ALERT)
@@ -1183,7 +1212,13 @@ function completeWork(workId, feedbackText = '') {
   addHeroLog(
     'mission',
     `Trabalho concluído: ${work.name}`,
-    `+${xpGained} XP, +${coinsGained} moeda(s)`
+    `+${xpGained} XP, +${coinsGained} moeda(s)`,
+    {
+      category: 'work',
+      sourceId: String(work.originalId || work.id || ''),
+      eventDateKey: todayStr,
+      status: 'completed',
+    }
   );
 
   updateUI({ mode: 'activity' });
@@ -1642,70 +1677,73 @@ function generateHeroLogs() {
   if (!container) return;
 
   container.innerHTML = '';
+  const timelineEvents =
+    typeof getUnifiedTimelineEvents === 'function' ? getUnifiedTimelineEvents().slice(0, 12) : [];
+
+  if (timelineEvents.length > 0) {
+    timelineEvents.forEach((event) => {
+      const logElement = document.createElement('div');
+      const isActivity = event.timelineKind === 'activity';
+      const icon = isActivity
+        ? event.item?.emoji || getActivityCategoryMeta(event.category).emoji
+        : event.log?.type === 'level'
+          ? '🏆'
+          : event.log?.type === 'item'
+            ? '🎁'
+            : event.log?.type === 'penalty'
+              ? '⚠️'
+              : event.log?.type === 'system'
+                ? '⚙️'
+                : '📝';
+      const title = isActivity ? event.title : event.title || 'Registro do herói';
+      const text = isActivity
+        ? event.matchedLog?.content ||
+          `${getActivityCategoryMeta(event.category).label} • ${event.statusMeta?.text || 'CONCLUÍDO'}`
+        : event.log?.content || 'Sem detalhes adicionais.';
+      const dateLabel = isActivity
+        ? formatDate(event.eventDateKey)
+        : event.log?.date
+          ? new Date(event.log.date).toLocaleString('pt-BR')
+          : formatDate(event.eventDateKey);
+
+      logElement.className = `log-item ${isActivity ? event.statusMeta?.tone || event.category : event.category || 'system'}`;
+
+      const iconEl = document.createElement('div');
+      iconEl.className = 'log-icon';
+      iconEl.textContent = icon;
+
+      const contentEl = document.createElement('div');
+      contentEl.className = 'log-content';
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'log-title';
+      titleEl.textContent = title;
+
+      const textEl = document.createElement('div');
+      textEl.className = 'log-text';
+      textEl.textContent = text;
+
+      const dateEl = document.createElement('div');
+      dateEl.className = 'log-text';
+      dateEl.textContent = dateLabel;
+
+      contentEl.appendChild(titleEl);
+      contentEl.appendChild(textEl);
+      contentEl.appendChild(dateEl);
+
+      logElement.appendChild(iconEl);
+      logElement.appendChild(contentEl);
+      container.appendChild(logElement);
+    });
+    return;
+  }
 
   if (!appData.heroLogs || appData.heroLogs.length === 0) {
     container.innerHTML = '<p class="empty-message">Nenhum registro ainda.</p>';
     return;
   }
 
-  const recentLogs = appData.heroLogs.slice(-20).reverse();
-
-  const logIcons = {
-    mission: '🎯',
-    workout: '💪',
-    study: '📚',
-    book: '📖',
-    level: '🏆',
-    item: '🎁',
-    rest: '🌙',
-    penalty: '⚠️',
-    system: '⚙️',
-  };
-
-  recentLogs.forEach((log) => {
-    const logElement = document.createElement('div');
-    logElement.className = `log-item ${log.type || 'system'}`;
-    // Validação segura para data
-    let logDate = 'Data desconhecida';
-    if (log.date) {
-      try {
-        const d = new Date(log.date);
-        if (!isNaN(d.getTime())) {
-          logDate = d.toLocaleString('pt-BR');
-        }
-      } catch (e) {
-        logDate = 'Data inválida';
-      }
-    }
-    const icon = logIcons[log.type] || '📝';
-    // Usar textContent para evitar XSS
-    const iconEl = document.createElement('div');
-    iconEl.className = 'log-icon';
-    iconEl.textContent = icon;
-
-    const contentEl = document.createElement('div');
-    contentEl.className = 'log-content';
-
-    const titleEl = document.createElement('div');
-    titleEl.className = 'log-title';
-    titleEl.textContent = log.title || '';
-
-    const textEl = document.createElement('div');
-    textEl.className = 'log-text';
-    textEl.textContent = log.content || '';
-
-    const dateEl = document.createElement('div');
-    dateEl.className = 'log-text';
-    dateEl.textContent = logDate;
-
-    contentEl.appendChild(titleEl);
-    contentEl.appendChild(textEl);
-    contentEl.appendChild(dateEl);
-
-    logElement.appendChild(iconEl);
-    logElement.appendChild(contentEl);
-    container.appendChild(logElement);
-  });
+  container.innerHTML = '<p class="empty-message">A linha do tempo ainda não está disponível.</p>';
 }
 
 // Inicializar gráficos

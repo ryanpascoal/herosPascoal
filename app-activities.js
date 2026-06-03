@@ -296,6 +296,400 @@ function getUnifiedHistoryActivities() {
   });
 }
 
+function normalizeTimelineText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function getTimelineStatusMeta(item) {
+  if (item?.failed) {
+    return { text: 'FALHOU', className: 'failed-status', tone: 'failed' };
+  }
+  if (item?.skipped) {
+    return { text: 'PULADO', className: 'skipped-status', tone: 'skipped' };
+  }
+  return { text: 'CONCLUÍDO', className: 'completed-status', tone: 'completed' };
+}
+
+function getHistoryEntryTypeLabel(category, item) {
+  if (category === 'workout') return getWorkoutTypeName(item.type);
+  if (category === 'study') return item.type === 'logico' ? 'Lógico' : 'Criativo';
+  if (category === 'book') return getBookActivityStatusLabel(item);
+  return getMissionTypeName(item.type);
+}
+
+function getTimelineLogDateKey(log) {
+  if (!log?.date) return '';
+  const parsed = new Date(log.date);
+  if (!Number.isFinite(parsed.getTime())) return '';
+  return getLocalDateString(parsed);
+}
+
+function getTimelineSortTimestamp(dateKey, isoDate = '') {
+  const isoCandidate = String(isoDate || '').trim();
+  if (isoCandidate) {
+    const parsedIso = new Date(isoCandidate);
+    if (Number.isFinite(parsedIso.getTime())) return parsedIso.getTime();
+  }
+  const safeDateKey = String(dateKey || '').trim();
+  if (!safeDateKey) return 0;
+  const parsedDate =
+    typeof parseLocalDateString === 'function' ? parseLocalDateString(safeDateKey) : new Date(safeDateKey);
+  if (!Number.isFinite(parsedDate.getTime())) return 0;
+  parsedDate.setHours(12, 0, 0, 0);
+  return parsedDate.getTime();
+}
+
+function getActivityTimelineTitle(category, item) {
+  const itemName = item.name || 'Atividade';
+  if (category === 'mission') {
+    if (item?.failed) return `Tarefa falhada: ${itemName}`;
+    if (item?.skipped) return `Tarefa pulada: ${itemName}`;
+    return `Tarefa concluída: ${itemName}`;
+  }
+  if (category === 'work') {
+    if (item?.failed) return `Trabalho falhado: ${itemName}`;
+    if (item?.skipped) return `Trabalho pulado: ${itemName}`;
+    return `Trabalho concluído: ${itemName}`;
+  }
+  if (category === 'workout') {
+    if (item?.failed) return `Treino falhado: ${itemName}`;
+    if (item?.skipped) return `Treino pulado: ${itemName}`;
+    return `Treino concluído: ${itemName}`;
+  }
+  if (category === 'study') {
+    if (item?.failed) return `Estudo falhado: ${itemName}`;
+    if (item?.skipped) return `Estudo pulado: ${itemName}`;
+    return `Estudo concluído: ${itemName}`;
+  }
+  if (category === 'book') return `Livro concluído: ${itemName}`;
+  return `Atividade concluída: ${itemName}`;
+}
+
+function getExpectedHistoryLogPrefixes(category, item) {
+  if (category === 'mission') {
+    if (item?.failed) return ['tarefa falhada'];
+    if (item?.skipped) return ['missao pulada', 'missão pulada'];
+    return ['missao concluida', 'missão concluída'];
+  }
+  if (category === 'work') {
+    if (item?.failed) return ['trabalho falhado'];
+    if (item?.skipped) return ['trabalho pulado'];
+    return ['trabalho concluido', 'trabalho concluído'];
+  }
+  if (category === 'workout') {
+    if (item?.skipped) return ['treino pulado'];
+    if (item?.failed) return ['treino falhado'];
+    return ['treino concluido', 'treino concluído'];
+  }
+  if (category === 'study') {
+    if (item?.skipped) return ['estudo pulado'];
+    if (item?.failed) return ['estudo falhado'];
+    return ['estudo concluido', 'estudo concluído'];
+  }
+  if (category === 'book') return ['livro concluido', 'livro concluído'];
+  return [];
+}
+
+function getTimelineHistorySourceId(category, item) {
+  if (!item || typeof item !== 'object') return '';
+  if (category === 'mission' || category === 'work') {
+    return String(item.originalId || item.id || '').trim();
+  }
+  if (category === 'workout') {
+    return String(item.workoutId || item.id || '').trim();
+  }
+  if (category === 'study') {
+    return String(item.studyId || item.id || '').trim();
+  }
+  if (category === 'book') {
+    return String(item.id || '').trim();
+  }
+  return '';
+}
+
+function getTimelineHistoryStatus(item) {
+  if (item?.failed) return 'failed';
+  if (item?.skipped) return 'skipped';
+  return 'completed';
+}
+
+function doesHeroLogMetaMatchHistoryEntry(log, category, item, eventDateKey) {
+  const meta = log?.meta;
+  if (!meta || typeof meta !== 'object') return false;
+
+  const logCategory = String(meta.category || '').trim();
+  const logSourceId = String(meta.sourceId || '').trim();
+  const logEventDateKey = String(meta.eventDateKey || '').trim();
+  const logStatus = String(meta.status || '').trim();
+
+  if (!logCategory || !logSourceId || !logEventDateKey || !logStatus) return false;
+
+  return (
+    logCategory === String(category || '') &&
+    logSourceId === getTimelineHistorySourceId(category, item) &&
+    logEventDateKey === String(eventDateKey || '') &&
+    logStatus === getTimelineHistoryStatus(item)
+  );
+}
+
+function doesHeroLogMatchHistoryEntry(log, category, item, eventDateKey) {
+  if (!log || !item || !eventDateKey) return false;
+  if (doesHeroLogMetaMatchHistoryEntry(log, category, item, eventDateKey)) return true;
+  const logDateKey = getTimelineLogDateKey(log);
+  if (logDateKey !== eventDateKey) return false;
+
+  const allowedTypes =
+    category === 'mission' || category === 'work'
+      ? ['mission']
+      : category === 'workout'
+        ? ['workout']
+        : category === 'study'
+          ? ['study']
+          : category === 'book'
+            ? ['book']
+            : [];
+  if (!allowedTypes.includes(String(log.type || ''))) return false;
+
+  const normalizedTitle = normalizeTimelineText(log.title);
+  const normalizedName = normalizeTimelineText(item.name);
+  if (!normalizedName || !normalizedTitle.includes(normalizedName)) return false;
+
+  return getExpectedHistoryLogPrefixes(category, item).some((prefix) =>
+    normalizedTitle.startsWith(normalizeTimelineText(prefix))
+  );
+}
+
+function getStandaloneTimelineLogCategory(log) {
+  const safeType = String(log?.type || 'system').trim();
+  if (safeType === 'level' || safeType === 'item' || safeType === 'penalty' || safeType === 'system') {
+    return safeType;
+  }
+  return 'hero-log';
+}
+
+function getStandaloneTimelineLogStatusClass(log) {
+  if (log?.type === 'penalty') return 'failed';
+  if (log?.type === 'system') return 'skipped';
+  return 'completed';
+}
+
+function getStandaloneTimelineLogLabel(log) {
+  switch (log?.type) {
+    case 'level':
+      return 'Nível';
+    case 'item':
+      return 'Item';
+    case 'penalty':
+      return 'Penalidade';
+    case 'system':
+      return 'Sistema';
+    default:
+      return 'Narrativa';
+  }
+}
+
+function getStandaloneTimelineLogIcon(log) {
+  switch (log?.type) {
+    case 'mission':
+      return '🎯';
+    case 'workout':
+      return '💪';
+    case 'study':
+      return '📚';
+    case 'book':
+      return '📖';
+    case 'level':
+      return '🏆';
+    case 'item':
+      return '🎁';
+    case 'penalty':
+      return '⚠️';
+    case 'system':
+      return '⚙️';
+    default:
+      return '📝';
+  }
+}
+
+function getUnifiedTimelineEvents() {
+  const heroLogs = Array.isArray(appData.heroLogs) ? appData.heroLogs.slice() : [];
+  const consumedLogIds = new Set();
+  const activityEvents = getUnifiedHistoryActivities().map(({ category, item }) => {
+    const eventDateKey = getEventDateKey(item);
+    const matchedLog = heroLogs.find(
+      (log) => !consumedLogIds.has(log.id) && doesHeroLogMatchHistoryEntry(log, category, item, eventDateKey)
+    );
+    if (matchedLog?.id !== undefined) {
+      consumedLogIds.add(matchedLog.id);
+    }
+    return {
+      timelineKind: 'activity',
+      category,
+      item,
+      eventDateKey,
+      sortTimestamp: getTimelineSortTimestamp(eventDateKey, matchedLog?.date || ''),
+      matchedLog: matchedLog || null,
+      statusMeta: getTimelineStatusMeta(item),
+      typeLabel: getHistoryEntryTypeLabel(category, item),
+      title: getActivityTimelineTitle(category, item),
+    };
+  });
+
+  const logEvents = heroLogs
+    .filter((log) => !consumedLogIds.has(log.id))
+    .map((log) => {
+      const eventDateKey = getTimelineLogDateKey(log);
+      return {
+        timelineKind: 'log',
+        category: getStandaloneTimelineLogCategory(log),
+        log,
+        eventDateKey,
+        sortTimestamp: getTimelineSortTimestamp(eventDateKey, log.date || ''),
+        title: String(log.title || 'Registro do herói').trim() || 'Registro do herói',
+      };
+    });
+
+  return [...activityEvents, ...logEvents].sort((left, right) => {
+    const timeDelta = Number(right.sortTimestamp || 0) - Number(left.sortTimestamp || 0);
+    if (timeDelta !== 0) return timeDelta;
+    if (left.timelineKind !== right.timelineKind) return left.timelineKind === 'log' ? -1 : 1;
+    return String(right.eventDateKey || '').localeCompare(String(left.eventDateKey || ''));
+  });
+}
+
+function filterTimelineEntries(items, filterId = 'activity-history-filter') {
+  const filter = getSelectedActivityFilter(filterId);
+  const selectedDate = getSelectedTimelineDateFilter();
+  return (items || []).filter((entry) => {
+    if (selectedDate && String(entry.eventDateKey || '') !== selectedDate) return false;
+    if (filter === 'all') return true;
+    if (filter === 'activity') return entry.timelineKind === 'activity';
+    if (filter === 'hero-log') return entry.timelineKind === 'log';
+    if (entry.timelineKind === 'activity') return entry.category === filter;
+    return entry.category === filter;
+  });
+}
+
+function getSelectedTimelineDateFilter() {
+  if (typeof document === 'undefined') return '';
+  return String(document.getElementById('activity-history-date')?.value || '').trim();
+}
+
+function getTimelineControlDateKey() {
+  const selectedDate = getSelectedTimelineDateFilter();
+  if (selectedDate) return selectedDate;
+  return typeof getLocalDateString === 'function' ? getLocalDateString() : '';
+}
+
+function renderTimelineDayControls() {
+  if (typeof document === 'undefined') return;
+
+  const root = document.getElementById('timeline-day-controls');
+  if (!root) return;
+
+  const targetEl = document.getElementById('timeline-day-target');
+  const statusEl = document.getElementById('timeline-day-status');
+  const restButton = document.getElementById('timeline-rest-day-toggle');
+  const workOffButton = document.getElementById('timeline-work-off-toggle');
+  const selectedDate = getSelectedTimelineDateFilter();
+  const targetDateKey = getTimelineControlDateKey();
+  const targetLabel = targetDateKey ? formatDate(targetDateKey) : 'Hoje';
+  const restActive =
+    !!targetDateKey && typeof isRestDay === 'function' ? !!isRestDay(targetDateKey) : false;
+  const workOffActive =
+    !!targetDateKey && typeof isWorkOffDay === 'function' ? !!isWorkOffDay(targetDateKey) : false;
+
+  if (targetEl) {
+    targetEl.textContent = `Dia alvo: ${targetLabel}${selectedDate ? '' : ' (hoje)'}`;
+  }
+
+  if (restButton) {
+    restButton.textContent = restActive ? 'Remover descanso' : 'Marcar descanso';
+    restButton.classList.toggle('is-active', restActive);
+    restButton.setAttribute('aria-pressed', restActive ? 'true' : 'false');
+    restButton.disabled = !targetDateKey;
+  }
+
+  if (workOffButton) {
+    workOffButton.textContent = workOffActive ? 'Remover folga' : 'Marcar folga';
+    workOffButton.classList.toggle('is-active', workOffActive);
+    workOffButton.setAttribute('aria-pressed', workOffActive ? 'true' : 'false');
+    workOffButton.disabled = !targetDateKey;
+  }
+
+  if (statusEl) {
+    if (restActive && workOffActive) {
+      statusEl.textContent = 'Descanso e folga de trabalho ativos neste dia.';
+    } else if (restActive) {
+      statusEl.textContent = 'Descanso ativo neste dia.';
+    } else if (workOffActive) {
+      statusEl.textContent = 'Folga de trabalho ativa neste dia.';
+    } else {
+      statusEl.textContent = 'Dia normal.';
+    }
+  }
+}
+
+function renderTimelineEventCard(entry) {
+  if (entry.timelineKind === 'log') {
+    const card = document.createElement('div');
+    const toneClass = getStandaloneTimelineLogStatusClass(entry.log);
+    card.className = `mission-card history-card compact-history timeline-log-card ${toneClass}`;
+    card.innerHTML = `
+      <div class="mission-header">
+        <div class="mission-name">
+          <span class="mission-emoji">${escapeHtml(getStandaloneTimelineLogIcon(entry.log))}</span>
+          <span>${escapeHtml(entry.title)}</span>
+        </div>
+        <span class="mission-status ${toneClass === 'failed' ? 'failed-status' : toneClass === 'skipped' ? 'skipped-status' : 'completed-status'}">
+          ${escapeHtml(getStandaloneTimelineLogLabel(entry.log).toUpperCase())}
+        </span>
+        <span class="mission-type kind">${escapeHtml(getStandaloneTimelineLogLabel(entry.log))}</span>
+      </div>
+      <div class="mission-details">
+        <p>Data: ${formatDate(entry.eventDateKey)}</p>
+        ${entry.log?.content ? `<p class="timeline-narrative">Registro: ${escapeHtml(entry.log.content)}</p>` : ''}
+      </div>
+    `;
+    return card;
+  }
+
+  const { category, item, statusMeta, typeLabel, eventDateKey, matchedLog } = entry;
+  const categoryMeta = getActivityCategoryMeta(category);
+  const card = document.createElement('div');
+  card.className = `mission-card history-card compact-history ${statusMeta.tone}`;
+  const workoutDetailLines =
+    category === 'workout'
+      ? getWorkoutHistoryDetailLines(item)
+          .map((detail) => `<p>${detail}</p>`)
+          .join('')
+      : '';
+  card.innerHTML = `
+    <div class="mission-header">
+      <div class="mission-name">
+        <span class="mission-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
+        <span>${escapeHtml(item.name || 'Atividade')}</span>
+      </div>
+      <span class="mission-status ${statusMeta.className}">${statusMeta.text}</span>
+      <span class="mission-type ${categoryMeta.className}">${categoryMeta.label}</span>
+    </div>
+    <div class="mission-details">
+      <p>Tipo: ${typeLabel}</p>
+      <p>Data: ${formatDate(eventDateKey)}</p>
+      ${workoutDetailLines}
+      ${category === 'book' && item.author ? `<p>Autor: ${escapeHtml(item.author)}</p>` : ''}
+      ${item.reason ? `<p class="mission-reason">Motivo: ${escapeHtml(item.reason)}</p>` : ''}
+      ${matchedLog?.content ? `<p class="timeline-narrative">Registro do herói: ${escapeHtml(matchedLog.content)}</p>` : ''}
+      ${item.feedback ? `<p class="mission-feedback">Feedback: ${escapeHtml(item.feedback)}</p>` : ''}
+    </div>
+  `;
+  return card;
+}
+
 function getUnifiedManagedActivities() {
   return [
     ...(appData.missions || []).map((item) => ({ category: 'mission', item })),
@@ -436,60 +830,13 @@ function renderUnifiedTodayActivities() {
 function renderUnifiedActivitiesHistory() {
   const container = document.getElementById('completed-activities');
   if (!container) return;
-  const items = filterActivitiesByCategory(getUnifiedHistoryActivities(), 'activity-history-filter');
+  renderTimelineDayControls();
+  const items = filterTimelineEntries(getUnifiedTimelineEvents(), 'activity-history-filter');
   renderPaginatedHistory(
     container,
     items,
-    ({ category, item }) => {
-      const categoryMeta = getActivityCategoryMeta(category);
-      const card = document.createElement('div');
-      card.className = `mission-card history-card compact-history ${
-        item.failed ? 'failed' : item.skipped ? 'skipped' : 'completed'
-      }`;
-      const statusText = item.failed ? 'FALHOU' : item.skipped ? 'PULADO' : 'CONCLUÍDO';
-      const statusClass = item.failed
-        ? 'failed-status'
-        : item.skipped
-          ? 'skipped-status'
-          : 'completed-status';
-      const typeLabel =
-        category === 'workout'
-          ? getWorkoutTypeName(item.type)
-          : category === 'study'
-            ? item.type === 'logico'
-              ? 'Lógico'
-              : 'Criativo'
-            : category === 'book'
-              ? getBookActivityStatusLabel(item)
-              : getMissionTypeName(item.type);
-      const eventDate = getEventDateKey(item);
-      const workoutDetailLines =
-        category === 'workout'
-          ? getWorkoutHistoryDetailLines(item)
-              .map((detail) => `<p>${detail}</p>`)
-              .join('')
-          : '';
-      card.innerHTML = `
-        <div class="mission-header">
-          <div class="mission-name">
-            <span class="mission-emoji">${escapeHtml(item.emoji || categoryMeta.emoji)}</span>
-            <span>${escapeHtml(item.name || 'Atividade')}</span>
-          </div>
-          <span class="mission-status ${statusClass}">${statusText}</span>
-          <span class="mission-type ${categoryMeta.className}">${categoryMeta.label}</span>
-        </div>
-        <div class="mission-details">
-          <p>Tipo: ${typeLabel}</p>
-          <p>Data: ${formatDate(eventDate)}</p>
-          ${workoutDetailLines}
-          ${category === 'book' && item.author ? `<p>Autor: ${escapeHtml(item.author)}</p>` : ''}
-          ${item.reason ? `<p class="mission-reason">Motivo: ${escapeHtml(item.reason)}</p>` : ''}
-          ${item.feedback ? `<p class="mission-feedback">Feedback: ${escapeHtml(item.feedback)}</p>` : ''}
-        </div>
-      `;
-      return card;
-    },
-    'Nenhuma atividade no histórico para este filtro.',
+    renderTimelineEventCard,
+    'Nenhum evento na linha do tempo para este filtro.',
     renderUnifiedActivitiesHistory
   );
 }
@@ -1295,7 +1642,7 @@ function getEventDateKey(entry) {
   if (!entry || typeof entry !== 'object') return '';
   if (entry.failed) return entry.failedDate || entry.missedDate || entry.date || '';
   if (entry.skipped) return entry.skippedDate || entry.date || '';
-  return entry.completedDate || entry.date || '';
+  return entry.completedDate || entry.dateCompleted || entry.date || '';
 }
 
 function getTotalsFromDateKeys(keys) {
@@ -1610,10 +1957,14 @@ Object.assign(globalThis, {
   getUnifiedTodayActivities,
   getAllTodayActivities,
   getUnifiedHistoryActivities,
+  getUnifiedTimelineEvents,
+  filterTimelineEntries,
+  getTimelineControlDateKey,
   getUnifiedManagedActivities,
   updateUnifiedActivities,
   renderUnifiedTodayActivities,
   renderUnifiedActivitiesHistory,
+  renderTimelineDayControls,
   resetHistoryPage,
   wasItemLoggedForDate,
   isOneOffScheduledItemOverdue,
@@ -1654,6 +2005,9 @@ if (typeof module !== 'undefined' && module.exports) {
     getEmergencyBadgeHtml,
     isOneOffScheduledItemOverdue,
     isUrgentWorkActivity,
+    getUnifiedTimelineEvents,
+    filterTimelineEntries,
+    getTimelineControlDateKey,
     getDailyStatisticsBreakdown,
     buildStatisticsRecordSnapshot,
     buildWorkoutHistorySummary,

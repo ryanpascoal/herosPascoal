@@ -2111,6 +2111,72 @@ body.light-theme .auth-screen-form input {
   color: var(--light-color);
 }
 
+.timeline-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+}
+
+.activity-date-filter {
+  min-width: 156px;
+}
+
+.activity-filter-btn {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.timeline-day-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.timeline-day-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.timeline-day-target {
+  font-weight: 700;
+  color: var(--light-color);
+}
+
+.timeline-day-status {
+  color: var(--gray-color);
+  font-size: 0.92rem;
+}
+
+.timeline-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  flex: 1 1 260px;
+}
+
+.timeline-day-toggle {
+  min-height: 40px;
+}
+
+.timeline-day-toggle.is-active {
+  background: rgba(255, 196, 61, 0.18);
+  border-color: rgba(255, 196, 61, 0.55);
+  color: var(--light-color);
+}
+
 .activity-progress-bar .progress-fill {
   height: 8px;
   background: rgba(255, 255, 255, 0.1);
@@ -6997,8 +7063,22 @@ body.light-theme {
 }
 
 #atividades #completed-activities .mission-reason,
-#atividades #completed-activities .mission-feedback {
+#atividades #completed-activities .mission-feedback,
+#atividades #completed-activities .timeline-narrative {
   flex: 1 1 100%;
+}
+
+.timeline-log-card .mission-name {
+  align-items: center;
+}
+
+.timeline-narrative {
+  font-style: italic;
+  color: var(--gray-color);
+  padding: 10px;
+  background-color: var(--light-gray);
+  border-radius: var(--border-radius);
+  margin-top: 10px;
 }
 
 #atividades #activities-list .item-card {
@@ -8666,6 +8746,22 @@ body.light-theme .activity-due-date {
     width: 100%;
   }
 
+  .timeline-filter-row,
+  .activity-date-filter,
+  .activity-filter-btn {
+    width: 100%;
+  }
+
+  .timeline-day-controls,
+  .timeline-day-actions,
+  .timeline-day-toggle {
+    width: 100%;
+  }
+
+  .timeline-day-actions {
+    justify-content: stretch;
+  }
+
   .planning-dashboard,
   .profile-header,
   .profile-tabs,
@@ -9400,5 +9496,171 @@ body.light-theme .activity-due-date {
   #atividades .activity-actions:has(.skip-btn) .skip-btn {
     width: 38px;
     min-width: 38px;
+  }
+}
+
+@media (max-width: 560px) {
+  #atividades #daily-activities .compact-activity-card {
+    grid-template-columns: 6px minmax(0, 1fr);
+    align-items: start;
+    column-gap: 10px;
+    row-gap: 8px;
+    padding: 10px;
+  }
+
+  #atividades #daily-activities .activity-color-bar {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    min-height: 100%;
+  }
+
+  #atividades #daily-activities .activity-main,
+  #atividades #daily-activities .activity-meta,
+  #atividades #daily-activities .activity-actions {
+    grid-column: 2;
+    width: 100%;
+    min-width: 0;
+  }
+
+  #atividades #daily-activities .activity-main {
+    grid-template-columns: 22px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+  }
+
+  #atividades #daily-activities .activity-name-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  #atividades #daily-activities .activity-name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  #atividades #daily-activities .activity-meta {
+    justify-content: flex-start;
+  }
+
+  #atividades #daily-activities .activity-due-date {
+    min-width: 0;
+    max-width: none;
+    justify-content: flex-start;
+    text-align: left;
+    white-space: normal;
+  }
+
+  #atividades #daily-activities .activity-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 8px;
+    margin-left: 0;
+    overflow: visible;
+  }
+
+  #atividades #daily-activities .activity-actions:has(.skip-btn) {
+    grid-template-columns: minmax(0, 1fr) 42px;
+  }
+
+  #atividades #daily-activities .activity-actions:has(.study-checkbox) {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  #atividades #daily-activities .activity-actions:has(.study-checkbox):has(.skip-btn) {
+    grid-template-columns: 22px minmax(0, 1fr) 42px;
+  }
+
+  #atividades #daily-activities .activity-actions .study-checkbox {
+    grid-column: 1;
+    align-self: center;
+    justify-self: center;
+    width: 18px;
+    height: 18px;
+  }
+
+  #atividades #daily-activities .activity-actions .complete-btn,
+  #atividades #daily-activities .activity-actions .complete-workout-btn,
+  #atividades #daily-activities .activity-actions .complete-study-btn,
+  #atividades #daily-activities .activity-actions .skip-btn {
+    min-width: 0;
+    max-width: none;
+    min-height: 42px;
+    font-size: 0.74rem;
+    line-height: 1.2;
+  }
+
+  #atividades #daily-activities .activity-actions .complete-btn,
+  #atividades #daily-activities .activity-actions .complete-workout-btn,
+  #atividades #daily-activities .activity-actions .complete-study-btn {
+    grid-column: 1;
+    width: 100%;
+    padding: 8px 10px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  #atividades #daily-activities .activity-actions:has(.study-checkbox) .complete-btn,
+  #atividades #daily-activities .activity-actions:has(.study-checkbox) .complete-workout-btn,
+  #atividades #daily-activities .activity-actions:has(.study-checkbox) .complete-study-btn {
+    grid-column: 2;
+  }
+
+  #atividades #daily-activities .activity-actions .skip-btn {
+    grid-column: 2;
+    width: 42px;
+    min-width: 42px;
+    padding: 0;
+    justify-self: stretch;
+  }
+
+  #atividades #daily-activities .activity-actions:has(.study-checkbox) .skip-btn {
+    grid-column: 3;
+  }
+}
+
+@media (max-width: 420px) {
+  #atividades #daily-activities .compact-activity-card {
+    padding: 9px 8px;
+  }
+
+  #atividades #daily-activities .activity-main {
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  #atividades #daily-activities .activity-name {
+    font-size: 0.76rem;
+  }
+
+  #atividades #daily-activities .activity-actions .complete-btn,
+  #atividades #daily-activities .activity-actions .complete-workout-btn,
+  #atividades #daily-activities .activity-actions .complete-study-btn,
+  #atividades #daily-activities .activity-actions .skip-btn {
+    min-height: 40px;
+    font-size: 0.7rem;
+  }
+
+  #atividades #daily-activities .activity-actions:has(.skip-btn) {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+
+  #atividades #daily-activities .activity-actions:has(.study-checkbox) {
+    grid-template-columns: 20px minmax(0, 1fr);
+  }
+
+  #atividades #daily-activities .activity-actions:has(.study-checkbox):has(.skip-btn) {
+    grid-template-columns: 20px minmax(0, 1fr) 40px;
+  }
+
+  #atividades #daily-activities .activity-actions .skip-btn {
+    width: 40px;
+    min-width: 40px;
   }
 }
