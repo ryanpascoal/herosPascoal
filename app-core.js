@@ -182,11 +182,19 @@ function checkDailyReset() {
   // Agora usa apenas serverMeta.lastDailyReset (que ÃƒÆ’Ã‚Â© salvo na nuvem)
   let lastReset = appData.serverMeta?.lastDailyReset;
   if (!lastReset) {
-    // Primeira vez: inicializar serverMeta e salvar na nuvem
     if (!appData.serverMeta) appData.serverMeta = {};
-    appData.serverMeta.lastDailyReset = today;
-    queueSave();
-    return;
+    const inferredLastReset =
+      window.AppRules && typeof window.AppRules.inferLegacyLastDailyResetDate === 'function'
+        ? window.AppRules.inferLegacyLastDailyResetDate(appData, today)
+        : null;
+
+    if (!inferredLastReset) {
+      appData.serverMeta.lastDailyReset = today;
+      queueSave();
+      return;
+    }
+
+    lastReset = inferredLastReset;
   }
 
   const shouldRun =
@@ -584,79 +592,21 @@ function applyCoinPenalty(options = {}) {
 }
 
 function applyActivityPenalties(config) {
-  const {
-    targetDateStr,
-    dailyList,
-    itemList,
-    completedList,
-    idKey,
-    nameFallback,
-    emojiFallback,
-    typeFallback,
-    statsKey,
-    streakKeys,
-    alertFail,
-    logFailTitle,
-    logFailContent,
-  } = config;
-
-  const incompleteItems = dailyList.filter(
-    (item) => item.date === targetDateStr && !item.completed && !item.skipped
-  );
-
-  if (incompleteItems.length === 0) {
+  const statsKey = config?.statsKey;
+  const targetDateStr = config?.targetDateStr || getLocalDateString();
+  const legacyTypeMap = {
+    missionsFailed: 'mission',
+    worksFailed: 'work',
+    workoutsFailed: 'workout',
+    studiesFailed: 'study',
+  };
+  const mappedType = legacyTypeMap[statsKey];
+  if (!mappedType || typeof globalThis.applyPenalties !== 'function') {
     return;
   }
 
-  incompleteItems.forEach((dayItem) => {
-    dayItem.failed = true;
-    const item = itemList.find((i) => i.id === dayItem[idKey]);
-    const alreadyLogged = completedList.some(
-      (entry) => entry[idKey] === dayItem[idKey] && entry.date === dayItem.date && entry.failed
-    );
-    if (!alreadyLogged) {
-      completedList.push({
-        id: createUniqueId(completedList),
-        [idKey]: dayItem[idKey],
-        name: item ? item.name : nameFallback,
-        emoji: item ? item.emoji : emojiFallback,
-        type: item ? item.type : typeFallback,
-        date: dayItem.date,
-        failedDate: targetDateStr,
-        failed: true,
-        reason: 'N\u00e3o conclu\u00eddo',
-      });
-    }
-  });
-
-  const missedCounts = {
-    missionsMissed: 0,
-    worksMissed: 0,
-    workoutsMissed: 0,
-    studiesMissed: 0,
-  };
-  if (statsKey === 'missionsFailed') missedCounts.missionsMissed = incompleteItems.length;
-  if (statsKey === 'worksFailed') missedCounts.worksMissed = incompleteItems.length;
-  if (statsKey === 'workoutsFailed') missedCounts.workoutsMissed = incompleteItems.length;
-  if (statsKey === 'studiesFailed') missedCounts.studiesMissed = incompleteItems.length;
-  if (typeof globalThis.updateProductiveDay === 'function') {
-    globalThis.updateProductiveDay(0, 0, 0, 0, 0, {
-      date: targetDateStr,
-      ...missedCounts,
-    });
-  }
-
-  streakKeys.forEach((key) => {
-    appData.hero.streak[key] = 0;
-  });
-  addAttributeXP(6, -1);
-  appData.statistics[statsKey] = (appData.statistics[statsKey] || 0) + incompleteItems.length;
-  applyCoinPenalty({
-    requestedAmount: incompleteItems.length,
-    failMessage: alertFail,
-    failLogTitle: logFailTitle,
-    failLogContent: logFailContent,
-  });
+  // Legacy compatibility: route any old callers through the unified penalties flow.
+  globalThis.applyPenalties(targetDateStr, { onlyTypes: [mappedType] });
 }
 
 // Gerar atividades do dia

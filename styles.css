@@ -9220,3 +9220,185 @@ body.light-theme .activity-due-date {
     min-height: 34px;
   }
 }
+
+/* Final mobile overrides for activity lists to prevent squeezed or overlapping controls */
+@media (max-width: 560px) {
+  #atividades .missions-list,
+  #atividades .history-list,
+  #atividades .items-list {
+    overflow-x: clip;
+  }
+
+  #atividades .compact-activity-card {
+    display: grid;
+    grid-template-columns: 6px minmax(0, 1fr);
+    grid-auto-rows: auto;
+    align-items: start;
+    column-gap: 8px;
+    row-gap: 8px;
+    padding: 10px;
+    overflow: visible;
+  }
+
+  #atividades .compact-activity-card > * {
+    min-width: 0;
+  }
+
+  #atividades .activity-color-bar {
+    grid-row: 1 / span 3;
+  }
+
+  #atividades .activity-main,
+  #atividades .activity-meta,
+  #atividades .activity-actions {
+    grid-column: 2;
+    width: 100%;
+    min-width: 0;
+  }
+
+  #atividades .activity-main {
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
+
+  #atividades .activity-name-row,
+  #atividades #activities-list .item-name-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 4px 6px;
+  }
+
+  #atividades .activity-name,
+  #atividades #activities-list .item-name {
+    min-width: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  #atividades .activity-meta {
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  #atividades .activity-due-date {
+    min-width: 0;
+    max-width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  #atividades .activity-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 8px;
+    margin-left: 0;
+    overflow: visible;
+  }
+
+  #atividades .activity-actions:has(.skip-btn) {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+
+  #atividades .activity-actions .complete-btn,
+  #atividades .activity-actions .complete-workout-btn,
+  #atividades .activity-actions .complete-study-btn {
+    grid-column: 1;
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 0.74rem;
+    line-height: 1.15;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  #atividades .activity-actions .skip-btn {
+    grid-column: 1;
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0 10px;
+  }
+
+  #atividades .activity-actions:has(.skip-btn) .skip-btn {
+    grid-column: 2;
+    width: 40px;
+    min-width: 40px;
+    padding: 0;
+  }
+
+  #atividades #activities-list .item-card {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+  }
+
+  #atividades #activities-list .item-info {
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 8px;
+    min-width: 0;
+  }
+
+  #atividades #activities-list .item-info > div {
+    min-width: 0;
+  }
+
+  #atividades #activities-list .item-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 44px);
+    gap: 8px;
+    width: 100%;
+    justify-content: start;
+    min-width: 0;
+  }
+
+  #atividades #activities-list .item-actions .action-btn {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  #atividades .compact-activity-card {
+    padding: 8px;
+    row-gap: 6px;
+  }
+
+  #atividades .activity-main {
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  #atividades .activity-name,
+  #atividades #activities-list .item-name {
+    font-size: 0.76rem;
+  }
+
+  #atividades .activity-actions .complete-btn,
+  #atividades .activity-actions .complete-workout-btn,
+  #atividades .activity-actions .complete-study-btn,
+  #atividades .activity-actions .skip-btn {
+    min-height: 38px;
+    font-size: 0.68rem;
+  }
+
+  #atividades .activity-actions:has(.skip-btn) {
+    grid-template-columns: minmax(0, 1fr) 38px;
+  }
+
+  #atividades .activity-actions:has(.skip-btn) .skip-btn {
+    width: 38px;
+    min-width: 38px;
+  }
+}

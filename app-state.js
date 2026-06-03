@@ -120,6 +120,7 @@ const appData = {
     goalHitDates: [],
     rewardedGoalDates: [],
     rewardedMealKeys: [],
+    rewardedMacroGoalKeys: [],
   },
   hydration: {
     glasses: 0,

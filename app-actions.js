@@ -81,6 +81,43 @@ function getOneOffScheduleValidationMessage(scheduleType, dueValue, todayStr = g
   return '';
 }
 
+function supportsDueDateLock(category, scheduleType) {
+  return (
+    (category === 'mission' || category === 'work') &&
+    (scheduleType === 'eventual' || scheduleType === 'epica')
+  );
+}
+
+function resolveScheduledActivityFormState(existingItem, formState = {}) {
+  const requestedScheduleType = String(formState.scheduleType || 'rotina');
+  const requestedDateValue = String(formState.dateValue || '').trim();
+  const requestedDeadlineValue = String(formState.deadlineValue || '').trim();
+  const requestedLock = formState.dueDateLocked === true;
+  const dueDateWasLocked =
+    existingItem?.dueDateLocked === true &&
+    (existingItem?.type === 'eventual' || existingItem?.type === 'epica');
+  const scheduleType = dueDateWasLocked ? String(existingItem.type || requestedScheduleType) : requestedScheduleType;
+  const isOneOffSchedule = scheduleType === 'eventual' || scheduleType === 'epica';
+
+  return {
+    scheduleType,
+    dateValue:
+      scheduleType === 'eventual'
+        ? dueDateWasLocked
+          ? String(existingItem?.date || '').trim()
+          : requestedDateValue
+        : '',
+    deadlineValue:
+      scheduleType === 'epica'
+        ? dueDateWasLocked
+          ? String(existingItem?.deadline || '').trim()
+          : requestedDeadlineValue
+        : '',
+    dueDateLocked: isOneOffSchedule && (dueDateWasLocked || requestedLock),
+    dueDateWasLocked,
+  };
+}
+
 // Manipular novo treino
 function handleNewWorkout() {
   const name = document.getElementById('modal-item-name').value.trim();
@@ -661,6 +698,14 @@ function handleFinanceSubmit(e) {
 function updateActivityForm() {
   const category = document.getElementById('activity-category')?.value || 'mission';
   const scheduleType = document.getElementById('activity-schedule-type')?.value || 'rotina';
+  const editIdValue = parseInt(document.getElementById('activity-edit-id')?.value || '', 10);
+  const currentItem =
+    Number.isFinite(editIdValue) && (category === 'mission' || category === 'work')
+      ? (category === 'mission' ? appData.missions : appData.works).find((item) => item.id === editIdValue) || null
+      : null;
+  const dueDateWasLocked =
+    currentItem?.dueDateLocked === true &&
+    (currentItem?.type === 'eventual' || currentItem?.type === 'epica');
 
   const scheduleContainer = document.getElementById('activity-schedule-container');
   const workoutTypeContainer = document.getElementById('activity-workout-type-container');
@@ -668,6 +713,12 @@ function updateActivityForm() {
   const daysContainer = document.getElementById('activity-days-container');
   const dateContainer = document.getElementById('activity-date-container');
   const deadlineContainer = document.getElementById('activity-deadline-container');
+  const dueLockContainer = document.getElementById('activity-due-lock-container');
+  const dueLockInput = document.getElementById('activity-due-lock');
+  const dueLockHint = document.getElementById('activity-due-lock-hint');
+  const scheduleTypeInput = document.getElementById('activity-schedule-type');
+  const dateInput = document.getElementById('activity-date');
+  const deadlineInput = document.getElementById('activity-deadline');
   const attributesContainer = document.getElementById('activity-attributes-container');
   const classContainer = document.getElementById('activity-class-container');
   const urgentContainer = document.getElementById('activity-urgent-container');
@@ -695,20 +746,50 @@ function updateActivityForm() {
   daysContainer.style.display = 'none';
   dateContainer.style.display = 'none';
   deadlineContainer.style.display = 'none';
+  if (dueLockContainer) dueLockContainer.style.display = 'none';
 
   if (!supportsScheduleType || scheduleType === 'rotina') {
     daysContainer.style.display = 'block';
   } else if (scheduleType === 'eventual') {
     dateContainer.style.display = 'block';
-    const dateInput = document.getElementById('activity-date');
     if (dateInput && !dateInput.value) dateInput.value = getLocalDateString();
   } else if (scheduleType === 'epica') {
     deadlineContainer.style.display = 'block';
-    const deadlineInput = document.getElementById('activity-deadline');
     if (deadlineInput && !deadlineInput.value) {
       const nextWeek = new Date();
       nextWeek.setDate(nextWeek.getDate() + 7);
       deadlineInput.value = getLocalDateString(nextWeek);
+    }
+  }
+
+  const shouldShowDueLock = supportsDueDateLock(category, scheduleType);
+  if (dueLockContainer) dueLockContainer.style.display = shouldShowDueLock ? 'block' : 'none';
+  if (scheduleTypeInput) scheduleTypeInput.disabled = dueDateWasLocked;
+  if (dateInput) {
+    dateInput.disabled = dueDateWasLocked && currentItem?.type === 'eventual';
+    dateInput.title =
+      dateInput.disabled ? 'O prazo desta atividade foi trancado e não pode mais ser alterado.' : '';
+  }
+  if (deadlineInput) {
+    deadlineInput.disabled = dueDateWasLocked && currentItem?.type === 'epica';
+    deadlineInput.title =
+      deadlineInput.disabled ? 'O prazo desta atividade foi trancado e não pode mais ser alterado.' : '';
+  }
+  if (dueLockInput) {
+    if (dueDateWasLocked) {
+      dueLockInput.checked = true;
+    } else if (!shouldShowDueLock) {
+      dueLockInput.checked = false;
+    }
+    dueLockInput.disabled = dueDateWasLocked;
+  }
+  if (dueLockHint) {
+    if (dueDateWasLocked) {
+      dueLockHint.textContent = 'Prazo trancado: esse campo não pode mais ser alterado depois de salvo.';
+    } else if (shouldShowDueLock && dueLockInput?.checked) {
+      dueLockHint.textContent = 'Esse prazo será permanente depois de salvar esta atividade.';
+    } else {
+      dueLockHint.textContent = 'Marque para impedir alterações futuras no prazo desta atividade.';
     }
   }
 }
@@ -742,11 +823,22 @@ function handleActivitySubmit(e) {
   const scheduleType = document.getElementById('activity-schedule-type')?.value || 'rotina';
   const dateValue = document.getElementById('activity-date')?.value || '';
   const deadlineValue = document.getElementById('activity-deadline')?.value || '';
+  const dueDateLockRequested = document.getElementById('activity-due-lock')?.checked === true;
   const daySelector =
     '#activity-days-container input[type="checkbox"]:checked:not([data-select-all])';
   const selectedDays = Array.from(document.querySelectorAll(daySelector)).map((cb) =>
     parseInt(cb.value, 10)
   );
+  const existingMission = isEditing ? appData.missions.find((item) => item.id === editIdValue) : null;
+  const existingWork = isEditing ? appData.works.find((item) => item.id === editIdValue) : null;
+  const existingScheduledItem =
+    category === 'mission' ? existingMission : category === 'work' ? existingWork : null;
+  const resolvedScheduleState = resolveScheduledActivityFormState(existingScheduledItem, {
+    scheduleType,
+    dateValue,
+    deadlineValue,
+    dueDateLocked: dueDateLockRequested,
+  });
   const planningFields =
     typeof readActivityPlanningFields === 'function'
       ? readActivityPlanningFields()
@@ -777,8 +869,10 @@ function handleActivitySubmit(e) {
 
   if (category === 'mission' || category === 'work') {
     const scheduleValidationMessage = getOneOffScheduleValidationMessage(
-      scheduleType,
-      scheduleType === 'epica' ? deadlineValue : dateValue
+      resolvedScheduleState.scheduleType,
+      resolvedScheduleState.scheduleType === 'epica'
+        ? resolvedScheduleState.deadlineValue
+        : resolvedScheduleState.dateValue
     );
     if (scheduleValidationMessage) {
       showFeedback(scheduleValidationMessage, 'warn');
@@ -790,7 +884,7 @@ function handleActivitySubmit(e) {
     const attributes = Array.from(
       document.querySelectorAll('#activity-attributes input[type="checkbox"]:checked')
     ).map((cb) => parseInt(cb.value, 10));
-    const mission = isEditing ? appData.missions.find((item) => item.id === editIdValue) : null;
+    const mission = existingMission;
     const targetMission =
       mission ||
       {
@@ -800,21 +894,25 @@ function handleActivitySubmit(e) {
       };
     targetMission.name = name;
     targetMission.emoji = emoji || '🎯';
-    targetMission.type = scheduleType;
+    targetMission.type = resolvedScheduleState.scheduleType;
     targetMission.attributes = attributes;
     delete targetMission.days;
     delete targetMission.date;
     delete targetMission.deadline;
-    if (scheduleType !== 'rotina') {
+    delete targetMission.dueDateLocked;
+    if (resolvedScheduleState.scheduleType !== 'rotina') {
       delete targetMission.originalId;
     }
-    if (scheduleType === 'rotina') {
+    if (resolvedScheduleState.scheduleType === 'rotina') {
       targetMission.days = selectedDays;
       targetMission.originalId = targetMission.originalId || targetMission.id;
-    } else if (scheduleType === 'eventual') {
-      targetMission.date = dateValue || getLocalDateString();
+    } else if (resolvedScheduleState.scheduleType === 'eventual') {
+      targetMission.date = resolvedScheduleState.dateValue || getLocalDateString();
     } else {
-      targetMission.deadline = deadlineValue;
+      targetMission.deadline = resolvedScheduleState.deadlineValue;
+    }
+    if (resolvedScheduleState.dueDateLocked) {
+      targetMission.dueDateLocked = true;
     }
     if (typeof applyPlanningFields === 'function') {
       applyPlanningFields(targetMission, planningFields);
@@ -826,7 +924,7 @@ function handleActivitySubmit(e) {
     ).map((cb) => parseInt(cb.value, 10));
     const classIdRaw = document.getElementById('activity-class')?.value;
     const classId = classIdRaw ? parseInt(classIdRaw, 10) : null;
-    const work = isEditing ? appData.works.find((item) => item.id === editIdValue) : null;
+    const work = existingWork;
     const targetWork =
       work ||
       {
@@ -836,23 +934,27 @@ function handleActivitySubmit(e) {
       };
     targetWork.name = name;
     targetWork.emoji = emoji || '💼';
-    targetWork.type = scheduleType;
+    targetWork.type = resolvedScheduleState.scheduleType;
     targetWork.attributes = attributes;
     targetWork.classId = Number.isFinite(classId) ? classId : null;
     targetWork.urgent = document.getElementById('activity-urgent')?.checked === true;
     delete targetWork.days;
     delete targetWork.date;
     delete targetWork.deadline;
-    if (scheduleType !== 'rotina') {
+    delete targetWork.dueDateLocked;
+    if (resolvedScheduleState.scheduleType !== 'rotina') {
       delete targetWork.originalId;
     }
-    if (scheduleType === 'rotina') {
+    if (resolvedScheduleState.scheduleType === 'rotina') {
       targetWork.days = selectedDays;
       targetWork.originalId = targetWork.originalId || targetWork.id;
-    } else if (scheduleType === 'eventual') {
-      targetWork.date = dateValue || getLocalDateString();
+    } else if (resolvedScheduleState.scheduleType === 'eventual') {
+      targetWork.date = resolvedScheduleState.dateValue || getLocalDateString();
     } else {
-      targetWork.deadline = deadlineValue;
+      targetWork.deadline = resolvedScheduleState.deadlineValue;
+    }
+    if (resolvedScheduleState.dueDateLocked) {
+      targetWork.dueDateLocked = true;
     }
     if (typeof applyPlanningFields === 'function') {
       applyPlanningFields(targetWork, planningFields);
@@ -1175,7 +1277,13 @@ function cleanupOldDailyMissions() {
           completedDate: failedDate,
           failedDate: failedDate,
           failed: true,
+          penaltyApplied: false,
           reason: 'Não concluída no dia',
+          missedDate: failedDate,
+        });
+        updateProductiveDay(0, 0, 0, 0, 0, {
+          date: failedDate,
+          missionsMissed: 1,
         });
         applyPenalties(failedDate, { onlyTypes: ['mission'] });
       }
@@ -1263,7 +1371,13 @@ function cleanupOldDailyWorks() {
           completedDate: failedDate,
           failedDate: failedDate,
           failed: true,
+          penaltyApplied: false,
           reason: 'Não concluído no dia',
+          missedDate: failedDate,
+        });
+        updateProductiveDay(0, 0, 0, 0, 0, {
+          date: failedDate,
+          worksMissed: 1,
         });
         applyPenalties(failedDate, { onlyTypes: ['work'] });
       }
@@ -1634,6 +1748,7 @@ Object.assign(globalThis, {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getOneOffScheduleValidationMessage,
+    resolveScheduledActivityFormState,
     cleanupOldDailyMissions,
     cleanupOldDailyWorks,
   };

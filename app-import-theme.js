@@ -572,6 +572,10 @@ function validateIsoDateInput(value) {
 
 async function maybeEditItemDeadline(item, options = {}) {
   if (!item || (item.type !== 'eventual' && item.type !== 'epica')) return;
+  if (item.dueDateLocked === true) {
+    showFeedback('O prazo desta atividade está trancado e não pode ser alterado.', 'warn');
+    return;
+  }
 
   const field = item.type === 'epica' ? 'deadline' : 'date';
   const label = item.type === 'epica' ? 'Prazo (épica)' : 'Prazo (eventual)';
@@ -607,6 +611,7 @@ function openActivityEditor(category, item) {
   const studyTypeInput = document.getElementById('activity-study-type');
   const dateInput = document.getElementById('activity-date');
   const deadlineInput = document.getElementById('activity-deadline');
+  const dueLockInput = document.getElementById('activity-due-lock');
   const authorInput = document.getElementById('activity-book-author');
   const bookStatusInput = document.getElementById('activity-book-status');
   const classInput = document.getElementById('activity-class');
@@ -619,6 +624,7 @@ function openActivityEditor(category, item) {
   if (scheduleTypeInput && (category === 'mission' || category === 'work')) {
     scheduleTypeInput.value = item.type || 'rotina';
   }
+  if (dueLockInput) dueLockInput.checked = item.dueDateLocked === true;
 
   if (typeof updateActivityForm === 'function') updateActivityForm();
 
@@ -834,6 +840,15 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     return;
   }
 
+  const getPenaltyDaySnapshot = () => {
+    if (!appData.statistics) appData.statistics = {};
+    if (!appData.statistics.productiveDays) appData.statistics.productiveDays = {};
+    if (!appData.statistics.productiveDays[targetDateStr]) {
+      appData.statistics.productiveDays[targetDateStr] = {};
+    }
+    return appData.statistics.productiveDays[targetDateStr];
+  };
+
   const logMissedRoutineItems = (list, completedList, typeLabel, entryType) => {
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const missed = list.filter(
@@ -1035,11 +1050,14 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     (appData.foodItems && appData.foodItems.length > 0) ||
     (appData.nutritionStats?.logDates && appData.nutritionStats.logDates.length > 0);
   const hasNutritionLog = appData.nutritionStats?.logDates?.includes(targetDateStr);
+  const penaltyDaySnapshot = getPenaltyDaySnapshot();
+  const nutritionPenaltyAlreadyApplied = Number(penaltyDaySnapshot.nutritionFailed || 0) > 0;
   if (
     shouldCheckType('nutrition') &&
     nutritionActive &&
     !hasNutritionLog &&
-    !isRestDay(targetDateStr)
+    !isRestDay(targetDateStr) &&
+    !nutritionPenaltyAlreadyApplied
   ) {
     // Check if there's any nutrition goal/activity that was expected
     // For now, we assume nutrition should be logged daily
@@ -1051,7 +1069,8 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   if (shouldCheckType('hydration') && appData.hydration && appData.hydration.startDate) {
     if (targetDateStr >= appData.hydration.startDate) {
       const hydrationGoalHit = appData.hydration.goalHitDates?.includes(targetDateStr);
-      if (!hydrationGoalHit) {
+      const hydrationPenaltyAlreadyApplied = Number(penaltyDaySnapshot.hydrationFailed || 0) > 0;
+      if (!hydrationGoalHit && !hydrationPenaltyAlreadyApplied) {
         failedTypes.push('hydration');
       }
     }
@@ -1096,12 +1115,12 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       appData.statistics.worksFailed = (appData.statistics.worksFailed || 0) + workFailureCount;
     }
     if (failedTypes.includes('workout')) {
-      appData.statistics.workoutsIgnored =
-        (appData.statistics.workoutsIgnored || 0) + failedWorkouts.length;
+      appData.statistics.workoutsFailed =
+        (appData.statistics.workoutsFailed || 0) + failedWorkouts.length;
     }
     if (failedTypes.includes('study')) {
-      appData.statistics.studiesIgnored =
-        (appData.statistics.studiesIgnored || 0) + failedStudies.length;
+      appData.statistics.studiesFailed =
+        (appData.statistics.studiesFailed || 0) + failedStudies.length;
     }
 
     // Mark daily items as failed and record in history
@@ -1185,6 +1204,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
           if (t === 'mission') return 'miss\u00e3o';
           if (t === 'work') return 'trabalho';
           if (t === 'nutrition') return 'alimenta\u00e7\u00e3o';
+          if (t === 'hydration') return 'hidrata\u00e7\u00e3o';
           return t;
         })
         .join(', ');

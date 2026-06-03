@@ -384,6 +384,9 @@ function initEvents() {
   document.getElementById('activity-schedule-type')?.addEventListener('change', function () {
     updateActivityForm();
   });
+  document.getElementById('activity-due-lock')?.addEventListener('change', function () {
+    updateActivityForm();
+  });
   if (typeof initPlanningEvents === 'function') {
     initPlanningEvents();
   }

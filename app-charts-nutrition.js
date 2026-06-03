@@ -1714,31 +1714,70 @@ function recalcNutritionStats() {
   const rewardedMealKeys = Array.from(
     new Set((appData.nutritionStats?.rewardedMealKeys || []).map((v) => String(v)))
   ).filter((v) => /^\d{4}-\d{2}-\d{2}\|(cafe|almoco|jantar|lanche)$/.test(v));
+  const rewardedMacroGoalKeys = Array.from(
+    new Set((appData.nutritionStats?.rewardedMacroGoalKeys || []).map((v) => String(v)))
+  ).filter((v) => /^\d{4}-\d{2}-\d{2}\|(protein|carbs|fat|fiber)$/.test(v));
   appData.nutritionStats = {
     logDates,
     goalHitDates,
     rewardedGoalDates: Array.from(rewardedGoalSet).filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)),
     rewardedMealKeys,
+    rewardedMacroGoalKeys,
   };
 }
 
 function maybeRewardNutritionGoal(dateStr) {
+  if (!dateStr) return false;
+  if (!appData.nutritionStats || typeof appData.nutritionStats !== 'object') {
+    appData.nutritionStats = {
+      logDates: [],
+      goalHitDates: [],
+      rewardedGoalDates: [],
+      rewardedMealKeys: [],
+      rewardedMacroGoalKeys: [],
+    };
+  }
+  if (!Array.isArray(appData.nutritionStats.goalHitDates)) {
+    appData.nutritionStats.goalHitDates = [];
+  }
+  if (!Array.isArray(appData.nutritionStats.rewardedMacroGoalKeys)) {
+    appData.nutritionStats.rewardedMacroGoalKeys = [];
+  }
   const totals = calculateNutritionTotals(getNutritionEntriesByDate(dateStr));
   const evaluation = evaluateNutritionGoalStatus(totals);
-  if (!evaluation.isGoalHit) return;
   const today = getLocalDateString();
-  if (dateStr !== today) return;
-  if (!appData.nutritionStats.rewardedGoalDates.includes(dateStr)) {
-    appData.nutritionStats.rewardedGoalDates.push(dateStr);
-    if (!appData.nutritionStats.goalHitDates.includes(dateStr)) {
-      appData.nutritionStats.goalHitDates.push(dateStr);
-    }
-    addXP(2);
-    addAttributeXP(2, 1);
-    appData.hero.coins += 2;
-    addHeroLog('system', 'Meta de alimentação batida', `${dateStr}: bônus +2 XP e +2 moedas.`);
-    showFeedback('Meta nutricional do dia atingida! +2 XP e +2 moedas.', 'success');
+  if (dateStr !== today) return false;
+  if (evaluation.isGoalHit && !appData.nutritionStats.goalHitDates.includes(dateStr)) {
+    appData.nutritionStats.goalHitDates.push(dateStr);
   }
+  const rewardedItems = (evaluation.items || [])
+    .filter(
+      (item) =>
+        ['protein', 'carbs', 'fat', 'fiber'].includes(item.key) && getNutritionStatusClass(item) === 'ok'
+    )
+    .filter((item) => !appData.nutritionStats.rewardedMacroGoalKeys.includes(`${dateStr}|${item.key}`));
+  if (!rewardedItems.length) return false;
+
+  rewardedItems.forEach((item) => {
+    appData.nutritionStats.rewardedMacroGoalKeys.push(`${dateStr}|${item.key}`);
+  });
+
+  const rewardCount = rewardedItems.length;
+  addXP(rewardCount);
+  addAttributeXP(2, rewardCount);
+  appData.hero.coins += rewardCount;
+  if (typeof updateProductiveDay === 'function') {
+    updateProductiveDay(0, 0, 0, rewardCount, 0);
+  }
+
+  const rewardLabels = rewardedItems.map((item) => item.label).join(', ');
+  const rewardText = `+${rewardCount} XP, +${rewardCount} moeda${rewardCount > 1 ? 's' : ''} e +${rewardCount} vigor`;
+  addHeroLog('system', 'Metas de alimentação batidas', `${dateStr}: ${rewardLabels} renderam ${rewardText}.`);
+  showFeedback(
+    `Meta${rewardCount > 1 ? 's' : ''} de ${rewardLabels} concluida${rewardCount > 1 ? 's' : ''}! ${rewardText}.`,
+    'success'
+  );
+  return true;
 }
 
 function updateNutritionCurrentDateLabel() {
@@ -2084,6 +2123,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getNutritionLogStreak,
     recalcNutritionStats,
+    maybeRewardNutritionGoal,
     getHydrationDisplayStreaks,
     rolloverHydrationDay,
     addHydrationGlass,

@@ -61,12 +61,59 @@
     return keys;
   }
 
+  function inferLegacyLastDailyResetDate(state, todayDate) {
+    const todayIso = getIsoDate(todayDate);
+    if (!state || !todayIso) return null;
+
+    const candidates = new Set();
+    const pushCandidate = (value) => {
+      const iso = getIsoDate(value);
+      if (iso && iso < todayIso) candidates.add(iso);
+    };
+    const pushEntryDate = (entry) => {
+      if (!entry || typeof entry !== 'object') return;
+      pushCandidate(entry.completedDate || entry.failedDate || entry.skippedDate || entry.date);
+    };
+    const pushDatesFromList = (list) => {
+      if (!Array.isArray(list)) return;
+      list.forEach(pushEntryDate);
+    };
+    const pushRawDates = (list) => {
+      if (!Array.isArray(list)) return;
+      list.forEach(pushCandidate);
+    };
+
+    pushDatesFromList(state.completedMissions);
+    pushDatesFromList(state.completedWorks);
+    pushDatesFromList(state.completedWorkouts);
+    pushDatesFromList(state.completedStudies);
+    pushDatesFromList(state.nutritionEntries);
+
+    Object.keys(state.statistics?.productiveDays || {}).forEach(pushCandidate);
+
+    pushRawDates(state.nutritionStats?.logDates);
+    pushRawDates(state.nutritionStats?.goalHitDates);
+    pushRawDates(state.nutritionStats?.rewardedGoalDates);
+    pushRawDates(state.hydration?.logDates);
+    pushRawDates(state.hydration?.goalHitDates);
+    pushRawDates(state.hydration?.rewardedGoalDates);
+
+    pushCandidate(state.hero?.streak?.lastGeneralCheck);
+    pushCandidate(state.hero?.streak?.lastPhysicalCheck);
+    pushCandidate(state.hero?.streak?.lastMentalCheck);
+    pushCandidate(state.hero?.streak?.lastNutritionCheck);
+
+    if (candidates.size === 0) return null;
+    return Array.from(candidates).sort().pop() || null;
+  }
+
   const AppRules = {
     getIsoDate,
     getWeekKey,
     shouldRunDailyReset,
     shouldRunWeeklyReset,
     getMissedDateKeys,
+    inferLegacyLastDailyResetDate,
   };
 
   if (typeof module !== 'undefined' && module.exports) {
