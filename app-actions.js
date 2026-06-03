@@ -118,6 +118,102 @@ function resolveScheduledActivityFormState(existingItem, formState = {}) {
   };
 }
 
+function getBestWorkoutSetValue(series = []) {
+  if (!Array.isArray(series)) return 0;
+  return series.reduce((best, value) => {
+    const parsedValue = parseInt(value, 10) || 0;
+    return parsedValue > best ? parsedValue : best;
+  }, 0);
+}
+
+function getWorkoutDayTotalReps(series = []) {
+  if (!Array.isArray(series)) return 0;
+  return series.reduce((sum, value) => sum + (parseInt(value, 10) || 0), 0);
+}
+
+function getWorkoutBestRepsRecord(workout, completedWorkouts = []) {
+  const stats = workout?.stats || {};
+  const explicitBestSet = Number(stats.bestSetReps || 0);
+  const workoutId = String(workout?.id || workout?.workoutId || '');
+  let bestFromHistory = 0;
+
+  if (workoutId && Array.isArray(completedWorkouts)) {
+    completedWorkouts.forEach((entry) => {
+      if (!entry || entry.failed || entry.skipped || entry.type !== 'repeticao') return;
+      if (String(entry.workoutId || entry.id || '') !== workoutId) return;
+      bestFromHistory = Math.max(bestFromHistory, getBestWorkoutSetValue(entry.series));
+    });
+  }
+
+  if (explicitBestSet > 0 || bestFromHistory > 0) {
+    return Math.max(explicitBestSet, bestFromHistory);
+  }
+
+  return 0;
+}
+
+function getWorkoutBestDayRepsRecord(workout, completedWorkouts = []) {
+  const stats = workout?.stats || {};
+  const explicitBestDay = Number(stats.bestDayReps || 0);
+  const legacyBestDay = Number(stats.bestReps || 0);
+  const workoutId = String(workout?.id || workout?.workoutId || '');
+  let bestFromHistory = 0;
+
+  if (workoutId && Array.isArray(completedWorkouts)) {
+    completedWorkouts.forEach((entry) => {
+      if (!entry || entry.failed || entry.skipped || entry.type !== 'repeticao') return;
+      if (String(entry.workoutId || entry.id || '') !== workoutId) return;
+      bestFromHistory = Math.max(bestFromHistory, getWorkoutDayTotalReps(entry.series));
+    });
+  }
+
+  return Math.max(explicitBestDay, legacyBestDay, bestFromHistory);
+}
+
+function getWorkoutSpeedValue(distance = 0, time = 0) {
+  const safeDistance = Number(distance || 0);
+  const safeTime = Number(time || 0);
+  if (!Number.isFinite(safeDistance) || safeDistance <= 0 || !Number.isFinite(safeTime) || safeTime <= 0) {
+    return 0;
+  }
+
+  return (safeDistance * 3600) / safeTime;
+}
+
+function getWorkoutBestSpeedRecord(workout, completedWorkouts = []) {
+  const stats = workout?.stats || {};
+  const explicitBestSpeed = Number(stats.bestSpeed || 0);
+  const workoutId = String(workout?.id || workout?.workoutId || '');
+  let bestFromHistory = 0;
+
+  if (workoutId && Array.isArray(completedWorkouts)) {
+    completedWorkouts.forEach((entry) => {
+      if (!entry || entry.failed || entry.skipped || entry.type !== 'distancia') return;
+      if (String(entry.workoutId || entry.id || '') !== workoutId) return;
+      bestFromHistory = Math.max(bestFromHistory, getWorkoutSpeedValue(entry.distance, entry.time));
+    });
+  }
+
+  return Math.max(explicitBestSpeed, bestFromHistory);
+}
+
+function buildHistoryActionTimestamp(dateKey = getLocalDateString()) {
+  const now = new Date();
+  const currentDateKey = getLocalDateString(now);
+  if (!dateKey || dateKey === currentDateKey) {
+    return now.toISOString();
+  }
+
+  const parsedDate =
+    typeof parseLocalDateString === 'function' ? parseLocalDateString(dateKey) : new Date(dateKey);
+  if (!Number.isFinite(parsedDate.getTime())) {
+    return now.toISOString();
+  }
+
+  parsedDate.setHours(12, 0, 0, 0);
+  return parsedDate.toISOString();
+}
+
 // Manipular novo treino
 function handleNewWorkout() {
   const name = document.getElementById('modal-item-name').value.trim();
@@ -326,6 +422,8 @@ function handleWorkoutCompletion() {
 
   const workout = appData.workouts.find((w) => w.id === workoutDay.workoutId);
   if (!workout) return false;
+  const completedDateKey = getLocalDateString();
+  const completedAt = buildHistoryActionTimestamp(completedDateKey);
 
   // Atualizar valores
   if (workout.type === 'repeticao') {
@@ -334,26 +432,40 @@ function handleWorkoutCompletion() {
     const series3 = parseInt(document.querySelector('input[name="series-2"]')?.value || 0);
 
     workoutDay.series = [series1, series2, series3];
+    const bestSetReps = getBestWorkoutSetValue(workoutDay.series);
 
     // Calcular total de repetições
-    const totalReps = series1 + series2 + series3;
+    const totalReps = getWorkoutDayTotalReps(workoutDay.series);
 
     // Atualizar estatísticas do treino
     if (!workout.stats) workout.stats = {};
     workout.stats.totalReps = (workout.stats.totalReps || 0) + totalReps;
-    workout.stats.bestReps = Math.max(workout.stats.bestReps || 0, totalReps);
+    workout.stats.bestDayReps = Math.max(
+      getWorkoutBestDayRepsRecord(workout, appData.completedWorkouts || []),
+      totalReps
+    );
+    workout.stats.bestSetReps = Math.max(
+      getWorkoutBestRepsRecord(workout, appData.completedWorkouts || []),
+      bestSetReps
+    );
+    workout.stats.bestReps = workout.stats.bestDayReps;
     workout.stats.completed = (workout.stats.completed || 0) + 1;
   } else if (workout.type === 'distancia') {
     const distance = parseFloat(document.querySelector('input[name="distance"]')?.value || 0);
     const timeMin = parseFloat(document.querySelector('input[name="time-min"]')?.value || 0);
     const timeSec = parseFloat(document.querySelector('input[name="time-sec"]')?.value || 0);
     const time = (timeMin * 60) + timeSec;
+    const speed = getWorkoutSpeedValue(distance, time);
     workoutDay.distance = distance;
     workoutDay.time = time;
 
     if (!workout.stats) workout.stats = {};
     workout.stats.totalDistance = (workout.stats.totalDistance || 0) + distance;
     workout.stats.bestDistance = Math.max(workout.stats.bestDistance || 0, distance);
+    workout.stats.bestSpeed = Math.max(
+      getWorkoutBestSpeedRecord(workout, appData.completedWorkouts || []),
+      speed
+    );
     workout.stats.totalTime = (workout.stats.totalTime || 0) + time;
     if (time > 0) {
       if (workout.stats.bestTime === undefined || time < workout.stats.bestTime) {
@@ -407,7 +519,8 @@ function handleWorkoutCompletion() {
       emoji: workout.emoji,
       type: workout.type,
       date: workoutDay.date,
-      completedDate: getLocalDateString(),
+      completedDate: completedDateKey,
+      completedAt,
       failed: false,
       series: workoutDay.series || [null, null, null],
       distance: workoutDay.distance ?? null,
@@ -460,7 +573,7 @@ function handleWorkoutCompletion() {
     {
       category: 'workout',
       sourceId: String(workoutDay.workoutId || workout.id || ''),
-      eventDateKey: getLocalDateString(),
+      eventDateKey: completedDateKey,
       status: 'completed',
     }
   );
@@ -512,6 +625,8 @@ function completeStudy(studyDayId, feedbackText = '') {
 
   const study = appData.studies.find((s) => s.id === studyDay.studyId);
   if (!study) return false;
+  const completedDateKey = getLocalDateString();
+  const completedAt = buildHistoryActionTimestamp(completedDateKey);
 
   // Marcar como concluído
   studyDay.completed = true;
@@ -529,7 +644,8 @@ function completeStudy(studyDayId, feedbackText = '') {
       emoji: study.emoji,
       type: study.type,
       date: studyDay.date,
-      completedDate: getLocalDateString(),
+      completedDate: completedDateKey,
+      completedAt,
       failed: false,
       applied: !!studyDay.applied,
       feedback: studyDay.feedback || '',
@@ -599,7 +715,7 @@ function completeStudy(studyDayId, feedbackText = '') {
     {
       category: 'study',
       sourceId: String(studyDay.studyId || study.id || ''),
-      eventDateKey: getLocalDateString(),
+      eventDateKey: completedDateKey,
       status: 'completed',
     }
   );
@@ -624,8 +740,10 @@ function completeBook(bookId, feedbackText = '') {
   book.completed = true;
   book.status = 'concluido';
   const completedDateKey = getLocalDateString();
+  const completedAt = buildHistoryActionTimestamp(completedDateKey);
   book.dateCompleted = completedDateKey;
   book.completedDate = completedDateKey;
+  book.completedAt = completedAt;
   book.feedback = feedbackText;
 
   if (feedbackText) {
@@ -1049,6 +1167,7 @@ function completeMission(missionId, feedbackText = '') {
 
   const mission = appData.missions[missionIndex];
   const todayStr = getLocalDateString();
+  const completedAt = buildHistoryActionTimestamp(todayStr);
   const isRoutine = isRoutineType(mission.type);
   const routineAlreadyResolvedToday =
     isRoutine &&
@@ -1064,6 +1183,7 @@ function completeMission(missionId, feedbackText = '') {
   if (!isRoutine) {
     mission.completed = true;
     mission.completedDate = todayStr;
+    mission.completedAt = completedAt;
   }
 
   // Registrar feedback (opcional)
@@ -1084,6 +1204,7 @@ function completeMission(missionId, feedbackText = '') {
     ...mission,
     completed: true,
     completedDate: todayStr,
+    completedAt,
   });
 
   // 2. SEGUNDO: Remover da lista de missões ativas (IMEDIATAMENTE)
@@ -1150,6 +1271,7 @@ function completeWork(workId, feedbackText = '') {
 
   const work = appData.works[workIndex];
   const todayStr = getLocalDateString();
+  const completedAt = buildHistoryActionTimestamp(todayStr);
   const isRoutine = isRoutineType(work.type);
   const routineAlreadyResolvedToday =
     isRoutine &&
@@ -1165,6 +1287,7 @@ function completeWork(workId, feedbackText = '') {
   if (!isRoutine) {
     work.completed = true;
     work.completedDate = todayStr;
+    work.completedAt = completedAt;
   }
 
   if (feedbackText) {
@@ -1183,6 +1306,7 @@ function completeWork(workId, feedbackText = '') {
     ...work,
     completed: true,
     completedDate: todayStr,
+    completedAt,
   });
   if (!isRoutine) {
     appData.works.splice(workIndex, 1);
@@ -1307,9 +1431,11 @@ function cleanupOldDailyMissions() {
             entry.skippedDate === failedDate)
       );
       if (!alreadyResolved) {
+        const failedAt = buildHistoryActionTimestamp(failedDate);
         appData.completedMissions.push({
           ...mission,
           completedDate: failedDate,
+          failedAt,
           failedDate: failedDate,
           failed: true,
           penaltyApplied: false,
@@ -1401,9 +1527,11 @@ function cleanupOldDailyWorks() {
             entry.skippedDate === failedDate)
       );
       if (!alreadyResolved) {
+        const failedAt = buildHistoryActionTimestamp(failedDate);
         appData.completedWorks.push({
           ...work,
           completedDate: failedDate,
+          failedAt,
           failedDate: failedDate,
           failed: true,
           penaltyApplied: false,
@@ -1781,12 +1909,24 @@ Object.assign(globalThis, {
   addAttributeXP,
   addClassXP,
   generateHeroLogs,
+  getBestWorkoutSetValue,
+  getWorkoutBestRepsRecord,
+  getWorkoutBestDayRepsRecord,
+  getWorkoutBestSpeedRecord,
+  getWorkoutSpeedValue,
+  buildHistoryActionTimestamp,
 });
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getOneOffScheduleValidationMessage,
     resolveScheduledActivityFormState,
+    getBestWorkoutSetValue,
+    getWorkoutBestRepsRecord,
+    getWorkoutBestDayRepsRecord,
+    getWorkoutBestSpeedRecord,
+    getWorkoutSpeedValue,
+    buildHistoryActionTimestamp,
     cleanupOldDailyMissions,
     cleanupOldDailyWorks,
   };

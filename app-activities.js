@@ -290,6 +290,10 @@ function getUnifiedHistoryActivities() {
       .filter((item) => item && (item.completed || item.status === 'concluido'))
       .map((item) => ({ category: 'book', item })),
   ].sort((a, b) => {
+    const timestampDelta =
+      getTimelineSortTimestamp(getEventDateKey(b.item), getHistoryEventTimestamp(b.item)) -
+      getTimelineSortTimestamp(getEventDateKey(a.item), getHistoryEventTimestamp(a.item));
+    if (timestampDelta !== 0) return timestampDelta;
     const dateA = getEventDateKey(a.item);
     const dateB = getEventDateKey(b.item);
     return String(dateB).localeCompare(String(dateA));
@@ -328,6 +332,13 @@ function getTimelineLogDateKey(log) {
   return getLocalDateString(parsed);
 }
 
+function getHistoryEventTimestamp(entry) {
+  if (!entry || typeof entry !== 'object') return '';
+  if (entry.failed) return String(entry.failedAt || '').trim();
+  if (entry.skipped) return String(entry.skippedAt || '').trim();
+  return String(entry.completedAt || '').trim();
+}
+
 function getTimelineSortTimestamp(dateKey, isoDate = '') {
   const isoCandidate = String(isoDate || '').trim();
   if (isoCandidate) {
@@ -341,6 +352,17 @@ function getTimelineSortTimestamp(dateKey, isoDate = '') {
   if (!Number.isFinite(parsedDate.getTime())) return 0;
   parsedDate.setHours(12, 0, 0, 0);
   return parsedDate.getTime();
+}
+
+function formatTimelineTime(isoDate = '') {
+  const isoCandidate = String(isoDate || '').trim();
+  if (!isoCandidate) return '';
+  const parsedIso = new Date(isoCandidate);
+  if (!Number.isFinite(parsedIso.getTime())) return '';
+  return parsedIso.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function getActivityTimelineTitle(category, item) {
@@ -526,12 +548,14 @@ function getUnifiedTimelineEvents() {
     if (matchedLog?.id !== undefined) {
       consumedLogIds.add(matchedLog.id);
     }
+    const historyTimestamp = getHistoryEventTimestamp(item);
     return {
       timelineKind: 'activity',
       category,
       item,
       eventDateKey,
-      sortTimestamp: getTimelineSortTimestamp(eventDateKey, matchedLog?.date || ''),
+      eventTimestamp: historyTimestamp || matchedLog?.date || '',
+      sortTimestamp: getTimelineSortTimestamp(eventDateKey, historyTimestamp || matchedLog?.date || ''),
       matchedLog: matchedLog || null,
       statusMeta: getTimelineStatusMeta(item),
       typeLabel: getHistoryEntryTypeLabel(category, item),
@@ -548,6 +572,7 @@ function getUnifiedTimelineEvents() {
         category: getStandaloneTimelineLogCategory(log),
         log,
         eventDateKey,
+        eventTimestamp: String(log.date || '').trim(),
         sortTimestamp: getTimelineSortTimestamp(eventDateKey, log.date || ''),
         title: String(log.title || 'Registro do herói').trim() || 'Registro do herói',
       };
@@ -556,6 +581,8 @@ function getUnifiedTimelineEvents() {
   return [...activityEvents, ...logEvents].sort((left, right) => {
     const timeDelta = Number(right.sortTimestamp || 0) - Number(left.sortTimestamp || 0);
     if (timeDelta !== 0) return timeDelta;
+    const isoDelta = String(right.eventTimestamp || '').localeCompare(String(left.eventTimestamp || ''));
+    if (isoDelta !== 0) return isoDelta;
     if (left.timelineKind !== right.timelineKind) return left.timelineKind === 'log' ? -1 : 1;
     return String(right.eventDateKey || '').localeCompare(String(left.eventDateKey || ''));
   });
@@ -638,6 +665,7 @@ function renderTimelineEventCard(entry) {
   if (entry.timelineKind === 'log') {
     const card = document.createElement('div');
     const toneClass = getStandaloneTimelineLogStatusClass(entry.log);
+    const timelineTime = formatTimelineTime(entry.eventTimestamp);
     card.className = `mission-card history-card compact-history timeline-log-card ${toneClass}`;
     card.innerHTML = `
       <div class="mission-header">
@@ -652,6 +680,7 @@ function renderTimelineEventCard(entry) {
       </div>
       <div class="mission-details">
         <p>Data: ${formatDate(entry.eventDateKey)}</p>
+        ${timelineTime ? `<p>Hora: ${escapeHtml(timelineTime)}</p>` : ''}
         ${entry.log?.content ? `<p class="timeline-narrative">Registro: ${escapeHtml(entry.log.content)}</p>` : ''}
       </div>
     `;
@@ -662,6 +691,7 @@ function renderTimelineEventCard(entry) {
   const categoryMeta = getActivityCategoryMeta(category);
   const card = document.createElement('div');
   card.className = `mission-card history-card compact-history ${statusMeta.tone}`;
+  const timelineTime = formatTimelineTime(entry.eventTimestamp);
   const workoutDetailLines =
     category === 'workout'
       ? getWorkoutHistoryDetailLines(item)
@@ -680,6 +710,7 @@ function renderTimelineEventCard(entry) {
     <div class="mission-details">
       <p>Tipo: ${typeLabel}</p>
       <p>Data: ${formatDate(eventDateKey)}</p>
+      ${timelineTime ? `<p>Hora: ${escapeHtml(timelineTime)}</p>` : ''}
       ${workoutDetailLines}
       ${category === 'book' && item.author ? `<p>Autor: ${escapeHtml(item.author)}</p>` : ''}
       ${item.reason ? `<p class="mission-reason">Motivo: ${escapeHtml(item.reason)}</p>` : ''}
@@ -1381,6 +1412,32 @@ function formatWorkoutAverageSpeed(totalDistanceKm, totalTimeSeconds) {
   return `${((safeDistance * 3600) / safeSeconds).toFixed(1)} km/h`;
 }
 
+function formatWorkoutPace(totalDistanceKm, totalTimeSeconds) {
+  const safeDistance = Number(totalDistanceKm || 0);
+  const safeSeconds = Number(totalTimeSeconds || 0);
+  if (!Number.isFinite(safeDistance) || safeDistance <= 0 || !Number.isFinite(safeSeconds) || safeSeconds <= 0) {
+    return '-';
+  }
+
+  let paceSeconds = Math.round(safeSeconds / safeDistance);
+  const minutes = Math.floor(paceSeconds / 60);
+  let seconds = paceSeconds % 60;
+
+  if (seconds === 60) {
+    paceSeconds = 0;
+    seconds = 0;
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, '0')} min/km`;
+}
+
+function formatWorkoutSpeedSummary(totalDistanceKm, totalTimeSeconds) {
+  const speedLabel = formatWorkoutAverageSpeed(totalDistanceKm, totalTimeSeconds);
+  const paceLabel = formatWorkoutPace(totalDistanceKm, totalTimeSeconds);
+  if (speedLabel === '-' || paceLabel === '-') return '-';
+  return `${speedLabel} | ${paceLabel}`;
+}
+
 function getWorkoutHistoryDetailLines(item = {}) {
   if (!item || item.failed || item.skipped) return [];
 
@@ -1402,7 +1459,7 @@ function getWorkoutHistoryDetailLines(item = {}) {
       details.push(`Tempo: ${formatWorkoutDuration(time)}`);
     }
     if (Number.isFinite(distance) && distance > 0 && Number.isFinite(time) && time > 0) {
-      details.push(`Velocidade média: ${formatWorkoutAverageSpeed(distance, time)}`);
+      details.push(`Velocidade média: ${formatWorkoutSpeedSummary(distance, time)}`);
     }
 
     return details;
@@ -1763,7 +1820,7 @@ function updateWorkoutDetailsTable() {
             <td>${workout.type === 'repeticao' ? workout.totalReps : '-'}</td>
             <td>${workout.type === 'distancia' ? workout.totalDistance.toFixed(2) + ' km' : '-'}</td>
             <td>${totalTimeLabel}</td>
-            <td>${workout.type === 'distancia' ? formatWorkoutAverageSpeed(workout.totalDistance, workout.totalTime) : '-'}</td>
+            <td>${workout.type === 'distancia' ? formatWorkoutSpeedSummary(workout.totalDistance, workout.totalTime) : '-'}</td>
             <td>${workout.timesDone}</td>
         `;
 
@@ -1988,6 +2045,8 @@ Object.assign(globalThis, {
   getWorkoutHistoryDetailLines,
   renderPaginatedHistory,
   formatRate,
+  formatWorkoutPace,
+  formatWorkoutSpeedSummary,
   getGoalStatusClass,
   syncStatisticsGoalsInputs,
   saveStatisticsGoals,
@@ -2012,6 +2071,8 @@ if (typeof module !== 'undefined' && module.exports) {
     buildStatisticsRecordSnapshot,
     buildWorkoutHistorySummary,
     getWorkoutHistoryDetailLines,
+    formatWorkoutPace,
+    formatWorkoutSpeedSummary,
     getTotalsFromDateKeys,
   };
 }

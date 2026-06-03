@@ -826,9 +826,26 @@ function updateWorkClassOptions() {
 // Obter estatísticas do treino
 function getWorkoutStats(workout) {
   if (workout.type === 'repeticao') {
-    return `${workout.stats.bestReps || 0} repetições`;
+    const bestSetReps =
+      typeof getWorkoutBestRepsRecord === 'function'
+        ? getWorkoutBestRepsRecord(workout, appData.completedWorkouts || [])
+        : Number(workout?.stats?.bestSetReps || workout?.stats?.bestReps || 0);
+    const bestDayReps =
+      typeof getWorkoutBestDayRepsRecord === 'function'
+        ? getWorkoutBestDayRepsRecord(workout, appData.completedWorkouts || [])
+        : Number(workout?.stats?.bestDayReps || workout?.stats?.bestReps || 0);
+    return `Melhor série: ${bestSetReps} rep | Melhor dia: ${bestDayReps} rep`;
   } else if (workout.type === 'distancia') {
-    return `${workout.stats.bestDistance || 0} km`;
+    const bestDistance = Number(workout?.stats?.bestDistance || 0);
+    const bestSpeed =
+      typeof getWorkoutBestSpeedRecord === 'function'
+        ? getWorkoutBestSpeedRecord(workout, appData.completedWorkouts || [])
+        : Number(workout?.stats?.bestSpeed || 0);
+    const bestSpeedLabel =
+      typeof formatWorkoutSpeedSummary === 'function'
+        ? formatWorkoutSpeedSummary(bestDistance, bestDistance > 0 && bestSpeed > 0 ? (bestDistance * 3600) / bestSpeed : 0)
+        : `${bestSpeed.toFixed(1)} km/h`;
+    return `Melhor distância: ${bestDistance.toFixed(2)} km | Melhor velocidade: ${bestSpeedLabel}`;
   } else if (workout.type === 'maior-tempo') {
     return `${workout.stats.bestTime || 0} min`;
   } else if (workout.type === 'menor-tempo') {
@@ -1403,15 +1420,18 @@ function failMission(missionId, reason = '', options = {}) {
 
   const isRoutine = isRoutineType(mission.type);
   const todayStr = getLocalDateString();
+  const penaltyDate = options.missedDate || todayStr;
+  const failedAt =
+    typeof buildHistoryActionTimestamp === 'function' ? buildHistoryActionTimestamp(penaltyDate) : new Date().toISOString();
 
   // Marcar como falhada (sem remover itens de rotina da lista)
   if (!isRoutine) {
     mission.failed = true;
     mission.failedDate = todayStr;
+    mission.failedAt = failedAt;
   }
 
   // Registrar falha para o pipeline unificado de penalidades (applyPenalties)
-  const penaltyDate = options.missedDate || todayStr;
   const missionLineageKey = mission.originalId || mission.id;
   const alreadyFailedForDate = appData.completedMissions.some(
     (m) =>
@@ -1425,6 +1445,7 @@ function failMission(missionId, reason = '', options = {}) {
   appData.completedMissions.push({
     ...mission,
     completedDate: penaltyDate,
+    failedAt,
     failedDate: penaltyDate,
     failed: true,
     penaltyApplied: false,
@@ -1505,6 +1526,8 @@ async function skipMission(missionId) {
   const mission = appData.missions[missionIndex];
   const isRoutine = isRoutineType(mission.type);
   const todayStr = getLocalDateString();
+  const skippedAt =
+    typeof buildHistoryActionTimestamp === 'function' ? buildHistoryActionTimestamp(todayStr) : new Date().toISOString();
   const routineAlreadyResolvedToday =
     isRoutine &&
     appData.completedMissions.some(
@@ -1523,6 +1546,7 @@ async function skipMission(missionId) {
     failed: false,
     skipped: true,
     skippedDate: todayStr,
+    skippedAt,
     reason: 'Atividade pulada (1 item de pulo consumido)',
   });
   if (!appData.statistics) appData.statistics = {};
@@ -1562,12 +1586,14 @@ function failWork(workId, reason = '', options = {}) {
 
   const isRoutine = isRoutineType(work.type);
   const todayStr = getLocalDateString();
+  const penaltyDate = options.missedDate || todayStr;
+  const failedAt =
+    typeof buildHistoryActionTimestamp === 'function' ? buildHistoryActionTimestamp(penaltyDate) : new Date().toISOString();
   if (!isRoutine) {
     work.failed = true;
     work.failedDate = todayStr;
+    work.failedAt = failedAt;
   }
-
-  const penaltyDate = options.missedDate || todayStr;
   const workLineageKey = work.originalId || work.id;
   const alreadyFailedForDate = appData.completedWorks.some(
     (w) =>
@@ -1579,6 +1605,7 @@ function failWork(workId, reason = '', options = {}) {
   appData.completedWorks.push({
     ...work,
     completedDate: penaltyDate,
+    failedAt,
     failedDate: penaltyDate,
     failed: true,
     penaltyApplied: false,
@@ -1617,6 +1644,8 @@ async function skipWork(workId) {
   const work = appData.works[workIndex];
   const isRoutine = isRoutineType(work.type);
   const todayStr = getLocalDateString();
+  const skippedAt =
+    typeof buildHistoryActionTimestamp === 'function' ? buildHistoryActionTimestamp(todayStr) : new Date().toISOString();
   const routineAlreadyResolvedToday =
     isRoutine &&
     appData.completedWorks.some(
@@ -1635,6 +1664,7 @@ async function skipWork(workId) {
     failed: false,
     skipped: true,
     skippedDate: todayStr,
+    skippedAt,
     reason: 'Atividade pulada (1 item de pulo consumido)',
   });
   if (!appData.statistics) appData.statistics = {};
@@ -1673,6 +1703,10 @@ async function skipDailyWorkout(workoutDayId) {
 
   workoutDay.skipped = true;
   workoutDay.skippedDate = getLocalDateString();
+  const skippedAt =
+    typeof buildHistoryActionTimestamp === 'function'
+      ? buildHistoryActionTimestamp(workoutDay.skippedDate)
+      : new Date().toISOString();
 
   const workoutHistoryExists = appData.completedWorkouts.some(
     (w) => w.workoutId === workoutDay.workoutId && w.date === workoutDay.date
@@ -1687,6 +1721,7 @@ async function skipDailyWorkout(workoutDayId) {
       date: workoutDay.date,
       skipped: true,
       skippedDate: workoutDay.skippedDate,
+      skippedAt,
       failed: false,
       reason: 'Atividade pulada (1 item de pulo consumido)',
     });
@@ -1724,6 +1759,10 @@ async function skipDailyStudy(studyDayId) {
 
   studyDay.skipped = true;
   studyDay.skippedDate = getLocalDateString();
+  const skippedAt =
+    typeof buildHistoryActionTimestamp === 'function'
+      ? buildHistoryActionTimestamp(studyDay.skippedDate)
+      : new Date().toISOString();
 
   const studyHistoryExists = appData.completedStudies.some(
     (s) => s.studyId === studyDay.studyId && s.date === studyDay.date
@@ -1738,6 +1777,7 @@ async function skipDailyStudy(studyDayId) {
       date: studyDay.date,
       skipped: true,
       skippedDate: studyDay.skippedDate,
+      skippedAt,
       failed: false,
       applied: !!studyDay.applied,
       reason: 'Atividade pulada (1 item de pulo consumido)',
