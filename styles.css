@@ -7319,6 +7319,12 @@ body.light-theme {
   color: #fcd34d;
 }
 
+.planned-status {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(125, 211, 252, 0.24);
+  color: #7dd3fc;
+}
+
 .history-list .mission-card.completed,
 .history-card.completed {
   border-left-color: #22c55e !important;
@@ -7343,6 +7349,14 @@ body.light-theme {
     rgba(7, 14, 26, 0.9) !important;
 }
 
+.history-list .mission-card.planned,
+.history-card.planned {
+  border-left-color: #38bdf8 !important;
+  background:
+    linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0) 52%),
+    rgba(7, 14, 26, 0.9) !important;
+}
+
 .history-list .mission-card.completed .mission-details,
 .history-card.completed .mission-details {
   color: #d7f7e3;
@@ -7356,6 +7370,11 @@ body.light-theme {
 .history-list .mission-card.skipped .mission-details,
 .history-card.skipped .mission-details {
   color: #ffe5b0;
+}
+
+.history-list .mission-card.planned .mission-details,
+.history-card.planned .mission-details {
+  color: #d7f1ff;
 }
 
 .xp-fill,
@@ -7549,6 +7568,12 @@ body.light-theme .skipped-status {
   color: #b45309;
 }
 
+body.light-theme .planned-status {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: rgba(2, 132, 199, 0.2);
+  color: #0369a1;
+}
+
 body.light-theme .history-list .mission-card.completed,
 body.light-theme .history-card.completed {
   background:
@@ -7570,12 +7595,21 @@ body.light-theme .history-card.skipped {
     rgba(255, 255, 255, 0.98) !important;
 }
 
+body.light-theme .history-list .mission-card.planned,
+body.light-theme .history-card.planned {
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(14, 165, 233, 0) 52%),
+    rgba(255, 255, 255, 0.98) !important;
+}
+
 body.light-theme .history-list .mission-card.completed .mission-details,
 body.light-theme .history-card.completed .mission-details,
 body.light-theme .history-list .mission-card.failed .mission-details,
 body.light-theme .history-card.failed .mission-details,
 body.light-theme .history-list .mission-card.skipped .mission-details,
-body.light-theme .history-card.skipped .mission-details {
+body.light-theme .history-card.skipped .mission-details,
+body.light-theme .history-list .mission-card.planned .mission-details,
+body.light-theme .history-card.planned .mission-details {
   color: #526277;
 }
 
@@ -9317,57 +9351,110 @@ body.light-theme .activity-due-date {
   }
 }
 
-/* Final mobile overrides for activity lists to prevent squeezed or overlapping controls */
+/* Final mobile polish for the activities tab */
 @media (max-width: 560px) {
+  #atividades .sub-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+  }
+
+  #atividades .sub-nav-btn {
+    min-height: 40px;
+    padding: 8px 10px;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  #atividades .activity-header-row,
+  #atividades .timeline-filter-row,
+  #atividades .timeline-day-controls {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  #atividades .timeline-day-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  #atividades .timeline-day-copy,
+  #atividades .timeline-day-target,
+  #atividades .timeline-day-status,
+  #atividades .activity-progress-bar,
+  #atividades .activity-filter,
+  #atividades .activity-date-filter,
+  #atividades .activity-filter-btn,
+  #atividades .timeline-day-toggle {
+    min-width: 0;
+    width: 100%;
+  }
+
+  #atividades .timeline-day-target,
+  #atividades .timeline-day-status {
+    white-space: normal;
+  }
+
   #atividades .missions-list,
   #atividades .history-list,
   #atividades .items-list {
     overflow-x: clip;
   }
 
-  #atividades .compact-activity-card {
+  #atividades #daily-activities .compact-activity-card {
     display: grid;
-    grid-template-columns: 6px minmax(0, 1fr);
+    grid-template-columns: 5px minmax(0, 1fr);
+    grid-template-areas:
+      'bar main'
+      'bar meta'
+      'bar actions';
+    grid-auto-flow: row;
     grid-auto-rows: auto;
     align-items: start;
-    column-gap: 8px;
+    column-gap: 10px;
     row-gap: 8px;
-    padding: 10px;
+    padding: 11px 10px;
+    min-height: 0;
     overflow: visible;
   }
 
-  #atividades .compact-activity-card > * {
+  #atividades #daily-activities .compact-activity-card > * {
     min-width: 0;
   }
 
-  #atividades .activity-color-bar {
-    grid-row: 1 / span 3;
+  #atividades #daily-activities .activity-color-bar {
+    grid-area: bar;
+    min-height: 100%;
+    align-self: stretch;
   }
 
-  #atividades .activity-main,
-  #atividades .activity-meta,
-  #atividades .activity-actions {
-    grid-column: 2;
-    width: 100%;
-    min-width: 0;
-  }
-
-  #atividades .activity-main {
+  #atividades #daily-activities .activity-main {
+    grid-area: main;
+    display: grid;
     grid-template-columns: 22px minmax(0, 1fr);
-    gap: 8px;
     align-items: start;
+    gap: 8px;
+    min-width: 0;
   }
 
-  #atividades .activity-name-row,
-  #atividades #activities-list .item-name-row {
+  #atividades #daily-activities .activity-name-row {
+    display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
-    gap: 4px 6px;
+    gap: 5px 6px;
+    min-width: 0;
   }
 
-  #atividades .activity-name,
-  #atividades #activities-list .item-name {
+  #atividades #daily-activities .activity-name {
     min-width: 0;
+    font-size: 0.82rem;
+    line-height: 1.25;
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
@@ -9375,12 +9462,15 @@ body.light-theme .activity-due-date {
     word-break: break-word;
   }
 
-  #atividades .activity-meta {
+  #atividades #daily-activities .activity-meta {
+    grid-area: meta;
+    display: flex;
     justify-content: flex-start;
     max-width: none;
+    min-width: 0;
   }
 
-  #atividades .activity-due-date {
+  #atividades #daily-activities .activity-due-date {
     min-width: 0;
     max-width: 100%;
     justify-content: flex-start;
@@ -9390,47 +9480,91 @@ body.light-theme .activity-due-date {
     text-overflow: clip;
   }
 
-  #atividades .activity-actions {
+  #atividades #daily-activities .activity-actions {
+    grid-area: actions;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(42px, auto);
     align-items: stretch;
+    justify-content: stretch;
     gap: 8px;
-    margin-left: 0;
-    overflow: visible;
-  }
-
-  #atividades .activity-actions:has(.skip-btn) {
-    grid-template-columns: minmax(0, 1fr) 40px;
-  }
-
-  #atividades .activity-actions .complete-btn,
-  #atividades .activity-actions .complete-workout-btn,
-  #atividades .activity-actions .complete-study-btn {
-    grid-column: 1;
     width: 100%;
     min-width: 0;
-    min-height: 40px;
+    margin-left: 0;
+  }
+
+  #atividades #daily-activities .activity-actions.has-skip {
+    grid-template-columns: minmax(0, 1fr) 42px;
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
+    grid-template-columns: 22px minmax(0, 1fr) 42px;
+  }
+
+  #atividades #daily-activities .activity-actions .study-checkbox {
+    grid-column: 1;
+    align-self: center;
+    justify-self: center;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
+
+  #atividades #daily-activities .activity-actions .complete-btn,
+  #atividades #daily-activities .activity-actions .complete-workout-btn,
+  #atividades #daily-activities .activity-actions .complete-study-btn,
+  #atividades #daily-activities .activity-actions .skip-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 42px;
     padding: 8px 10px;
     font-size: 0.74rem;
-    line-height: 1.15;
+    line-height: 1.2;
+    text-align: center;
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
   }
 
-  #atividades .activity-actions .skip-btn {
+  #atividades #daily-activities .activity-actions .complete-btn,
+  #atividades #daily-activities .activity-actions .complete-workout-btn,
+  #atividades #daily-activities .activity-actions .complete-study-btn {
     grid-column: 1;
-    width: 100%;
-    min-width: 0;
-    min-height: 40px;
-    padding: 0 10px;
   }
 
-  #atividades .activity-actions:has(.skip-btn) .skip-btn {
+  #atividades #daily-activities .activity-actions.has-study-toggle .complete-btn,
+  #atividades #daily-activities .activity-actions.has-study-toggle .complete-workout-btn,
+  #atividades #daily-activities .activity-actions.has-study-toggle .complete-study-btn {
     grid-column: 2;
-    width: 40px;
-    min-width: 40px;
+  }
+
+  #atividades #daily-activities .activity-actions .skip-btn {
+    grid-column: 2;
+    width: 42px;
+    min-width: 42px;
     padding: 0;
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle .skip-btn {
+    grid-column: 3;
+  }
+
+  #atividades #completed-activities .mission-header {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  #atividades #completed-activities .mission-name span:last-child {
+    white-space: normal;
   }
 
   #atividades #activities-list .item-card {
@@ -9440,6 +9574,7 @@ body.light-theme .activity-due-date {
   }
 
   #atividades #activities-list .item-info {
+    display: grid;
     grid-template-columns: 22px minmax(0, 1fr);
     gap: 8px;
     min-width: 0;
@@ -9447,6 +9582,22 @@ body.light-theme .activity-due-date {
 
   #atividades #activities-list .item-info > div {
     min-width: 0;
+  }
+
+  #atividades #activities-list .item-name-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 5px 6px;
+  }
+
+  #atividades #activities-list .item-name {
+    min-width: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   #atividades #activities-list .item-actions {
@@ -9466,168 +9617,18 @@ body.light-theme .activity-due-date {
 }
 
 @media (max-width: 420px) {
-  #atividades .compact-activity-card {
-    padding: 8px;
-    row-gap: 6px;
+  #atividades .sub-nav {
+    grid-template-columns: 1fr;
   }
 
-  #atividades .activity-main {
-    grid-template-columns: 20px minmax(0, 1fr);
-    gap: 6px;
+  #atividades .timeline-day-actions {
+    grid-template-columns: 1fr;
   }
 
-  #atividades .activity-name,
-  #atividades #activities-list .item-name {
-    font-size: 0.76rem;
-  }
-
-  #atividades .activity-actions .complete-btn,
-  #atividades .activity-actions .complete-workout-btn,
-  #atividades .activity-actions .complete-study-btn,
-  #atividades .activity-actions .skip-btn {
-    min-height: 38px;
-    font-size: 0.68rem;
-  }
-
-  #atividades .activity-actions:has(.skip-btn) {
-    grid-template-columns: minmax(0, 1fr) 38px;
-  }
-
-  #atividades .activity-actions:has(.skip-btn) .skip-btn {
-    width: 38px;
-    min-width: 38px;
-  }
-}
-
-@media (max-width: 560px) {
   #atividades #daily-activities .compact-activity-card {
-    grid-template-columns: 6px minmax(0, 1fr);
-    align-items: start;
-    column-gap: 10px;
-    row-gap: 8px;
-    padding: 10px;
-  }
-
-  #atividades #daily-activities .activity-color-bar {
-    grid-column: 1;
-    grid-row: 1 / span 3;
-    min-height: 100%;
-  }
-
-  #atividades #daily-activities .activity-main,
-  #atividades #daily-activities .activity-meta,
-  #atividades #daily-activities .activity-actions {
-    grid-column: 2;
-    width: 100%;
-    min-width: 0;
-  }
-
-  #atividades #daily-activities .activity-main {
-    grid-template-columns: 22px minmax(0, 1fr);
-    align-items: start;
-    gap: 8px;
-  }
-
-  #atividades #daily-activities .activity-name-row {
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 6px;
-    min-width: 0;
-  }
-
-  #atividades #daily-activities .activity-name {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  #atividades #daily-activities .activity-meta {
-    justify-content: flex-start;
-  }
-
-  #atividades #daily-activities .activity-due-date {
-    min-width: 0;
-    max-width: none;
-    justify-content: flex-start;
-    text-align: left;
-    white-space: normal;
-  }
-
-  #atividades #daily-activities .activity-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-items: stretch;
-    gap: 8px;
-    margin-left: 0;
-    overflow: visible;
-  }
-
-  #atividades #daily-activities .activity-actions:has(.skip-btn) {
-    grid-template-columns: minmax(0, 1fr) 42px;
-  }
-
-  #atividades #daily-activities .activity-actions:has(.study-checkbox) {
-    grid-template-columns: 22px minmax(0, 1fr);
-  }
-
-  #atividades #daily-activities .activity-actions:has(.study-checkbox):has(.skip-btn) {
-    grid-template-columns: 22px minmax(0, 1fr) 42px;
-  }
-
-  #atividades #daily-activities .activity-actions .study-checkbox {
-    grid-column: 1;
-    align-self: center;
-    justify-self: center;
-    width: 18px;
-    height: 18px;
-  }
-
-  #atividades #daily-activities .activity-actions .complete-btn,
-  #atividades #daily-activities .activity-actions .complete-workout-btn,
-  #atividades #daily-activities .activity-actions .complete-study-btn,
-  #atividades #daily-activities .activity-actions .skip-btn {
-    min-width: 0;
-    max-width: none;
-    min-height: 42px;
-    font-size: 0.74rem;
-    line-height: 1.2;
-  }
-
-  #atividades #daily-activities .activity-actions .complete-btn,
-  #atividades #daily-activities .activity-actions .complete-workout-btn,
-  #atividades #daily-activities .activity-actions .complete-study-btn {
-    grid-column: 1;
-    width: 100%;
-    padding: 8px 10px;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-  }
-
-  #atividades #daily-activities .activity-actions:has(.study-checkbox) .complete-btn,
-  #atividades #daily-activities .activity-actions:has(.study-checkbox) .complete-workout-btn,
-  #atividades #daily-activities .activity-actions:has(.study-checkbox) .complete-study-btn {
-    grid-column: 2;
-  }
-
-  #atividades #daily-activities .activity-actions .skip-btn {
-    grid-column: 2;
-    width: 42px;
-    min-width: 42px;
-    padding: 0;
-    justify-self: stretch;
-  }
-
-  #atividades #daily-activities .activity-actions:has(.study-checkbox) .skip-btn {
-    grid-column: 3;
-  }
-}
-
-@media (max-width: 420px) {
-  #atividades #daily-activities .compact-activity-card {
-    padding: 9px 8px;
+    padding: 10px 8px;
+    column-gap: 8px;
+    row-gap: 7px;
   }
 
   #atividades #daily-activities .activity-main {
@@ -9636,7 +9637,11 @@ body.light-theme .activity-due-date {
   }
 
   #atividades #daily-activities .activity-name {
-    font-size: 0.76rem;
+    font-size: 0.78rem;
+  }
+
+  #atividades #daily-activities .activity-actions {
+    grid-auto-rows: minmax(40px, auto);
   }
 
   #atividades #daily-activities .activity-actions .complete-btn,
@@ -9647,15 +9652,15 @@ body.light-theme .activity-due-date {
     font-size: 0.7rem;
   }
 
-  #atividades #daily-activities .activity-actions:has(.skip-btn) {
+  #atividades #daily-activities .activity-actions.has-skip {
     grid-template-columns: minmax(0, 1fr) 40px;
   }
 
-  #atividades #daily-activities .activity-actions:has(.study-checkbox) {
+  #atividades #daily-activities .activity-actions.has-study-toggle {
     grid-template-columns: 20px minmax(0, 1fr);
   }
 
-  #atividades #daily-activities .activity-actions:has(.study-checkbox):has(.skip-btn) {
+  #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
     grid-template-columns: 20px minmax(0, 1fr) 40px;
   }
 

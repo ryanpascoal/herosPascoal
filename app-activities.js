@@ -318,6 +318,10 @@ function getTimelineStatusMeta(item) {
   return { text: 'CONCLUÍDO', className: 'completed-status', tone: 'completed' };
 }
 
+function getPlannedTimelineStatusMeta() {
+  return { text: 'PLANEJADO', className: 'planned-status', tone: 'planned' };
+}
+
 function getHistoryEntryTypeLabel(category, item) {
   if (category === 'workout') return getWorkoutTypeName(item.type);
   if (category === 'study') return item.type === 'logico' ? 'Lógico' : 'Criativo';
@@ -389,6 +393,161 @@ function getActivityTimelineTitle(category, item) {
   }
   if (category === 'book') return `Livro concluído: ${itemName}`;
   return `Atividade concluída: ${itemName}`;
+}
+
+function getPlannedActivityTimelineTitle(category, item) {
+  const itemName = item?.name || 'Atividade';
+  if (category === 'mission') return `Tarefa planejada: ${itemName}`;
+  if (category === 'work') return `Trabalho planejado: ${itemName}`;
+  if (category === 'workout') return `Treino planejado: ${itemName}`;
+  if (category === 'study') return `Estudo planejado: ${itemName}`;
+  if (category === 'book') return `Livro planejado: ${itemName}`;
+  return `Atividade planejada: ${itemName}`;
+}
+
+function isFutureTimelineDate(dateKey) {
+  const safeDateKey = String(dateKey || '').trim();
+  if (!safeDateKey) return false;
+  const todayKey = typeof getLocalDateString === 'function' ? getLocalDateString(getGameNow()) : '';
+  return Boolean(todayKey) && safeDateKey > todayKey;
+}
+
+function hasScheduledHistoryEntryForDate(item, completedList, dateKey) {
+  if (!item || !Array.isArray(completedList) || !dateKey) return false;
+  const itemId = String(item.originalId || item.id || '').trim();
+  if (!itemId) return false;
+  return completedList.some((entry) => {
+    const entryId = String(entry?.originalId || entry?.id || '').trim();
+    const entryDateKey = getEventDateKey(entry);
+    return entryId === itemId && entryDateKey === dateKey;
+  });
+}
+
+function hasDailyTrackerResolutionForDate(item, completedList, pendingList, idKey, dateKey) {
+  if (!item || !dateKey) return false;
+  const itemId = String(item.id || '').trim();
+  if (!itemId) return false;
+
+  const inCompletedHistory = Array.isArray(completedList)
+    ? completedList.some(
+        (entry) =>
+          String(entry?.[idKey] || entry?.id || '').trim() === itemId && getEventDateKey(entry) === dateKey
+      )
+    : false;
+  if (inCompletedHistory) return true;
+
+  return Array.isArray(pendingList)
+    ? pendingList.some(
+        (entry) =>
+          String(entry?.[idKey] || '').trim() === itemId &&
+          entry?.date === dateKey &&
+          (entry.completed || entry.failed || entry.skipped)
+      )
+    : false;
+}
+
+function collectFutureScheduledItemsForDate(config) {
+  const {
+    sourceList,
+    completedList,
+    category,
+    targetDateKey,
+    targetDayOfWeek,
+    exactDueDateOnly = false,
+  } = config;
+  const items = [];
+
+  (sourceList || []).forEach((item) => {
+    if (!item || item.completed || item.failed) return;
+
+    if (isRoutineType(item.type)) {
+      const availableFrom = String(item.availableDate || item.dateAdded || '').trim();
+      if (availableFrom && availableFrom > targetDateKey) return;
+      if (!getRoutineDays(item).includes(targetDayOfWeek)) return;
+      if (hasScheduledHistoryEntryForDate(item, completedList, targetDateKey)) return;
+      items.push({ category, item, plannedDateKey: targetDateKey });
+      return;
+    }
+
+    const dueDateKey = getScheduledItemDueDateKey(item);
+    if (!dueDateKey || dueDateKey !== targetDateKey) return;
+    if (!exactDueDateOnly && dueDateKey < targetDateKey) return;
+    if (hasScheduledHistoryEntryForDate(item, completedList, targetDateKey)) return;
+    items.push({ category, item, plannedDateKey: targetDateKey });
+  });
+
+  return items;
+}
+
+function collectFutureTrackerItemsForDate(config) {
+  const { sourceList, pendingList, completedList, category, idKey, targetDateKey, targetDayOfWeek } = config;
+  const items = [];
+
+  (sourceList || []).forEach((item) => {
+    if (!item || item.completed || item.failed) return;
+    if (!getRoutineDays(item).includes(targetDayOfWeek)) return;
+    if (hasDailyTrackerResolutionForDate(item, completedList, pendingList, idKey, targetDateKey)) return;
+    items.push({ category, item, plannedDateKey: targetDateKey });
+  });
+
+  return items;
+}
+
+function getUnifiedFutureTimelineActivities(targetDateKey) {
+  const safeDateKey = String(targetDateKey || '').trim();
+  if (!isFutureTimelineDate(safeDateKey)) return [];
+
+  const targetDate =
+    typeof parseLocalDateString === 'function' ? parseLocalDateString(safeDateKey) : new Date(safeDateKey);
+  if (!Number.isFinite(targetDate.getTime())) return [];
+
+  const targetDayOfWeek = targetDate.getDay();
+  const items = collectFutureScheduledItemsForDate({
+    sourceList: appData.missions,
+    completedList: appData.completedMissions,
+    category: 'mission',
+    targetDateKey: safeDateKey,
+    targetDayOfWeek,
+    exactDueDateOnly: true,
+  });
+
+  if (!isWorkOffDay(safeDateKey)) {
+    items.push(
+      ...collectFutureScheduledItemsForDate({
+        sourceList: appData.works,
+        completedList: appData.completedWorks,
+        category: 'work',
+        targetDateKey: safeDateKey,
+        targetDayOfWeek,
+        exactDueDateOnly: true,
+      })
+    );
+  }
+
+  if (!isRestDay(safeDateKey)) {
+    items.push(
+      ...collectFutureTrackerItemsForDate({
+        sourceList: appData.workouts,
+        pendingList: appData.dailyWorkouts,
+        completedList: appData.completedWorkouts,
+        category: 'workout',
+        idKey: 'workoutId',
+        targetDateKey: safeDateKey,
+        targetDayOfWeek,
+      }),
+      ...collectFutureTrackerItemsForDate({
+        sourceList: appData.studies,
+        pendingList: appData.dailyStudies,
+        completedList: appData.completedStudies,
+        category: 'study',
+        idKey: 'studyId',
+        targetDateKey: safeDateKey,
+        targetDayOfWeek,
+      })
+    );
+  }
+
+  return sortActivityItems(items);
 }
 
 function getExpectedHistoryLogPrefixes(category, item) {
@@ -563,6 +722,21 @@ function getUnifiedTimelineEvents() {
     };
   });
 
+  const selectedFutureDate = getSelectedTimelineDateFilter();
+  const plannedEvents = getUnifiedFutureTimelineActivities(selectedFutureDate).map(({ category, item, plannedDateKey }) => ({
+    timelineKind: 'activity',
+    category,
+    item,
+    eventDateKey: plannedDateKey,
+    eventTimestamp: '',
+    sortTimestamp: getTimelineSortTimestamp(plannedDateKey, ''),
+    matchedLog: null,
+    statusMeta: getPlannedTimelineStatusMeta(),
+    typeLabel: getHistoryEntryTypeLabel(category, item),
+    title: getPlannedActivityTimelineTitle(category, item),
+    isPlanned: true,
+  }));
+
   const logEvents = heroLogs
     .filter((log) => !consumedLogIds.has(log.id))
     .map((log) => {
@@ -578,7 +752,7 @@ function getUnifiedTimelineEvents() {
       };
     });
 
-  return [...activityEvents, ...logEvents].sort((left, right) => {
+  return [...plannedEvents, ...activityEvents, ...logEvents].sort((left, right) => {
     const timeDelta = Number(right.sortTimestamp || 0) - Number(left.sortTimestamp || 0);
     if (timeDelta !== 0) return timeDelta;
     const isoDelta = String(right.eventTimestamp || '').localeCompare(String(left.eventTimestamp || ''));
@@ -710,6 +884,7 @@ function renderTimelineEventCard(entry) {
     <div class="mission-details">
       <p>Tipo: ${typeLabel}</p>
       <p>Data: ${formatDate(eventDateKey)}</p>
+      ${entry.isPlanned ? '<p>Status: Prevista para este dia.</p>' : ''}
       ${timelineTime ? `<p>Hora: ${escapeHtml(timelineTime)}</p>` : ''}
       ${workoutDetailLines}
       ${category === 'book' && item.author ? `<p>Autor: ${escapeHtml(item.author)}</p>` : ''}
@@ -827,6 +1002,9 @@ function renderUnifiedTodayActivities() {
           <i class="fas fa-forward"></i>
         </button>`
         : '';
+    const actionLayoutClasses = ['activity-actions'];
+    if (skipButton) actionLayoutClasses.push('has-skip');
+    if (isStudy && dailyEntry) actionLayoutClasses.push('has-study-toggle');
 
     const card = document.createElement('div');
     card.className = `compact-activity-card${isUrgentWorkActivity(activityEntry) ? ' compact-activity-card-emergency' : ''}`;
@@ -845,7 +1023,7 @@ function renderUnifiedTodayActivities() {
           '<span class="activity-due-date activity-due-date-empty" aria-hidden="true">Sem prazo</span>'
         }
       </div>
-      <div class="activity-actions">
+      <div class="${actionLayoutClasses.join(' ')}">
         ${actionContent}
         ${skipButton}
       </div>
