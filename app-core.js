@@ -24,6 +24,9 @@ function runDeferredStartupResets() {
     typeof window.shouldRunCriticalResets === 'function' ? window.shouldRunCriticalResets() : true;
   if (!canRunCriticalResets) return false;
 
+  if (typeof prepareStartupFailureReviews === 'function') {
+    prepareStartupFailureReviews();
+  }
   runDailyResetHook();
   recreateDailyMissionsForToday();
   recreateDailyWorksForToday();
@@ -78,6 +81,11 @@ function startApp() {
   setInterval(runDailyResetHook, 60000);
   setInterval(runWeeklyResetHook, 60000);
   setInterval(updateStreaks, 60000);
+  window.setTimeout(() => {
+    if (typeof processPendingFailureReviews === 'function') {
+      processPendingFailureReviews();
+    }
+  }, 0);
 }
 
 // Carregar dados - agora delega para a nuvem quando disponÃƒÆ’Ã‚Â­vel
@@ -504,6 +512,9 @@ async function askConfirmation(message, options = {}) {
     confirmText: options.confirmText || 'Confirmar',
     cancelText: options.cancelText || 'Cancelar',
   });
+  if (options.returnNullOnDismiss === true && result === null) {
+    return null;
+  }
   return result === true;
 }
 

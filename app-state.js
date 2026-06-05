@@ -65,6 +65,7 @@ const appData = {
   completedWorks: [],
   completedWorkouts: [],
   completedStudies: [],
+  pendingFailureReviews: [],
   heroLogs: [],
   statistics: {
     workoutsDone: 0,

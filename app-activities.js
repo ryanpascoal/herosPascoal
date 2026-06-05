@@ -1271,7 +1271,9 @@ function checkOverdueWorks(options = {}) {
       const availableFrom = work.availableDate || work.dateAdded || todayStr;
       const shouldCheckYesterday =
         getRoutineDays(work).includes(yesterdayDayOfWeek) && availableFrom <= yesterdayStr;
-      if (shouldCheckYesterday) {
+      const workOffActive =
+        typeof isWorkOffDay === 'function' && isWorkOffDay(yesterdayStr);
+      if (shouldCheckYesterday && !workOffActive) {
         const alreadyLoggedYesterday = wasItemLoggedForDate(
           work,
           appData.completedWorks,

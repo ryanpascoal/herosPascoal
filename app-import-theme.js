@@ -821,6 +821,11 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   const targetDateStr = dateStr;
   const onlyTypes = Array.isArray(options.onlyTypes) ? new Set(options.onlyTypes) : null;
   const shouldCheckType = (type) => !onlyTypes || onlyTypes.has(type);
+  const hasPendingFailureReviewForType = (type) =>
+    Array.isArray(appData.pendingFailureReviews) &&
+    appData.pendingFailureReviews.some(
+      (review) => review?.category === type && review?.missedDate === targetDateStr
+    );
   const todayStr = getLocalDateString();
   const getItemAvailableFromDateKey = (item) =>
     String(item?.availableDate || item?.dateAdded || todayStr || '').trim();
@@ -835,6 +840,8 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     Number(summary.studyFailureCount || 0) +
     Number(summary.nutritionFailureCount || 0) +
     Number(summary.hydrationFailureCount || 0);
+  const workOffActive =
+    typeof isWorkOffDay === 'function' && isWorkOffDay(targetDateStr);
 
   if (isRestDay(targetDateStr)) {
     return;
@@ -850,6 +857,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   };
 
   const logMissedRoutineItems = (list, completedList, typeLabel, entryType) => {
+    if (entryType === 'work' && workOffActive) return 0;
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const missed = list.filter(
       (item) =>
@@ -898,13 +906,23 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   // Check workouts - was there any failed workout on this day?
   let failedWorkouts = [];
   if (shouldCheckType('workout')) {
-    failedWorkouts = appData.dailyWorkouts.filter(
-      (item) => item.date === targetDateStr && !item.completed && !item.skipped && !item.failed
+    const existingFailedWorkouts = appData.completedWorkouts.filter(
+      (entry) => entry.failedDate === targetDateStr && entry.failed && entry.penaltyApplied !== true
     );
+    if (existingFailedWorkouts.length > 0) {
+      failedWorkouts = existingFailedWorkouts.slice();
+      existingFailedWorkouts.forEach((entry) => {
+        entry.penaltyApplied = true;
+      });
+    } else if (!hasPendingFailureReviewForType('workout')) {
+      failedWorkouts = appData.dailyWorkouts.filter(
+        (item) => item.date === targetDateStr && !item.completed && !item.skipped && !item.failed
+      );
+    }
   }
   if (shouldCheckType('workout') && failedWorkouts.length > 0) {
     failedTypes.push('workout');
-  } else if (shouldCheckType('workout')) {
+  } else if (shouldCheckType('workout') && !hasPendingFailureReviewForType('workout')) {
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const scheduledWorkouts = appData.workouts.filter(
       (w) =>
@@ -946,13 +964,23 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   // Check studies - was there any failed study on this day?
   let failedStudies = [];
   if (shouldCheckType('study')) {
-    failedStudies = appData.dailyStudies.filter(
-      (item) => item.date === targetDateStr && !item.completed && !item.skipped && !item.failed
+    const existingFailedStudies = appData.completedStudies.filter(
+      (entry) => entry.failedDate === targetDateStr && entry.failed && entry.penaltyApplied !== true
     );
+    if (existingFailedStudies.length > 0) {
+      failedStudies = existingFailedStudies.slice();
+      existingFailedStudies.forEach((entry) => {
+        entry.penaltyApplied = true;
+      });
+    } else if (!hasPendingFailureReviewForType('study')) {
+      failedStudies = appData.dailyStudies.filter(
+        (item) => item.date === targetDateStr && !item.completed && !item.skipped && !item.failed
+      );
+    }
   }
   if (shouldCheckType('study') && failedStudies.length > 0) {
     failedTypes.push('study');
-  } else if (shouldCheckType('study')) {
+  } else if (shouldCheckType('study') && !hasPendingFailureReviewForType('study')) {
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const scheduledStudies = appData.studies.filter(
       (s) =>
@@ -1019,7 +1047,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
 
   // Check works - was there any failed work on this day?
   let workFailureCount = 0;
-  if (shouldCheckType('work')) {
+  if (shouldCheckType('work') && !workOffActive) {
     const failedWorks = appData.completedWorks.filter(
       (w) => w.failedDate === targetDateStr && w.failed && w.penaltyApplied !== true
     );
