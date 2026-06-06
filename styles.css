@@ -8352,3 +8352,312 @@ body.light-theme .activity-due-date {
     padding: 0;
   }
 }
+
+/* Light theme final pass: flat, minimal, and fully bright. */
+body.light-theme {
+  --primary-color: #0f766e;
+  --secondary-color: #0284c7;
+  --accent-color: #2563eb;
+  --light-color: #162235;
+  --gray-color: #53657d;
+  --dark-color: #ffffff;
+  --light-gray: #f8fafc;
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  --box-shadow: none;
+  --glow-primary: none;
+  --glow-secondary: none;
+  background: #ffffff !important;
+  color: #162235;
+}
+
+body.light-theme *,
+body.light-theme *::before,
+body.light-theme *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+body.light-theme .auth-screen {
+  background: #ffffff !important;
+}
+
+body.light-theme
+  :is(
+    .header,
+    .main-nav,
+    #cloud-auth-panel,
+    .auth-screen-brand,
+    .auth-screen-card,
+    .cloud-access-lock-card,
+    .tab-content,
+    .sub-nav,
+    .activity-progress-bar,
+    .timeline-day-controls,
+    .profile-header,
+    .profile-tabs,
+    .shop-inventory,
+    .settings-section,
+    .hero-logs-section,
+    .streaks-container,
+    .level-xp-integrated,
+    .workouts-display,
+    .studies-display,
+    .existing-items,
+    .cloud-sync-card,
+    .attribute-card,
+    .streak-card,
+    .log-item,
+    .shop-item,
+    .inventory-item,
+    .form-container,
+    .section-panel,
+    .mission-card,
+    .history-card,
+    .compact-history,
+    .compact-activity-card,
+    .item-card,
+    .workout-display-card,
+    .study-display-card,
+    .boss-card,
+    .finance-card,
+    .finance-form,
+    .finance-filters,
+    .finance-list,
+    .finance-management-grid,
+    .finance-budget-item,
+    .finance-item,
+    .chart-box,
+    .stat-card,
+    .records-container,
+    .table-container,
+    .modal-content,
+    .nutrition-card,
+    .nutrition-summary-card,
+    .nutrition-goal-item,
+    .nutrition-macro-chip,
+    .nutrition-preview,
+    .nutrition-food-list .item-card,
+    .nutrition-day-list .item-card,
+    .hydration-container,
+    .hydration-panel,
+    .planning-summary-card,
+    .planning-board-card,
+    .planning-item-card,
+    .focus-item,
+    .focus-objective-card,
+    .planning-alert,
+    .planning-feedback-card,
+    .stats-item,
+    .time-display,
+    .status-chip,
+    .preparation-section,
+    .preparation-section .sub-content,
+    .preparation-section .sub-tab,
+    .book-card,
+    .series-input,
+    .distance-input,
+    .time-input,
+    .custom-autocomplete-container,
+    .custom-autocomplete-item,
+    .custom-autocomplete-no-results,
+    .hydration-progress-container,
+    .hydration-glass-display,
+    .logs-container
+  ) {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #e2e8f0 !important;
+  color: #162235 !important;
+}
+
+body.light-theme
+  :is(
+    .mission-details,
+    .compact-history-details,
+    .item-desc,
+    .item-type,
+    .item-level,
+    .display-days,
+    .display-record,
+    .inventory-item-desc,
+    .inventory-item-meta,
+    .shop-item-desc,
+    .shop-item-level,
+    .finance-item-meta,
+    .finance-budget-meta,
+    .nutrition-food-meta,
+    .nutrition-entry-meta,
+    .planning-summary-label,
+    .planning-item-meta,
+    .planning-item-foot,
+    .focus-item-meta,
+    .focus-objective-meta,
+    .cloud-sync-note,
+    .cloud-user-label,
+    .streak-record,
+    .streaks-note,
+    .timeline-day-status
+  ) {
+  color: #53657d !important;
+}
+
+body.light-theme
+  :is(
+    .form-group input,
+    .form-group select,
+    .form-group textarea,
+    .auth-screen-form input,
+    .cloud-sync-grid input,
+    .series-input-field,
+    .distance-input-field,
+    .time-input-field,
+    .workout-entries-input,
+    .books-search-input,
+    .book-status-select,
+    input,
+    select,
+    textarea
+  ) {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #162235 !important;
+  caret-color: #0f766e;
+}
+
+body.light-theme
+  :is(
+    .form-group input::placeholder,
+    .form-group textarea::placeholder,
+    .auth-screen-form input::placeholder,
+    input::placeholder,
+    textarea::placeholder
+  ) {
+  color: #94a3b8 !important;
+}
+
+body.light-theme
+  :is(
+    .form-group input,
+    .form-group select,
+    .form-group textarea,
+    .auth-screen-form input,
+    .cloud-sync-grid input,
+    .series-input-field,
+    .distance-input-field,
+    .time-input-field,
+    input,
+    select,
+    textarea
+  ):focus {
+  border-color: #0f766e !important;
+  outline: 2px solid rgba(15, 118, 110, 0.2);
+  outline-offset: 1px;
+}
+
+body.light-theme :is(th, td) {
+  border-color: #e2e8f0 !important;
+  color: #162235;
+}
+
+body.light-theme th {
+  background: #f8fafc !important;
+}
+
+body.light-theme tr:hover,
+body.light-theme :is(.nav-item:hover:not(.active), .sub-nav-btn:hover, .checkbox-label:hover) {
+  background: #f8fafc !important;
+}
+
+body.light-theme :is(.nav-item.active, .sub-nav-btn.active, .checkbox-label:has(input:checked)) {
+  background: #f0fdfa !important;
+  border-color: #99f6e4 !important;
+  color: #0f766e !important;
+}
+
+body.light-theme
+  :is(
+    .attribute-bar,
+    .xp-bar-integrated,
+    .display-xp-progress,
+    .boss-bar,
+    .finance-budget-bar,
+    .hydration-bar-container
+  ) {
+  background: #e2e8f0 !important;
+}
+
+body.light-theme :is(.attribute-fill, .xp-fill-integrated, .display-xp-fill) {
+  background: #0f766e !important;
+}
+
+body.light-theme
+  :is(
+    .action-btn,
+    .settings-btn,
+    .finance-delete-btn,
+    .close-modal,
+    .activity-filter,
+    .activity-filter-btn,
+    .timeline-day-toggle,
+    .empty-message,
+    .activity-due-date,
+    .display-type,
+    .mission-type,
+    .workout-type,
+    .study-type,
+    .book-status-badge,
+    .stats-icon,
+    .sync-indicator,
+    .cloud-status,
+    .inventory-item-quantity
+  ) {
+  background: #f8fafc !important;
+  background-image: none !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+body.light-theme :is(.action-btn.primary, .action-btn.active, .timeline-day-toggle.is-active) {
+  background: #f0fdfa !important;
+  border-color: #99f6e4 !important;
+  color: #0f766e !important;
+}
+
+body.light-theme
+  :is(.submit-btn, .buy-btn, .use-btn, .complete-btn, .complete-workout-btn, .complete-study-btn) {
+  background: #0f766e !important;
+  background-image: none !important;
+  border-color: #0f766e !important;
+  color: #ffffff !important;
+}
+
+body.light-theme :is(.skip-btn, .action-btn.secondary, .settings-btn) {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+body.light-theme :is(.delete-btn, .submit-btn.danger, .finance-delete-btn) {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #be123c !important;
+}
+
+body.light-theme :is(button, .nav-item, .sub-nav-btn):focus-visible {
+  outline: 2px solid rgba(15, 118, 110, 0.28);
+  outline-offset: 2px;
+}
+
+body.light-theme ::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+body.light-theme ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+body.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
