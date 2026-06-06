@@ -2023,44 +2023,6 @@ body.light-theme .auth-screen-form input {
   border-color: rgba(255, 77, 141, 0.6);
 }
 
-/* CalendÃ¡rio */
-.calendar-panel {
-  background: var(--card-bg);
-  border-radius: 18px;
-  padding: 20px;
-  border: 1px solid var(--card-border);
-  box-shadow: var(--box-shadow);
-}
-
-.calendar-today-panel {
-  margin-bottom: 20px;
-  padding: 18px;
-  border-radius: 16px;
-  background:
-    radial-gradient(circle at top right, rgba(255, 176, 32, 0.16), transparent 34%),
-    linear-gradient(145deg, rgba(16, 21, 35, 0.96), rgba(22, 28, 43, 0.92));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.calendar-today-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.calendar-today-header h3 {
-  margin: 0 0 4px;
-  color: var(--light-color);
-}
-
-.calendar-today-header p {
-  margin: 0;
-  color: var(--gray-color);
-  font-size: 0.92rem;
-}
-
 .activity-progress-bar {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2216,244 +2178,6 @@ body.light-theme .auth-screen-form input {
   transition: transform 0.2s ease;
 }
 
-.calendar-panel.collapsed {
-  display: none;
-}
-
-.calendar-panel.collapsed + .collapse-toggle .fa-chevron-down {
-  transform: rotate(-90deg);
-}
-
-.calendar-today-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.calendar-today-stat {
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.calendar-today-stat .label {
-  display: block;
-  font-size: 0.78rem;
-  color: var(--gray-color);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 4px;
-}
-
-.calendar-today-stat strong {
-  font-size: 1.4rem;
-  color: var(--light-color);
-}
-
-.calendar-today-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.calendar-today-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px;
-  border-radius: 14px;
-  background: rgba(16, 21, 35, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.calendar-today-item.pending {
-  border-color: rgba(255, 176, 32, 0.28);
-  box-shadow: inset 0 0 0 1px rgba(255, 176, 32, 0.08);
-}
-
-.calendar-today-item.done {
-  border-color: rgba(124, 255, 178, 0.2);
-  opacity: 0.88;
-}
-
-.calendar-today-item.failed,
-.calendar-today-item.skipped {
-  border-color: rgba(255, 77, 141, 0.22);
-  opacity: 0.84;
-}
-
-.calendar-today-main {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.calendar-today-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: var(--light-color);
-}
-
-.calendar-today-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.calendar-today-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.calendar-action-btn {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 9px 12px;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.calendar-action-btn.primary {
-  background: rgba(124, 255, 178, 0.12);
-  color: #a6ffcf;
-  border-color: rgba(124, 255, 178, 0.26);
-}
-
-.calendar-action-btn.primary:hover {
-  background: rgba(124, 255, 178, 0.18);
-}
-
-.calendar-action-btn.secondary {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--light-color);
-}
-
-.calendar-action-btn.secondary:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.calendar-action-btn.warn {
-  background: rgba(255, 176, 32, 0.12);
-  color: #ffd7a3;
-  border-color: rgba(255, 176, 32, 0.24);
-}
-
-.calendar-action-btn.warn:hover {
-  background: rgba(255, 176, 32, 0.18);
-}
-
-@media (max-width: 768px) {
-  .calendar-today-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .calendar-today-item,
-  .calendar-today-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .calendar-today-actions {
-    justify-content: stretch;
-  }
-
-  .calendar-action-btn {
-    width: 100%;
-  }
-}
-
-.calendar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 15px;
-}
-
-.calendar-title {
-  font-weight: 600;
-  color: var(--light-color);
-  letter-spacing: 0.3px;
-}
-
-.calendar-nav-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(124, 92, 255, 0.12);
-  color: var(--light-color);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.calendar-nav-btn:hover {
-  background: rgba(124, 92, 255, 0.22);
-  border-color: rgba(124, 92, 255, 0.35);
-}
-
-.calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
-  color: var(--gray-color);
-  font-size: 0.9rem;
-  text-align: center;
-}
-
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
-}
-
-.calendar-day {
-  min-height: 70px;
-  border-radius: 12px;
-  padding: 8px;
-  background: rgba(16, 21, 35, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.calendar-day.other-month {
-  opacity: 0.4;
-}
-
-.calendar-day.today {
-  border-color: rgba(124, 92, 255, 0.6);
-  box-shadow: 0 0 12px rgba(124, 92, 255, 0.2);
-}
-
-.calendar-day.selected {
-  outline: 2px solid rgba(124, 92, 255, 0.7);
-  outline-offset: 2px;
-}
-
-.calendar-day-number {
-  font-size: 0.9rem;
-  color: var(--light-color);
-}
-
-.calendar-markers {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
 .marker {
   width: 8px;
   height: 8px;
@@ -2477,25 +2201,6 @@ body.light-theme .auth-screen-form input {
 }
 .marker.work-off {
   background: #ff9e4a;
-}
-
-.calendar-day.streak-day {
-  border-color: rgba(0, 209, 143, 0.75);
-  box-shadow: 0 0 0 1px rgba(0, 209, 143, 0.3) inset;
-}
-
-.calendar-day.failure-day {
-  border-color: rgba(255, 77, 77, 0.75);
-  box-shadow: 0 0 0 1px rgba(255, 77, 77, 0.3) inset;
-}
-
-.calendar-legend {
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
-  margin-top: 15px;
-  color: var(--gray-color);
-  font-size: 0.9rem;
 }
 
 .legend-item {
@@ -2542,234 +2247,6 @@ body.light-theme .auth-screen-form input {
 }
 .legend-border.failure {
   border-color: rgba(255, 77, 77, 0.85);
-}
-body.light-theme .calendar-day.streak-day {
-  border-color: #00a16d;
-  box-shadow: 0 0 0 1px rgba(0, 161, 109, 0.25) inset;
-}
-
-body.light-theme .calendar-day.failure-day {
-  border-color: #d33232;
-  box-shadow: 0 0 0 1px rgba(211, 50, 50, 0.22) inset;
-}
-
-.calendar-details {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.calendar-details h3 {
-  font-size: 1rem;
-  margin-bottom: 10px;
-  color: var(--light-color);
-}
-
-.calendar-details-filter {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  color: var(--gray-color);
-  font-size: 0.9rem;
-}
-
-.calendar-details-filter label {
-  white-space: nowrap;
-}
-
-.calendar-details-filter select {
-  appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(16, 21, 35, 0.75);
-  color: var(--light-color);
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  min-width: 190px;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.calendar-details-filter select:hover,
-.calendar-details-filter select:focus {
-  border-color: rgba(124, 92, 255, 0.45);
-  box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.12);
-  outline: none;
-}
-
-.calendar-rest-control {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(16, 21, 35, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 12px;
-}
-
-.calendar-rest-status {
-  font-size: 0.9rem;
-  color: var(--gray-color);
-}
-
-.calendar-rest-status.active {
-  color: #ffd700;
-  font-weight: 600;
-}
-
-.calendar-rest-btn {
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 215, 0, 0.12);
-  color: #ffe58a;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.calendar-rest-btn:hover {
-  background: rgba(255, 215, 0, 0.2);
-  border-color: rgba(255, 215, 0, 0.35);
-}
-
-.calendar-details-list {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.calendar-details-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 10px;
-  background: rgba(16, 21, 35, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* Itens pendentes - com destaque */
-.calendar-details-item.pending {
-  background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 87, 34, 0.08) 100%);
-  border: 1px solid rgba(255, 152, 0, 0.3);
-}
-
-.calendar-details-item.pending .calendar-details-title {
-  color: #ffb74d;
-}
-
-/* Itens concluÃ­dos - com destaque verde */
-.calendar-details-item.completed {
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(56, 142, 60, 0.05) 100%);
-  border: 1px solid rgba(76, 175, 80, 0.2);
-  opacity: 0.85;
-}
-
-.calendar-details-item.completed .calendar-details-title {
-  color: #81c784;
-}
-
-.calendar-details-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-}
-
-.calendar-details-tags {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.calendar-tag {
-  font-size: 0.68rem;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: rgba(124, 92, 255, 0.15);
-  color: var(--light-color);
-  border: 1px solid rgba(124, 92, 255, 0.25);
-}
-
-.calendar-tag.kind {
-  background: rgba(16, 242, 255, 0.12);
-  border-color: rgba(16, 242, 255, 0.22);
-  color: #a7f6ff;
-}
-
-.calendar-tag.work-kind {
-  background: rgba(255, 138, 61, 0.16);
-  border-color: rgba(255, 138, 61, 0.34);
-  color: #ffd0a8;
-}
-
-.calendar-tag.workout {
-  background: rgba(255, 107, 107, 0.15);
-  border-color: rgba(255, 107, 107, 0.3);
-  color: #ffb2b2;
-}
-
-.calendar-tag.study {
-  background: rgba(93, 169, 255, 0.15);
-  border-color: rgba(93, 169, 255, 0.3);
-  color: #b3d4ff;
-}
-
-.calendar-tag.daily {
-  background: rgba(0, 229, 255, 0.15);
-  border-color: rgba(0, 229, 255, 0.3);
-  color: #9ff6ff;
-}
-
-.calendar-tag.weekly {
-  background: rgba(124, 255, 178, 0.15);
-  border-color: rgba(124, 255, 178, 0.3);
-  color: #9cffcc;
-}
-
-.calendar-tag.routine {
-  background: rgba(124, 255, 178, 0.15);
-  border-color: rgba(124, 255, 178, 0.3);
-  color: #9cffcc;
-}
-
-.calendar-tag.eventual {
-  background: rgba(255, 176, 32, 0.15);
-  border-color: rgba(255, 176, 32, 0.3);
-  color: #ffd7a3;
-}
-
-.calendar-tag.epic {
-  background: rgba(255, 77, 141, 0.15);
-  border-color: rgba(255, 77, 141, 0.3);
-  color: #ffc2d7;
-}
-.calendar-tag.done {
-  background: rgba(124, 255, 178, 0.15);
-  border-color: rgba(124, 255, 178, 0.25);
-  color: #7cffb2;
-}
-
-.calendar-tag.failed {
-  background: rgba(255, 77, 141, 0.15);
-  border-color: rgba(255, 77, 141, 0.3);
-  color: #ff4d8d;
-}
-
-.calendar-tag.skipped {
-  background: rgba(243, 156, 18, 0.16);
-  border-color: rgba(243, 156, 18, 0.32);
-  color: #ffc66d;
-}
-
-.calendar-tag.pending {
-  background: rgba(255, 152, 0, 0.18);
-  border-color: rgba(255, 152, 0, 0.35);
-  color: #ffb74d;
 }
 
 /* Arena e Biblioteca */
@@ -3637,6 +3114,12 @@ table {
   border-collapse: collapse;
 }
 
+.empty-table-message {
+  color: var(--gray-color);
+  font-style: italic;
+  text-align: center;
+}
+
 th,
 td {
   padding: 12px 15px;
@@ -3825,16 +3308,6 @@ tr:hover {
     gap: 10px;
   }
 
-  .calendar-weekdays,
-  .calendar-grid {
-    gap: 6px;
-  }
-
-  .calendar-day {
-    min-height: 58px;
-    padding: 6px;
-  }
-
   .finance-summary {
     grid-template-columns: 1fr;
   }
@@ -3877,8 +3350,7 @@ tr:hover {
   }
 
   .records-container,
-  .finance-list,
-  .calendar-details-list {
+  .finance-list {
     max-height: 320px;
     overflow-y: auto;
   }
@@ -3942,11 +3414,6 @@ tr:hover {
 
   .stats-grid {
     grid-template-columns: 1fr;
-  }
-
-  .calendar-details-item {
-    flex-direction: column;
-    align-items: flex-start;
   }
 
   .finance-item {
@@ -4240,7 +3707,6 @@ tr:hover {
     margin-top: 5px;
   }
 
-
   .level-xp-integrated {
     margin-top: 10px;
   }
@@ -4269,8 +3735,7 @@ tr:hover {
   .workouts-list,
   .studies-list,
   .records-container,
-  .finance-list,
-  .calendar-details-list {
+  .finance-list {
     max-height: 280px;
     gap: 3px;
     padding-right: 2px;
@@ -4419,14 +3884,6 @@ tr:hover {
     position: sticky;
     top: 0;
     z-index: 1;
-  }
-
-  .calendar-day {
-    min-height: 54px;
-  }
-
-  .calendar-day-number {
-    font-size: 0.78rem;
   }
 }
 
@@ -4768,32 +4225,6 @@ body.light-theme #streak-count {
   transform: translateY(-1px);
 }
 
-.profile-header,
-.profile-tabs,
-.shop-inventory,
-.settings-section,
-.form-container,
-.table-container,
-.hero-logs-section,
-.streak-card,
-.stat-card,
-.mission-card,
-.workout-card,
-.study-card,
-.item-card,
-.history-card,
-.shop-item,
-.inventory-item,
-.finance-card,
-.finance-form,
-.calendar-details,
-.boss-card {
-  border-radius: 16px;
-  border: 1px solid rgba(129, 149, 184, 0.24);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.01));
-  box-shadow: 0 12px 28px rgba(2, 8, 20, 0.45);
-}
-
 .mission-card,
 .workout-card,
 .study-card,
@@ -4833,28 +4264,6 @@ body.light-theme #streak-count {
 
 .submit-btn,
 .add-btn,
-.settings-btn,
-.timer-btn,
-.complete-btn,
-.complete-workout-btn,
-.complete-study-btn,
-.skip-btn,
-.action-btn,
-.calendar-nav-btn,
-.calendar-rest-btn {
-  border: 1px solid rgba(143, 168, 209, 0.32);
-  border-radius: 12px;
-  background: linear-gradient(160deg, rgba(23, 37, 64, 0.95), rgba(30, 50, 86, 0.95));
-  color: #f2f7ff;
-  box-shadow: 0 10px 18px rgba(3, 8, 20, 0.45);
-  transition:
-    transform 0.16s ease,
-    filter 0.16s ease,
-    box-shadow 0.2s ease;
-}
-
-.submit-btn,
-.add-btn,
 .complete-btn,
 .complete-workout-btn,
 .complete-study-btn {
@@ -4864,36 +4273,6 @@ body.light-theme #streak-count {
 
 .skip-btn {
   background: linear-gradient(140deg, #0f766e, #1d4ed8);
-}
-
-.submit-btn:hover,
-.add-btn:hover,
-.settings-btn:hover,
-.timer-btn:hover,
-.complete-btn:hover,
-.complete-workout-btn:hover,
-.complete-study-btn:hover,
-.skip-btn:hover,
-.action-btn:hover,
-.calendar-nav-btn:hover,
-.calendar-rest-btn:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.06);
-  box-shadow: 0 12px 20px rgba(3, 8, 20, 0.52);
-}
-
-.submit-btn:active,
-.add-btn:active,
-.settings-btn:active,
-.timer-btn:active,
-.complete-btn:active,
-.complete-workout-btn:active,
-.complete-study-btn:active,
-.skip-btn:active,
-.action-btn:active,
-.calendar-nav-btn:active,
-.calendar-rest-btn:active {
-  transform: translateY(0);
 }
 
 button:disabled,
@@ -5008,20 +4387,6 @@ textarea:focus {
   .finance-card,
   .finance-form {
     border-radius: 14px;
-  }
-
-  .submit-btn,
-  .add-btn,
-  .settings-btn,
-  .timer-btn,
-  .complete-btn,
-  .complete-workout-btn,
-  .complete-study-btn,
-  .skip-btn,
-  .action-btn,
-  .calendar-nav-btn,
-  .calendar-rest-btn {
-    min-height: 24px;
   }
 }
 
@@ -5160,7 +4525,6 @@ textarea:focus {
   .hero-logs-section,
   .streaks-container,
   .preparation-section,
-  .calendar-panel,
   .stats-tabs,
   .boss-card,
   .form-container,
@@ -5222,7 +4586,6 @@ textarea:focus {
   .studies-list,
   .records-container,
   .finance-list,
-  .calendar-details-list,
   .history-list,
   #daily-works,
   #completed-works,
@@ -5239,20 +4602,6 @@ textarea:focus {
   .container {
     padding-left: 8px;
     padding-right: 8px;
-  }
-
-  .items-list,
-  .missions-list,
-  .workouts-list,
-  .studies-list,
-  .records-container,
-  .finance-list,
-  .calendar-details-list,
-  .history-list,
-  #daily-works,
-  #completed-works,
-  #works-list {
-    max-height: min(60vh, 620px);
   }
 }
 
@@ -5364,26 +4713,6 @@ body.light-theme .nav-item:hover:not(.active) {
   background-color: rgba(123, 97, 255, 0.05);
 }
 
-/* Cards e SeÃ§Ãµes */
-body.light-theme .profile-header,
-body.light-theme .profile-tabs,
-body.light-theme .shop-inventory,
-body.light-theme .settings-section,
-body.light-theme .form-container,
-body.light-theme .calendar-panel,
-body.light-theme .preparation-section,
-body.light-theme .boss-card,
-body.light-theme .stat-card,
-body.light-theme .table-container,
-body.light-theme .records-container,
-body.light-theme .chart-box,
-body.light-theme .finance-summary .finance-card,
-body.light-theme .modal-content {
-  background-color: var(--card-bg);
-  border: 1px solid var(--card-border);
-  box-shadow: var(--box-shadow);
-}
-
 body.light-theme .attribute-card {
   background: #f8f9fa;
   border-left-color: var(--primary-color);
@@ -5453,27 +4782,6 @@ body.light-theme .level-label {
   color: #34495e;
 }
 
-body.light-theme .hero-class,
-body.light-theme .finance-label,
-body.light-theme .calendar-weekdays,
-body.light-theme .mission-details,
-body.light-theme .workout-details,
-body.light-theme .study-details,
-body.light-theme .history-details,
-body.light-theme .item-level,
-body.light-theme .shop-item-desc,
-body.light-theme .inventory-item-desc,
-body.light-theme .inventory-item-meta,
-body.light-theme .item-type,
-body.light-theme .display-level,
-body.light-theme .display-xp-text,
-body.light-theme .xp-text,
-body.light-theme .log-text,
-body.light-theme .boss-desc,
-body.light-theme .boss-reset {
-  color: var(--gray-color);
-}
-
 body.light-theme .stat-value {
   color: var(--primary-color);
 }
@@ -5491,21 +4799,6 @@ body.light-theme .sub-nav-btn.active {
   color: var(--primary-color);
   border-bottom-color: var(--primary-color);
   text-shadow: none;
-}
-
-/* FormulÃ¡rios e Inputs */
-body.light-theme .form-group input,
-body.light-theme .form-group select,
-body.light-theme .form-group textarea,
-body.light-theme .series-input-field,
-body.light-theme .distance-input-field,
-body.light-theme .time-input-field,
-body.light-theme .goal-config input,
-body.light-theme .calendar-details-filter select,
-body.light-theme .cloud-sync-grid input {
-  background-color: var(--light-gray);
-  color: var(--light-color);
-  border: 1px solid #dde2e7;
 }
 
 body.light-theme .form-group input::placeholder,
@@ -5534,28 +4827,6 @@ body.light-theme .display-xp-fill {
   background-color: var(--primary-color);
 }
 
-/* Itens de lista */
-body.light-theme .item-card,
-body.light-theme .mission-card,
-body.light-theme .workout-card,
-body.light-theme .study-card,
-body.light-theme .study-display-card,
-body.light-theme .workout-display-card,
-body.light-theme .history-card,
-body.light-theme .log-item,
-body.light-theme .finance-item,
-body.light-theme .calendar-details-item,
-body.light-theme .inventory-item,
-body.light-theme .record-item,
-body.light-theme .series-input,
-body.light-theme .distance-input,
-body.light-theme .time-input,
-body.light-theme .applied-checkbox,
-body.light-theme .attribute-checkbox {
-  background: var(--light-gray);
-  border: 1px solid #e9ecef;
-}
-
 /* Tabelas */
 body.light-theme th,
 body.light-theme td {
@@ -5568,37 +4839,6 @@ body.light-theme th {
 
 body.light-theme tr:hover {
   background-color: rgba(123, 97, 255, 0.05);
-}
-
-/* CalendÃ¡rio */
-body.light-theme .calendar-day {
-  background: #fdfdff;
-  border: 1px solid var(--card-border);
-}
-
-body.light-theme .calendar-day.other-month {
-  background: #f8f9fa;
-  opacity: 0.7;
-}
-
-body.light-theme .calendar-day.today {
-  border-color: var(--primary-color);
-}
-
-body.light-theme .calendar-day.selected {
-  outline: 2px solid var(--primary-color);
-  background-color: rgba(123, 97, 255, 0.1);
-}
-
-/* Tags e Status */
-body.light-theme .calendar-tag,
-body.light-theme .attribute-tag,
-body.light-theme .display-type,
-body.light-theme .status-chip {
-  background: rgba(123, 97, 255, 0.1);
-  color: var(--primary-color);
-  border: 1px solid rgba(123, 97, 255, 0.2);
-  font-weight: 500;
 }
 
 body.light-theme .display-details,
@@ -6413,7 +5653,7 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   border-color: var(--primary-color, #60a5fa);
 }
 
-.study-checkbox {
+.apply-study-checkbox {
   width: 18px;
   height: 18px;
   cursor: pointer;
@@ -6676,59 +5916,6 @@ body.light-theme {
   box-shadow: none !important;
 }
 
-.profile-header,
-.profile-tabs,
-.shop-inventory,
-.settings-section,
-.form-container,
-.calendar-panel,
-.preparation-section,
-.table-container,
-.records-container,
-.chart-box,
-.streaks-container,
-.boss-card,
-.stat-card,
-.finance-summary .finance-card,
-.modal-content,
-.planning-dashboard,
-.planning-summary-card,
-.planning-board-card,
-.planning-item-card,
-.planning-feedback-card,
-.focus-objective-card,
-.planning-alert {
-  background: var(--card-bg) !important;
-  border: 1px solid var(--card-border) !important;
-  border-radius: 14px !important;
-  box-shadow: var(--box-shadow) !important;
-}
-
-.profile-header,
-.profile-tabs,
-.shop-inventory,
-.settings-section,
-.table-container,
-.records-container,
-.chart-box,
-.calendar-panel,
-.planning-dashboard {
-  position: relative;
-  overflow: hidden;
-}
-
-.profile-header::after,
-.profile-tabs::after,
-.shop-inventory::after,
-.settings-section::after,
-.table-container::after,
-.records-container::after,
-.chart-box::after,
-.calendar-panel::after,
-.planning-dashboard::after {
-  display: none;
-}
-
 .profile-pic {
   border-width: 4px;
   box-shadow: none !important;
@@ -6766,56 +5953,6 @@ body.light-theme {
   box-shadow: none;
 }
 
-.activity-filter,
-.form-group input,
-.form-group select,
-.form-group textarea,
-.series-input-field,
-.distance-input-field,
-.time-input-field,
-.goal-config input,
-.calendar-details-filter select,
-.cloud-sync-grid input,
-.workout-entries-input {
-  border-radius: 10px !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  background: rgba(8, 15, 29, 0.92) !important;
-  color: var(--light-color) !important;
-  box-shadow: none;
-}
-
-.activity-filter:focus,
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus,
-.series-input-field:focus,
-.distance-input-field:focus,
-.time-input-field:focus,
-.goal-config input:focus,
-.calendar-details-filter select:focus,
-.cloud-sync-grid input:focus,
-.workout-entries-input:focus {
-  outline: none;
-  border-color: rgba(56, 189, 248, 0.85) !important;
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.12) !important;
-}
-
-.submit-btn,
-.add-btn,
-.settings-btn,
-.calendar-nav-btn,
-.history-pagination-btn,
-.action-btn,
-.activity-actions .complete-btn,
-.activity-actions .skip-btn {
-  border-radius: 10px !important;
-  font-weight: 700;
-  transition:
-    background-color 120ms ease,
-    border-color 120ms ease,
-    color 120ms ease;
-}
-
 .submit-btn,
 .add-btn,
 .activity-actions .complete-btn {
@@ -6824,85 +5961,12 @@ body.light-theme {
   box-shadow: none !important;
 }
 
-.settings-btn,
-.activity-actions .skip-btn,
-.history-pagination-btn,
-.calendar-nav-btn,
-.action-btn {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--light-color);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: none !important;
-}
-
-.submit-btn:hover,
-.add-btn:hover,
-.settings-btn:hover,
-.calendar-nav-btn:hover,
-.history-pagination-btn:hover,
-.action-btn:hover,
-.activity-actions .complete-btn:hover,
-.activity-actions .skip-btn:hover {
-  transform: none;
-  filter: none;
-}
-
-.settings-btn:hover,
-.activity-actions .skip-btn:hover,
-.history-pagination-btn:hover,
-.calendar-nav-btn:hover,
-.action-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.16);
-}
-
 .missions-list,
 .workouts-list,
 .studies-list,
 .items-list {
   gap: 10px;
   max-height: 520px;
-}
-
-.mission-card,
-.workout-card,
-.study-card,
-.history-card,
-.item-card,
-.inventory-item,
-.record-item,
-.log-item,
-.finance-item,
-.calendar-details-item,
-.study-display-card,
-.workout-display-card,
-.compact-activity-card {
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-left-width: 3px !important;
-  border-radius: 18px !important;
-  background: rgba(7, 14, 26, 0.9) !important;
-  box-shadow: none !important;
-  transition:
-    border-color 180ms ease,
-    background-color 180ms ease;
-}
-
-.mission-card:hover,
-.workout-card:hover,
-.study-card:hover,
-.history-card:hover,
-.item-card:hover,
-.inventory-item:hover,
-.record-item:hover,
-.log-item:hover,
-.finance-item:hover,
-.calendar-details-item:hover,
-.study-display-card:hover,
-.workout-display-card:hover,
-.compact-activity-card:hover {
-  transform: none;
-  border-color: rgba(20, 184, 166, 0.22) !important;
-  box-shadow: none !important;
 }
 
 .streak-card,
@@ -7016,7 +6080,7 @@ body.light-theme {
   padding: 0;
 }
 
-#atividades .study-checkbox {
+#atividades .apply-study-checkbox {
   width: 16px;
   height: 16px;
 }
@@ -7329,8 +6393,7 @@ body.light-theme {
 .history-card.completed {
   border-left-color: #22c55e !important;
   background:
-    linear-gradient(135deg, rgba(34, 197, 94, 0.14), rgba(34, 197, 94, 0) 52%),
-    rgba(7, 14, 26, 0.9) !important;
+    linear-gradient(135deg, rgba(34, 197, 94, 0.14), rgba(34, 197, 94, 0) 52%), rgba(7, 14, 26, 0.9) !important;
 }
 
 .history-list .mission-card.failed,
@@ -7483,39 +6546,6 @@ body.light-theme .sub-nav-btn.active {
   color: #0f766e;
 }
 
-body.light-theme .mission-card,
-body.light-theme .workout-card,
-body.light-theme .study-card,
-body.light-theme .history-card,
-body.light-theme .item-card,
-body.light-theme .inventory-item,
-body.light-theme .record-item,
-body.light-theme .log-item,
-body.light-theme .finance-item,
-body.light-theme .calendar-details-item,
-body.light-theme .study-display-card,
-body.light-theme .workout-display-card,
-body.light-theme .compact-activity-card {
-  background: rgba(255, 255, 255, 0.98) !important;
-  border-color: rgba(15, 23, 42, 0.08) !important;
-}
-
-body.light-theme .activity-filter,
-body.light-theme .form-group input,
-body.light-theme .form-group select,
-body.light-theme .form-group textarea,
-body.light-theme .series-input-field,
-body.light-theme .distance-input-field,
-body.light-theme .time-input-field,
-body.light-theme .goal-config input,
-body.light-theme .calendar-details-filter select,
-body.light-theme .cloud-sync-grid input,
-body.light-theme .workout-entries-input {
-  background: rgba(255, 255, 255, 0.98) !important;
-  border-color: rgba(15, 23, 42, 0.12) !important;
-  color: #162235 !important;
-}
-
 body.light-theme #perfil .level-xp-integrated,
 body.light-theme #perfil .streaks-container,
 body.light-theme #perfil .workouts-display,
@@ -7639,28 +6669,6 @@ body.light-theme .history-card.planned .mission-details {
   display: block !important;
 }
 
-#perfil .shop-inventory,
-#perfil .hero-logs-section,
-#perfil .streaks-container,
-#perfil .streak-card,
-#perfil .shop-item,
-#perfil .inventory-item,
-#atividades .calendar-panel,
-#atividades .calendar-details,
-#atividades .calendar-details-item,
-#atividades .calendar-rest-control {
-  background: var(--card-bg) !important;
-  background-image: none !important;
-  box-shadow: none !important;
-}
-
-#perfil .hero-logs-section,
-#perfil .streaks-container,
-#perfil .shop-inventory,
-#atividades .calendar-panel {
-  border: 1px solid var(--card-border) !important;
-}
-
 #perfil .hero-logs-section .log-item {
   border-left: 3px solid rgba(56, 189, 248, 0.35) !important;
   background: rgba(7, 14, 26, 0.78) !important;
@@ -7754,16 +6762,6 @@ body.light-theme .history-card.planned .mission-details {
   gap: 14px;
 }
 
-#perfil .buy-btn,
-#perfil .use-btn,
-#perfil .action-btn,
-#perfil .settings-btn,
-#atividades .calendar-action-btn,
-#gestao .finance-delete-btn {
-  box-shadow: none !important;
-  background-image: none !important;
-}
-
 #perfil .buy-btn {
   border: 1px solid rgba(56, 189, 248, 0.18);
   background: rgba(56, 189, 248, 0.12);
@@ -7775,68 +6773,8 @@ body.light-theme .history-card.planned .mission-details {
   border-color: rgba(56, 189, 248, 0.28);
 }
 
-#atividades .calendar-panel,
-#atividades .calendar-details {
-  border-radius: 14px !important;
-}
-
-#atividades .calendar-day.today,
-#atividades .calendar-day.selected,
-.calendar-day.streak-day,
-.calendar-day.failure-day,
-body.light-theme .calendar-day.streak-day,
-body.light-theme .calendar-day.failure-day {
-  box-shadow: none !important;
-}
-
-#atividades .calendar-details-item.pending,
-#atividades .calendar-details-item.completed {
-  background: rgba(7, 14, 26, 0.78) !important;
-}
-
-#atividades .calendar-details-item.pending {
-  border-color: rgba(245, 158, 11, 0.24) !important;
-}
-
-#atividades .calendar-details-item.completed {
-  border-color: rgba(34, 197, 94, 0.22) !important;
-  opacity: 1;
-}
-
-body.light-theme .settings-btn,
-body.light-theme .action-btn,
-body.light-theme .buy-btn,
-body.light-theme .use-btn,
-body.light-theme .edit-btn,
-body.light-theme .delete-btn,
-body.light-theme .primary-btn,
-body.light-theme .complete-btn,
-body.light-theme .complete-workout-btn,
-body.light-theme .complete-study-btn,
-body.light-theme .skip-btn,
-body.light-theme .calendar-nav-btn,
-body.light-theme .calendar-rest-btn,
-body.light-theme .calendar-action-btn,
-body.light-theme .finance-delete-btn {
-  color: #162235 !important;
-}
-
 body.light-theme .submit-btn {
   color: #f8fbff !important;
-}
-
-body.light-theme #perfil .hero-logs-section,
-body.light-theme #perfil .streaks-container,
-body.light-theme #perfil .shop-inventory,
-body.light-theme #perfil .shop-item,
-body.light-theme #perfil .inventory-item,
-body.light-theme #perfil .hero-logs-section .log-item,
-body.light-theme #atividades .calendar-panel,
-body.light-theme #atividades .calendar-details,
-body.light-theme #atividades .calendar-details-item,
-body.light-theme #atividades .calendar-rest-control {
-  background: rgba(255, 255, 255, 0.98) !important;
-  border-color: rgba(15, 23, 42, 0.08) !important;
 }
 
 body.light-theme #perfil .hero-logs-section .log-title,
@@ -8093,19 +7031,6 @@ body.light-theme #perfil .hero-logs-section .log-icon {
     min-width: 0;
   }
 
-  #atividades .activity-progress-bar .progress-text,
-  #atividades .planning-item-actions,
-  #atividades .calendar-today-title,
-  #gestao .finance-budget-top,
-  #gestao .finance-item,
-  #gestao .finance-item-actions,
-  #estatisticas .record-item,
-  #alimentacao .nutrition-day-head,
-  #alimentacao .nutrition-reports-toolbar,
-  #alimentacao .hydration-actions {
-    min-width: 0;
-  }
-
   #atividades .activity-progress-bar .progress-text {
     flex-wrap: wrap;
     gap: 4px 10px;
@@ -8141,22 +7066,6 @@ body.light-theme #perfil .hero-logs-section .log-icon {
   #atividades .planning-item-actions .submit-btn {
     min-width: 0;
     white-space: normal;
-  }
-
-  #atividades .calendar-today-title {
-    flex-wrap: wrap;
-  }
-
-  #atividades .calendar-today-main,
-  #atividades .calendar-today-actions {
-    width: 100%;
-    min-width: 0;
-  }
-
-  #atividades .calendar-action-btn {
-    min-width: 0;
-    white-space: normal;
-    justify-content: center;
   }
 
   #gestao .finance-card,
@@ -8449,19 +7358,7 @@ body.light-theme #perfil .hero-logs-section .log-icon {
     overflow: visible;
   }
 
-  #atividades .activity-actions:has(.skip-btn) {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  #atividades .activity-actions:has(.study-checkbox) {
-    grid-template-columns: 18px minmax(0, 1fr);
-  }
-
-  #atividades .activity-actions:has(.study-checkbox):has(.skip-btn) {
-    grid-template-columns: 18px minmax(0, 1fr) auto;
-  }
-
-  #atividades .activity-actions .study-checkbox {
+  #atividades .activity-actions .apply-study-checkbox {
     grid-column: 1;
     align-self: center;
   }
@@ -8486,26 +7383,10 @@ body.light-theme #perfil .hero-logs-section .log-icon {
     text-overflow: clip;
   }
 
-  #atividades .activity-actions:has(.skip-btn) .complete-btn,
-  #atividades .activity-actions:has(.skip-btn) .complete-workout-btn,
-  #atividades .activity-actions:has(.skip-btn) .complete-study-btn {
-    grid-column: 1;
-  }
-
-  #atividades .activity-actions:has(.study-checkbox) .complete-btn,
-  #atividades .activity-actions:has(.study-checkbox) .complete-workout-btn,
-  #atividades .activity-actions:has(.study-checkbox) .complete-study-btn {
-    grid-column: 2;
-  }
-
   #atividades .activity-actions .skip-btn {
     grid-column: 2;
     width: 38px;
     justify-self: start;
-  }
-
-  #atividades .activity-actions:has(.study-checkbox) .skip-btn {
-    grid-column: 3;
   }
 
   #atividades #completed-activities .mission-header {
@@ -8524,7 +7405,6 @@ body.light-theme #perfil .hero-logs-section .log-icon {
     justify-content: flex-start;
     min-width: 0;
   }
-
 }
 
 @media (max-width: 560px) {
@@ -8550,25 +7430,6 @@ body.light-theme #perfil .hero-logs-section .log-icon {
   #alimentacao .hydration-info {
     padding: 12px;
   }
-}
-
-body.light-theme .settings-btn,
-body.light-theme .activity-actions .skip-btn,
-body.light-theme .history-pagination-btn,
-body.light-theme .calendar-nav-btn,
-body.light-theme .action-btn {
-  background: rgba(15, 23, 42, 0.025);
-  color: #162235;
-  border-color: rgba(15, 23, 42, 0.08);
-}
-
-body.light-theme .settings-btn:hover,
-body.light-theme .activity-actions .skip-btn:hover,
-body.light-theme .history-pagination-btn:hover,
-body.light-theme .calendar-nav-btn:hover,
-body.light-theme .action-btn:hover {
-  background: rgba(15, 23, 42, 0.045);
-  border-color: rgba(15, 23, 42, 0.1);
 }
 
 body.light-theme .activity-due-date {
@@ -8796,67 +7657,6 @@ body.light-theme .activity-due-date {
     justify-content: stretch;
   }
 
-  .planning-dashboard,
-  .profile-header,
-  .profile-tabs,
-  .shop-inventory,
-  .settings-section,
-  .calendar-panel,
-  .form-container,
-  .table-container,
-  .records-container,
-  .chart-box,
-  .modal-content,
-  .preparation-section {
-    border-radius: 12px !important;
-  }
-
-  .profile-header,
-  .form-container,
-  .calendar-panel,
-  .table-container,
-  .records-container,
-  .chart-box,
-  .preparation-section,
-  .planning-dashboard {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
-
-  .mission-card,
-  .workout-card,
-  .study-card,
-  .history-card,
-  .item-card,
-  .inventory-item,
-  .record-item,
-  .log-item,
-  .finance-item,
-  .calendar-details-item,
-  .study-display-card,
-  .workout-display-card,
-  .compact-activity-card {
-    border-radius: 10px !important;
-  }
-
-  .form-container,
-  .table-container,
-  .records-container,
-  .chart-box,
-  .planning-dashboard,
-  .calendar-panel,
-  .profile-header,
-  .settings-section,
-  .shop-inventory,
-  .hero-logs-section,
-  .streaks-container,
-  .finance-card,
-  .nutrition-card,
-  .hydration-container {
-    padding-top: 10px;
-    padding-bottom: 10px;
-  }
-
   .form-group label,
   .mission-details,
   .workout-details,
@@ -8868,95 +7668,9 @@ body.light-theme .activity-due-date {
     font-size: 0.78rem;
   }
 
-  .action-btn,
-  .submit-btn,
-  .settings-btn,
-  .buy-btn,
-  .use-btn,
-  .edit-btn,
-  .delete-btn,
-  .primary-btn,
-  .complete-btn,
-  .complete-workout-btn,
-  .complete-study-btn,
-  .skip-btn,
-  .finance-delete-btn,
-  .calendar-action-btn,
-  .calendar-nav-btn,
-  .calendar-rest-btn {
-    font-size: 0.72rem;
-    min-height: 34px;
-    padding-top: 6px;
-    padding-bottom: 6px;
-  }
-
-  .item-card,
-  .mission-card,
-  .workout-card,
-  .study-card,
-  .history-card,
-  .inventory-item,
-  .record-item,
-  .log-item,
-  .finance-item,
-  .calendar-details-item,
-  .study-display-card,
-  .workout-display-card {
-    padding: 10px 11px;
-  }
-
-  .calendar-header {
-    gap: 6px;
-    margin-bottom: 8px;
-  }
-
-  .calendar-title {
-    flex: 1;
-    text-align: center;
-    font-size: 0.84rem;
-  }
-
-  .calendar-weekdays,
-  .calendar-grid {
-    gap: 5px;
-  }
-
-  .calendar-day {
-    min-height: 46px;
-    padding: 4px;
-    gap: 3px;
-  }
-
-  .calendar-day-number {
-    font-size: 0.72rem;
-  }
-
-  .calendar-markers {
-    gap: 4px;
-  }
-
   .marker {
     width: 6px;
     height: 6px;
-  }
-
-  .calendar-details-filter {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .calendar-details-filter select {
-    min-width: 0;
-    width: 100%;
-  }
-
-  .calendar-details-item {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .calendar-details-tags {
-    width: 100%;
   }
 
   .finance-summary,
@@ -9082,27 +7796,6 @@ body.light-theme .activity-due-date {
     font-size: 0.82rem;
   }
 
-  .mission-card,
-  .workout-card,
-  .study-card,
-  .history-card,
-  .item-card,
-  .inventory-item,
-  .record-item,
-  .log-item,
-  .finance-item,
-  .calendar-details-item,
-  .study-display-card,
-  .workout-display-card,
-  .attribute-card,
-  .streak-card,
-  .finance-card,
-  .nutrition-card,
-  .nutrition-summary-card,
-  .nutrition-goal-item {
-    padding: 8px 9px;
-  }
-
   #perfil .streaks-grid,
   #perfil .attributes-grid,
   #perfil .items-grid,
@@ -9140,12 +7833,6 @@ body.light-theme .activity-due-date {
   .activity-actions {
     justify-content: stretch;
     gap: 6px;
-  }
-
-  .activity-actions .complete-btn,
-  .activity-actions .skip-btn,
-  .calendar-nav-btn {
-    min-height: 38px;
   }
 
   .activity-actions .complete-btn {
@@ -9224,24 +7911,6 @@ body.light-theme .activity-due-date {
   #atividades .activity-actions .skip-btn {
     flex: 0 0 36px;
     min-height: 36px;
-  }
-
-  .calendar-weekdays {
-    font-size: 0.62rem;
-  }
-
-  .calendar-day {
-    min-height: 38px;
-    padding: 3px;
-  }
-
-  .calendar-rest-control {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .calendar-rest-btn {
-    width: 100%;
   }
 
   .modal {
@@ -9336,19 +8005,6 @@ body.light-theme .activity-due-date {
   .stats-item {
     min-height: 38px;
   }
-
-  .calendar-weekdays,
-  .calendar-grid {
-    gap: 4px;
-  }
-
-  .calendar-title {
-    font-size: 0.76rem;
-  }
-
-  .calendar-day {
-    min-height: 34px;
-  }
 }
 
 /* Final mobile polish for the activities tab */
@@ -9405,157 +8061,6 @@ body.light-theme .activity-due-date {
   #atividades .history-list,
   #atividades .items-list {
     overflow-x: clip;
-  }
-
-  #atividades #daily-activities .compact-activity-card {
-    display: grid;
-    grid-template-columns: 5px minmax(0, 1fr);
-    grid-template-areas:
-      'bar main'
-      'bar meta'
-      'bar actions';
-    grid-auto-flow: row;
-    grid-auto-rows: auto;
-    align-items: start;
-    column-gap: 10px;
-    row-gap: 8px;
-    padding: 11px 10px;
-    min-height: 0;
-    overflow: visible;
-  }
-
-  #atividades #daily-activities .compact-activity-card > * {
-    min-width: 0;
-  }
-
-  #atividades #daily-activities .activity-color-bar {
-    grid-area: bar;
-    min-height: 100%;
-    align-self: stretch;
-  }
-
-  #atividades #daily-activities .activity-main {
-    grid-area: main;
-    display: grid;
-    grid-template-columns: 22px minmax(0, 1fr);
-    align-items: start;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  #atividades #daily-activities .activity-name-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 5px 6px;
-    min-width: 0;
-  }
-
-  #atividades #daily-activities .activity-name {
-    min-width: 0;
-    font-size: 0.82rem;
-    line-height: 1.25;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  #atividades #daily-activities .activity-meta {
-    grid-area: meta;
-    display: flex;
-    justify-content: flex-start;
-    max-width: none;
-    min-width: 0;
-  }
-
-  #atividades #daily-activities .activity-due-date {
-    min-width: 0;
-    max-width: 100%;
-    justify-content: flex-start;
-    text-align: left;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-  }
-
-  #atividades #daily-activities .activity-actions {
-    grid-area: actions;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-auto-rows: minmax(42px, auto);
-    align-items: stretch;
-    justify-content: stretch;
-    gap: 8px;
-    width: 100%;
-    min-width: 0;
-    margin-left: 0;
-  }
-
-  #atividades #daily-activities .activity-actions.has-skip {
-    grid-template-columns: minmax(0, 1fr) 42px;
-  }
-
-  #atividades #daily-activities .activity-actions.has-study-toggle {
-    grid-template-columns: 22px minmax(0, 1fr);
-  }
-
-  #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
-    grid-template-columns: 22px minmax(0, 1fr) 42px;
-  }
-
-  #atividades #daily-activities .activity-actions .study-checkbox {
-    grid-column: 1;
-    align-self: center;
-    justify-self: center;
-    width: 18px;
-    height: 18px;
-    margin: 0;
-  }
-
-  #atividades #daily-activities .activity-actions .complete-btn,
-  #atividades #daily-activities .activity-actions .complete-workout-btn,
-  #atividades #daily-activities .activity-actions .complete-study-btn,
-  #atividades #daily-activities .activity-actions .skip-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
-    min-width: 0;
-    max-width: none;
-    min-height: 42px;
-    padding: 8px 10px;
-    font-size: 0.74rem;
-    line-height: 1.2;
-    text-align: center;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-  }
-
-  #atividades #daily-activities .activity-actions .complete-btn,
-  #atividades #daily-activities .activity-actions .complete-workout-btn,
-  #atividades #daily-activities .activity-actions .complete-study-btn {
-    grid-column: 1;
-  }
-
-  #atividades #daily-activities .activity-actions.has-study-toggle .complete-btn,
-  #atividades #daily-activities .activity-actions.has-study-toggle .complete-workout-btn,
-  #atividades #daily-activities .activity-actions.has-study-toggle .complete-study-btn {
-    grid-column: 2;
-  }
-
-  #atividades #daily-activities .activity-actions .skip-btn {
-    grid-column: 2;
-    width: 42px;
-    min-width: 42px;
-    padding: 0;
-  }
-
-  #atividades #daily-activities .activity-actions.has-study-toggle .skip-btn {
-    grid-column: 3;
   }
 
   #atividades #completed-activities .mission-header {
@@ -9617,18 +8122,189 @@ body.light-theme .activity-due-date {
 }
 
 @media (max-width: 420px) {
-  #atividades .sub-nav {
-    grid-template-columns: 1fr;
-  }
-
+  #atividades .sub-nav,
   #atividades .timeline-day-actions {
     grid-template-columns: 1fr;
   }
+}
+
+/* Daily mobile cards: keep content and actions in separate columns. */
+@media (max-width: 560px) {
+  #atividades #daily-activities {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-x: hidden;
+  }
 
   #atividades #daily-activities .compact-activity-card {
-    padding: 10px 8px;
-    column-gap: 8px;
-    row-gap: 7px;
+    display: grid;
+    grid-template-columns: 5px minmax(0, 1fr) minmax(86px, max-content);
+    grid-template-areas:
+      'bar main actions'
+      'bar meta actions';
+    grid-auto-flow: row;
+    align-items: stretch;
+    column-gap: 9px;
+    row-gap: 6px;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+    padding: 10px 9px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  #atividades #daily-activities .activity-color-bar {
+    grid-area: bar;
+    align-self: stretch;
+    height: auto;
+    min-height: 100%;
+  }
+
+  #atividades #daily-activities .activity-main {
+    grid-area: main;
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    align-items: start;
+    gap: 7px;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  #atividades #daily-activities .activity-name-row {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  #atividades #daily-activities .activity-name {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 0.8rem;
+    line-height: 1.25;
+    white-space: normal;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-overflow: clip;
+  }
+
+  #atividades #daily-activities .activity-emergency-badge {
+    max-width: 100%;
+  }
+
+  #atividades #daily-activities .activity-meta {
+    grid-area: meta;
+    align-self: end;
+    min-width: 0;
+    max-width: 100%;
+    width: auto;
+    overflow: hidden;
+  }
+
+  #atividades #daily-activities .activity-due-date {
+    min-width: 0;
+    max-width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: clip;
+  }
+
+  #atividades #daily-activities .activity-actions {
+    grid-area: actions;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(36px, auto);
+    align-content: center;
+    align-self: stretch;
+    justify-content: stretch;
+    gap: 6px;
+    width: 100%;
+    min-width: 86px;
+    max-width: 128px;
+    margin: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  #atividades #daily-activities .activity-actions.has-skip {
+    grid-template-columns: minmax(64px, 1fr) 34px;
+    max-width: 128px;
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle {
+    grid-template-columns: 18px minmax(54px, 1fr);
+    max-width: 118px;
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
+    grid-template-columns: 18px minmax(54px, 1fr) 34px;
+    max-width: 144px;
+  }
+
+  #atividades #daily-activities .activity-actions .apply-study-checkbox {
+    grid-column: 1;
+    align-self: center;
+    justify-self: center;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
+
+  #atividades #daily-activities .activity-actions .complete-btn,
+  #atividades #daily-activities .activity-actions .complete-workout-btn,
+  #atividades #daily-activities .activity-actions .complete-study-btn,
+  #atividades #daily-activities .activity-actions .skip-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 36px;
+    width: 100%;
+    padding: 6px 7px;
+    font-size: 0.7rem;
+    line-height: 1.1;
+    white-space: normal;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: clip;
+    box-sizing: border-box;
+  }
+
+  #atividades #daily-activities .activity-actions .complete-btn,
+  #atividades #daily-activities .activity-actions .complete-workout-btn,
+  #atividades #daily-activities .activity-actions .complete-study-btn {
+    grid-column: 1;
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle .complete-btn,
+  #atividades #daily-activities .activity-actions.has-study-toggle .complete-workout-btn,
+  #atividades #daily-activities .activity-actions.has-study-toggle .complete-study-btn {
+    grid-column: 2;
+  }
+
+  #atividades #daily-activities .activity-actions .skip-btn {
+    grid-column: 2;
+    width: 34px;
+    min-width: 34px;
+    padding: 0;
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle .skip-btn {
+    grid-column: 3;
+  }
+}
+
+@media (max-width: 420px) {
+  #atividades #daily-activities .compact-activity-card {
+    grid-template-columns: 4px minmax(0, 1fr) minmax(78px, max-content);
+    column-gap: 7px;
+    padding: 9px 8px;
   }
 
   #atividades #daily-activities .activity-main {
@@ -9637,35 +8313,42 @@ body.light-theme .activity-due-date {
   }
 
   #atividades #daily-activities .activity-name {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
   }
 
   #atividades #daily-activities .activity-actions {
-    grid-auto-rows: minmax(40px, auto);
+    min-width: 78px;
+    max-width: 118px;
+    grid-auto-rows: minmax(34px, auto);
+  }
+
+  #atividades #daily-activities .activity-actions.has-skip {
+    grid-template-columns: minmax(54px, 1fr) 32px;
+    max-width: 118px;
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle {
+    grid-template-columns: 18px minmax(48px, 1fr);
+    max-width: 108px;
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
+    grid-template-columns: 18px minmax(48px, 1fr) 32px;
+    max-width: 132px;
   }
 
   #atividades #daily-activities .activity-actions .complete-btn,
   #atividades #daily-activities .activity-actions .complete-workout-btn,
   #atividades #daily-activities .activity-actions .complete-study-btn,
   #atividades #daily-activities .activity-actions .skip-btn {
-    min-height: 40px;
-    font-size: 0.7rem;
-  }
-
-  #atividades #daily-activities .activity-actions.has-skip {
-    grid-template-columns: minmax(0, 1fr) 40px;
-  }
-
-  #atividades #daily-activities .activity-actions.has-study-toggle {
-    grid-template-columns: 20px minmax(0, 1fr);
-  }
-
-  #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
-    grid-template-columns: 20px minmax(0, 1fr) 40px;
+    min-height: 34px;
+    font-size: 0.66rem;
+    padding: 5px 6px;
   }
 
   #atividades #daily-activities .activity-actions .skip-btn {
-    width: 40px;
-    min-width: 40px;
+    width: 32px;
+    min-width: 32px;
+    padding: 0;
   }
 }

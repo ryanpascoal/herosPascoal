@@ -42,7 +42,7 @@ function runDeferredStartupResets() {
   if (window.__startupUiReady !== true) return true;
   if (typeof updateStreaks === 'function') updateStreaks();
   if (typeof updateUI === 'function') {
-    updateUI({ mode: 'full', forceCalendar: true, forceNutrition: true });
+    updateUI({ mode: 'full', forceNutrition: true });
   }
   return true;
 }
@@ -121,9 +121,39 @@ function cloneDefaultAppState() {
   return JSON.parse(JSON.stringify(APP_DEFAULTS));
 }
 
+function cloneStateValue(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function isPlainStateObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function mergeStateWithDefaults(defaultValue, sourceValue) {
+  if (Array.isArray(defaultValue)) {
+    return Array.isArray(sourceValue) ? cloneStateValue(sourceValue) : cloneStateValue(defaultValue);
+  }
+
+  if (isPlainStateObject(defaultValue)) {
+    if (!isPlainStateObject(sourceValue)) return cloneStateValue(defaultValue);
+    const merged = cloneStateValue(defaultValue);
+    Object.keys(sourceValue).forEach((key) => {
+      merged[key] =
+        key in defaultValue
+          ? mergeStateWithDefaults(defaultValue[key], sourceValue[key])
+          : cloneStateValue(sourceValue[key]);
+    });
+    return merged;
+  }
+
+  return sourceValue === undefined ? cloneStateValue(defaultValue) : cloneStateValue(sourceValue);
+}
+
 function replaceAppState(source) {
   const nextState =
-    source && typeof source === 'object' ? JSON.parse(JSON.stringify(source)) : cloneDefaultAppState();
+    source && typeof source === 'object'
+      ? mergeStateWithDefaults(APP_DEFAULTS, source)
+      : cloneDefaultAppState();
   Object.keys(appData).forEach((key) => delete appData[key]);
   Object.assign(appData, nextState);
 }
@@ -134,28 +164,14 @@ function finalizeLoadedState() {
   }
 }
 
-const LOCAL_CACHE_HISTORY_LIMIT = 240;
-const LOCAL_CACHE_HERO_LOG_LIMIT = 120;
-
-function getRecentItemsForLocalCache(list, limit = LOCAL_CACHE_HISTORY_LIMIT) {
-  if (!Array.isArray(list)) return [];
-  if (!Number.isFinite(limit) || limit <= 0) return list.slice();
-  return list.length > limit ? list.slice(-limit) : list.slice();
-}
-
 function buildLocalCachePayload() {
   const payload = JSON.parse(JSON.stringify(appData));
 
-  payload.completedMissions = getRecentItemsForLocalCache(payload.completedMissions);
-  payload.completedWorks = getRecentItemsForLocalCache(payload.completedWorks);
-  payload.completedWorkouts = getRecentItemsForLocalCache(payload.completedWorkouts);
-  payload.completedStudies = getRecentItemsForLocalCache(payload.completedStudies);
-  payload.heroLogs = getRecentItemsForLocalCache(payload.heroLogs, LOCAL_CACHE_HERO_LOG_LIMIT);
-
   payload.localCacheMeta = {
     cachedAt: new Date().toISOString(),
-    historyWindow: LOCAL_CACHE_HISTORY_LIMIT,
-    heroLogsWindow: LOCAL_CACHE_HERO_LOG_LIMIT,
+    historyWindow: null,
+    heroLogsWindow: null,
+    complete: true,
     totalCounts: {
       completedMissions: Array.isArray(appData.completedMissions)
         ? appData.completedMissions.length
@@ -418,6 +434,7 @@ function showDialog(options = {}) {
     message = '',
     confirmText = 'Confirmar',
     cancelText = 'Cancelar',
+    cancelValue = null,
     requireInput = false,
     inputValue = '',
     inputPlaceholder = '',
@@ -471,7 +488,7 @@ function showDialog(options = {}) {
     };
 
     document.addEventListener('keydown', onKeyDown);
-    if (cancelBtn) cancelBtn.onclick = () => finish(null);
+    if (cancelBtn) cancelBtn.onclick = () => finish(cancelValue);
     if (closeBtn) closeBtn.onclick = () => finish(null);
     if (confirmBtn)
       confirmBtn.onclick = () => {
@@ -511,6 +528,7 @@ async function askConfirmation(message, options = {}) {
     message,
     confirmText: options.confirmText || 'Confirmar',
     cancelText: options.cancelText || 'Cancelar',
+    cancelValue: false,
   });
   if (options.returnNullOnDismiss === true && result === null) {
     return null;

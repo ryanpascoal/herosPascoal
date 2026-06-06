@@ -301,7 +301,7 @@
         <div class="cloud-access-lock-badge">Sincronização obrigatória</div>
         <h3 id="cloud-access-lock-title">Faça login para usar o HEROSPASCOAL</h3>
         <p id="cloud-access-lock-text">
-          O modo offline foi desativado para evitar conflitos. Seus dados locais sempre terão prioridade ao sincronizar.
+          O modo offline foi desativado para evitar conflitos. A nuvem é a fonte principal do progresso.
         </p>
         <button type="button" class="submit-btn" id="cloud-access-lock-action">Ir para login</button>
       </div>
@@ -320,7 +320,7 @@
     const title = options.title || 'Faça login para usar o HEROSPASCOAL';
     const text =
       options.text ||
-      'O modo offline foi desativado para evitar conflitos. Seus dados locais sempre terão prioridade ao sincronizar.';
+      'O modo offline foi desativado para evitar conflitos. A nuvem é a fonte principal do progresso.';
     const actionLabel = options.actionLabel || 'Ir para login';
     const hideAction = options.hideAction === true;
 
@@ -355,7 +355,7 @@
       '<button id="cloud-logout-btn" type="button">Sair</button>' +
       '<button id="cloud-sync-now-btn" type="button">Sincronizar Agora</button>' +
       '<span id="cloud-user-label">N\u00e3o autenticado</span>' +
-      '<span id="cloud-sync-status" class="warn">Modo local</span>';
+      '<span id="cloud-sync-status" class="warn">Login obrigatório</span>';
     document.body.appendChild(panel);
   }
 
@@ -546,12 +546,11 @@
     }
     if (typeof updateUI === 'function') {
       const uiMode = options.uiMode || 'activity';
-      const forceCalendar = options.forceCalendar === true;
       const forceNutrition = options.forceNutrition === true;
       applyingRemoteState = true;
       window.__suppressSave = true;
       try {
-        updateUI({ mode: uiMode, forceCalendar, forceNutrition });
+        updateUI({ mode: uiMode, forceNutrition });
       } finally {
         window.__suppressSave = false;
         applyingRemoteState = false;
@@ -560,26 +559,17 @@
     return true;
   }
 
-  async function askConflictKeepLocal() {
-    const message =
-      'Conflito detectado: dados mudaram em outro dispositivo enquanto havia alteracoes locais. Deseja manter a versao LOCAL e sobrescrever a nuvem?';
-    if (typeof askConfirmation === 'function') {
-      return await askConfirmation(message, {
-        title: 'Conflito de sincronizacao',
-        confirmText: 'Manter local',
-        cancelText: 'Usar nuvem',
-      });
-    }
-    return confirm(message);
-  }
-
   async function resolveRemoteConflict(remote) {
     if (!remote || typeof remote !== 'object') return;
     conflictInProgress = true;
     syncBlockedByConflict = true;
-    setSyncStatus('Dados locais priorizados. Atualizando nuvem...', 'syncing');
-    hasUnsyncedLocalChanges = true;
-    await pushCloud(true);
+    setSyncStatus('Conflito detectado. Aplicando versão da nuvem...', 'syncing');
+    applyRemoteState(remote, {
+      statusMessage: 'Versão da nuvem aplicada',
+      statusKind: 'ok',
+      uiMode: 'activity',
+      skipIfUnchanged: true,
+    });
     syncBlockedByConflict = false;
     conflictInProgress = false;
 
@@ -665,18 +655,38 @@
       statusMessage: 'Dados carregados da nuvem',
       statusKind: 'ok',
       uiMode: 'full',
-      forceCalendar: true,
       skipIfUnchanged: true,
     });
     if (!applied) return { hasRemoteData: true };
     return { hasRemoteData: true };
   }
 
-  async function pullCloudWithLocalPriority(uid) {
+  async function pullCloudAuthoritative(uid) {
     const snap = await getProgressRef(uid).get();
     if (!snap.exists) {
+      const syncPolicyApi = getSyncPolicyApi();
+      const localData = buildSerializableData();
+      const decision =
+        typeof syncPolicyApi.resolvePreferredSyncAction === 'function'
+          ? syncPolicyApi.resolvePreferredSyncAction({
+              localData,
+              remoteData: null,
+              defaultData:
+                typeof cloneDefaultAppState === 'function' ? cloneDefaultAppState() : APP_DEFAULTS,
+            })
+          : { action: 'push_local', reason: 'remote_missing' };
+
+      if (decision.action === 'start_fresh') {
+        if (typeof replaceAppState === 'function') {
+          replaceAppState(
+            typeof cloneDefaultAppState === 'function' ? cloneDefaultAppState() : APP_DEFAULTS
+          );
+        }
+        setSyncStatus('Nenhum progresso na nuvem. Iniciando estado novo...', 'warn');
+      }
+
       updateServerMetaFromLocal();
-      return { hasRemoteData: false, shouldPushLocal: true };
+      return { hasRemoteData: false, shouldPushLocal: true, decision };
     }
 
     const remote = snap.data() || {};
@@ -701,7 +711,7 @@
       return {
         hasRemoteData: true,
         shouldPushLocal: true,
-        preferredSource: 'local',
+        preferredSource: 'local-bootstrap',
         decision,
       };
     }
@@ -716,7 +726,7 @@
       return {
         hasRemoteData: true,
         shouldPushLocal: false,
-        preferredSource: 'local',
+        preferredSource: 'unchanged',
         decision,
       };
     }
@@ -725,7 +735,6 @@
       statusMessage: 'Dados carregados da nuvem',
       statusKind: 'ok',
       uiMode: 'full',
-      forceCalendar: true,
       skipIfUnchanged: true,
     });
     if (!applied) {
@@ -791,6 +800,12 @@
         appData.dailyStudies = [];
         cleanupOldDailyMissions();
         cleanupOldDailyWorks();
+        if (typeof checkOverdueMissions === 'function') {
+          checkOverdueMissions({ skipWeekly: true });
+        }
+        if (typeof checkOverdueWorks === 'function') {
+          checkOverdueWorks({ skipWeekly: true });
+        }
         generateDailyActivities();
 
         serverMeta.lastDailyReset = today;
@@ -824,7 +839,9 @@
 
     window.resetProgress = async function () {
       if (
-        !confirm('Tem certeza que deseja resetar todo o progresso? Isso nao pode ser desfeito.')
+        !confirm(
+          'Tem certeza que deseja resetar o progresso? Seus alimentos cadastrados serao preservados. Isso nao pode ser desfeito.'
+        )
       )
         return;
       const confirmationText = prompt(
@@ -1049,7 +1066,7 @@
       });
 
       try {
-        const result = await pullCloudWithLocalPriority(user.uid);
+        const result = await pullCloudAuthoritative(user.uid);
         cloudReady = true;
         startRealtimeSync(user.uid);
         releaseStartupGate();
@@ -1058,7 +1075,7 @@
           await pushCloud(true);
         }
         if (typeof updateStreaks === 'function') updateStreaks();
-        if (typeof updateUI === 'function') updateUI({ mode: 'full', forceCalendar: true });
+        if (typeof updateUI === 'function') updateUI({ mode: 'full' });
         setAuthEntryState(true);
         setCloudAccessLock(false);
       } catch (err) {
@@ -1114,4 +1131,3 @@
 
   init();
 })();
-

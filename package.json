@@ -6,8 +6,8 @@
   "scripts": {
     "test": "node --test --test-isolation=none tests/*.test.js",
     "lint": "eslint . --ext .js",
-    "format": "prettier --write \"app-*.js\" \"cloud-sync.js\" \"saveManager.js\" \"index.html\" \"tests/*.js\" \"eslint.config.js\" \"package.json\" \".prettierrc\"",
-    "format:check": "prettier --check \"app-*.js\" \"cloud-sync.js\" \"saveManager.js\" \"index.html\" \"tests/*.js\" \"eslint.config.js\" \"package.json\" \".prettierrc\""
+    "format": "prettier --write \"app-*.js\" \"cloud-sync.js\" \"saveManager.js\" \"index.html\" \"styles.css\" \"tests/*.js\" \"eslint.config.js\" \"package.json\" \".prettierrc\"",
+    "format:check": "prettier --check \"app-*.js\" \"cloud-sync.js\" \"saveManager.js\" \"index.html\" \"styles.css\" \"tests/*.js\" \"eslint.config.js\" \"package.json\" \".prettierrc\""
   },
   "keywords": [],
   "author": "",

@@ -704,9 +704,18 @@ function getPendingFailureReviewsForDate(category, dateKey) {
   );
 }
 
+function discardResolvedPendingFailureReview(review) {
+  if (review?.id !== undefined) {
+    removePendingFailureReview(review.id);
+  }
+  return false;
+}
+
 function recordCompletedMissionFromReview(mission, completedDate, review = null) {
   if (!mission || !completedDate) return false;
-  if (hasResolvedActivityForDate('mission', mission, completedDate)) return false;
+  if (hasResolvedActivityForDate('mission', mission, completedDate)) {
+    return discardResolvedPendingFailureReview(review);
+  }
   if (review) removePendingFailureReview(review.id);
 
   const completedAt = buildHistoryActionTimestamp(completedDate);
@@ -778,7 +787,9 @@ function recordCompletedMissionFromReview(mission, completedDate, review = null)
 
 function recordCompletedWorkFromReview(work, completedDate, review = null) {
   if (!work || !completedDate) return false;
-  if (hasResolvedActivityForDate('work', work, completedDate)) return false;
+  if (hasResolvedActivityForDate('work', work, completedDate)) {
+    return discardResolvedPendingFailureReview(review);
+  }
   if (review) removePendingFailureReview(review.id);
 
   const completedAt = buildHistoryActionTimestamp(completedDate);
@@ -851,7 +862,9 @@ function recordCompletedWorkFromReview(work, completedDate, review = null) {
 
 function recordFailedMissionFromReview(mission, missedDate, review = null) {
   if (!mission || !missedDate) return false;
-  if (hasResolvedActivityForDate('mission', mission, missedDate)) return false;
+  if (hasResolvedActivityForDate('mission', mission, missedDate)) {
+    return discardResolvedPendingFailureReview(review);
+  }
   if (review) removePendingFailureReview(review.id);
 
   const failedAt = buildHistoryActionTimestamp(missedDate);
@@ -893,7 +906,9 @@ function recordFailedMissionFromReview(mission, missedDate, review = null) {
 
 function recordFailedWorkFromReview(work, missedDate, review = null) {
   if (!work || !missedDate) return false;
-  if (hasResolvedActivityForDate('work', work, missedDate)) return false;
+  if (hasResolvedActivityForDate('work', work, missedDate)) {
+    return discardResolvedPendingFailureReview(review);
+  }
   if (review) removePendingFailureReview(review.id);
 
   const failedAt = buildHistoryActionTimestamp(missedDate);
@@ -935,7 +950,9 @@ function recordFailedWorkFromReview(work, missedDate, review = null) {
 
 function recordCompletedWorkoutFromReview(workoutDay, completedDate, review = null) {
   if (!workoutDay || !completedDate) return false;
-  if (hasResolvedActivityForDate('workout', workoutDay, completedDate)) return false;
+  if (hasResolvedActivityForDate('workout', workoutDay, completedDate)) {
+    return discardResolvedPendingFailureReview(review);
+  }
   if (review) removePendingFailureReview(review.id);
 
   const workout = (appData.workouts || []).find(
@@ -1023,7 +1040,9 @@ function recordCompletedWorkoutFromReview(workoutDay, completedDate, review = nu
 
 function recordCompletedStudyFromReview(studyDay, completedDate, review = null) {
   if (!studyDay || !completedDate) return false;
-  if (hasResolvedActivityForDate('study', studyDay, completedDate)) return false;
+  if (hasResolvedActivityForDate('study', studyDay, completedDate)) {
+    return discardResolvedPendingFailureReview(review);
+  }
   if (review) removePendingFailureReview(review.id);
 
   const study = (appData.studies || []).find(
@@ -1115,7 +1134,9 @@ function recordCompletedStudyFromReview(studyDay, completedDate, review = null) 
 
 function recordFailedWorkoutFromReview(workoutDay, missedDate, review = null) {
   if (!workoutDay || !missedDate) return false;
-  if (hasResolvedActivityForDate('workout', workoutDay, missedDate)) return false;
+  if (hasResolvedActivityForDate('workout', workoutDay, missedDate)) {
+    return discardResolvedPendingFailureReview(review);
+  }
   if (review) removePendingFailureReview(review.id);
 
   appData.completedWorkouts.push({
@@ -1145,7 +1166,9 @@ function recordFailedWorkoutFromReview(workoutDay, missedDate, review = null) {
 
 function recordFailedStudyFromReview(studyDay, missedDate, review = null) {
   if (!studyDay || !missedDate) return false;
-  if (hasResolvedActivityForDate('study', studyDay, missedDate)) return false;
+  if (hasResolvedActivityForDate('study', studyDay, missedDate)) {
+    return discardResolvedPendingFailureReview(review);
+  }
   if (review) removePendingFailureReview(review.id);
 
   appData.completedStudies.push({
@@ -1217,6 +1240,10 @@ async function processPendingFailureReviews() {
         removePendingFailureReview(review.id);
         continue;
       }
+      if (hasResolvedActivityForDate(review.category, item, review.missedDate)) {
+        removePendingFailureReview(review.id);
+        continue;
+      }
 
       const label = getActivityLabelByCategory(review.category);
       const formattedDate =
@@ -1246,7 +1273,7 @@ async function processPendingFailureReviews() {
     updateStreaks();
   }
   if (typeof updateUI === 'function') {
-    updateUI({ mode: 'full', forceCalendar: true, forceNutrition: true });
+    updateUI({ mode: 'full', forceNutrition: true });
   }
   return true;
 }

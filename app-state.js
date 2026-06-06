@@ -149,14 +149,6 @@ function getLocalDateString(date = getGameNow()) {
   return `${year}-${month}-${day}`;
 }
 
-// Estado do calendário (aba Calendários)
-let calendarState = {
-  month: getGameNow().getMonth(),
-  year: getGameNow().getFullYear(),
-  selectedDate: null,
-  detailsFilter: 'all',
-};
-
 const REST_DAY_COST = 160;
 const SKIP_ACTIVITY_COST = 25;
 const NUTRITION_MEALS = {
@@ -203,7 +195,6 @@ Object.assign(globalThis, {
   APP_DEFAULTS,
   getGameNow,
   getLocalDateString,
-  calendarState,
   REST_DAY_COST,
   SKIP_ACTIVITY_COST,
   NUTRITION_MEALS,

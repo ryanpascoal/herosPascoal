@@ -101,6 +101,10 @@ async function loadOptionalExternalScriptsBestEffort() {
   for (const src of OPTIONAL_EXTERNAL_SCRIPT_ORDER) {
     try {
       await loadScriptSequentially(src);
+      if (src.includes('chart.js') && typeof window.updateCharts === 'function') {
+        window.initCharts?.();
+        window.updateCharts();
+      }
     } catch (error) {
       console.warn(`Script externo indisponível: ${src}`, error);
     }

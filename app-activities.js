@@ -42,6 +42,14 @@ function compareManagedActivityEntries(left, right) {
   return String(left?.item?.name || '').localeCompare(String(right?.item?.name || ''), 'pt-BR');
 }
 
+function parseLocalDateString(dateStr) {
+  if (dateStr instanceof Date) return dateStr;
+  if (typeof dateStr !== 'string') return new Date(dateStr);
+  const parts = dateStr.split('-').map((part) => parseInt(part, 10));
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date(dateStr);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
 function getEmergencyBadgeHtml(entry, className = 'activity-emergency-badge') {
   if (!isUrgentWorkActivity(entry)) return '';
   return `<span class="${className}">Urgente</span>`;
@@ -983,7 +991,7 @@ function renderUnifiedTodayActivities() {
       `;
     } else if (isStudy && dailyEntry) {
       actionContent = `
-        <input type="checkbox" class="study-checkbox" data-id="${dailyEntry.id}" ${dailyEntry.completed ? 'checked' : ''}>
+        <input type="checkbox" class="apply-study-checkbox" data-id="${dailyEntry.id}" ${dailyEntry.applied ? 'checked' : ''}>
         <button class="complete-btn ${completeClass}" data-id="${actionId}">
           <i class="fas fa-check"></i>
         </button>
@@ -1663,33 +1671,33 @@ function formatRecordValueWithDate(record) {
 
 // Atualizar estatísticas
 function updateStatistics() {
+  const stats = appData.statistics || {};
   const statWorkoutsDone = document.getElementById('stat-workouts-done');
-  if (statWorkoutsDone) statWorkoutsDone.textContent = appData.statistics.workoutsDone || 0;
+  if (statWorkoutsDone) statWorkoutsDone.textContent = stats.workoutsDone || 0;
   const statWorkoutsFailed = document.getElementById('stat-workouts-failed');
-  if (statWorkoutsFailed) statWorkoutsFailed.textContent = appData.statistics.workoutsFailed || 0;
+  if (statWorkoutsFailed) statWorkoutsFailed.textContent = stats.workoutsFailed || 0;
   const statWorkoutsIgnored = document.getElementById('stat-workouts-ignored');
-  if (statWorkoutsIgnored)
-    statWorkoutsIgnored.textContent = appData.statistics.workoutsIgnored || 0;
+  if (statWorkoutsIgnored) statWorkoutsIgnored.textContent = stats.workoutsIgnored || 0;
   const statStudiesDone = document.getElementById('stat-studies-done');
-  if (statStudiesDone) statStudiesDone.textContent = appData.statistics.studiesDone || 0;
+  if (statStudiesDone) statStudiesDone.textContent = stats.studiesDone || 0;
   const statStudiesFailed = document.getElementById('stat-studies-failed');
-  if (statStudiesFailed) statStudiesFailed.textContent = appData.statistics.studiesFailed || 0;
+  if (statStudiesFailed) statStudiesFailed.textContent = stats.studiesFailed || 0;
   const statStudiesIgnored = document.getElementById('stat-studies-ignored');
-  if (statStudiesIgnored) statStudiesIgnored.textContent = appData.statistics.studiesIgnored || 0;
+  if (statStudiesIgnored) statStudiesIgnored.textContent = stats.studiesIgnored || 0;
   const statWorksDone = document.getElementById('stat-works-done');
-  if (statWorksDone) statWorksDone.textContent = appData.statistics.worksDone || 0;
+  if (statWorksDone) statWorksDone.textContent = stats.worksDone || 0;
   const statWorksFailed = document.getElementById('stat-works-failed');
-  if (statWorksFailed) statWorksFailed.textContent = appData.statistics.worksFailed || 0;
+  if (statWorksFailed) statWorksFailed.textContent = stats.worksFailed || 0;
   const statWorksIgnored = document.getElementById('stat-works-ignored');
-  if (statWorksIgnored) statWorksIgnored.textContent = appData.statistics.worksIgnored || 0;
+  if (statWorksIgnored) statWorksIgnored.textContent = stats.worksIgnored || 0;
   const statBooksRead = document.getElementById('stat-books-read');
-  if (statBooksRead) statBooksRead.textContent = appData.statistics.booksRead || 0;
+  if (statBooksRead) statBooksRead.textContent = stats.booksRead || 0;
   const statMissionsDone = document.getElementById('stat-missions-done');
-  if (statMissionsDone) statMissionsDone.textContent = appData.statistics.missionsDone || 0;
+  if (statMissionsDone) statMissionsDone.textContent = stats.missionsDone || 0;
   const statMissionsFailed = document.getElementById('stat-missions-failed');
-  if (statMissionsFailed) statMissionsFailed.textContent = appData.statistics.missionsFailed || 0;
+  if (statMissionsFailed) statMissionsFailed.textContent = stats.missionsFailed || 0;
   const statMissionsIgnored = document.getElementById('stat-missions-ignored');
-  if (statMissionsIgnored) statMissionsIgnored.textContent = appData.statistics.missionsIgnored || 0;
+  if (statMissionsIgnored) statMissionsIgnored.textContent = stats.missionsIgnored || 0;
   if (typeof renderPlanningStatisticsPanel === 'function') {
     renderPlanningStatisticsPanel(typeof getUnifiedTodayActivities === 'function' ? getUnifiedTodayActivities() : []);
   }
@@ -1818,7 +1826,7 @@ function getPeriodTotals(days, offsetDays) {
 
 function getMonthTotals(monthKey) {
   const keys = new Set();
-  const source = appData.statistics.productiveDays || {};
+  const source = appData.statistics?.productiveDays || {};
   Object.keys(source).forEach((dateKey) => {
     if (dateKey && dateKey.slice(0, 7) === monthKey) keys.add(dateKey);
   });
@@ -1837,7 +1845,7 @@ function formatTrendHtml(current, previous, lowerIsBetter = false) {
   const sign = delta > 0 ? '+' : '';
   let text = '';
   let trendClass = 'trend-flat';
-  let trendArrow = '?';
+  let trendArrow = '→';
 
   if (!Number.isFinite(previous) || previous === 0) {
     if (!Number.isFinite(current) || current === 0) {
@@ -1845,11 +1853,11 @@ function formatTrendHtml(current, previous, lowerIsBetter = false) {
     } else if (current > 0) {
       text = `${sign}${delta} / novo`;
       trendClass = lowerIsBetter ? 'trend-down' : 'trend-up';
-      trendArrow = '?';
+      trendArrow = lowerIsBetter ? '↓' : '↑';
     } else {
       text = `${sign}${delta} / sem base`;
       trendClass = lowerIsBetter ? 'trend-up' : 'trend-down';
-      trendArrow = '?';
+      trendArrow = lowerIsBetter ? '↑' : '↓';
     }
   } else {
     const percent = calculatePercentChange(current, previous);
@@ -1860,7 +1868,7 @@ function formatTrendHtml(current, previous, lowerIsBetter = false) {
       const improved = lowerIsBetter ? delta < 0 : delta > 0;
       trendClass = improved ? 'trend-up' : 'trend-down';
     }
-    trendArrow = delta > 0 ? '?' : delta < 0 ? '?' : '?';
+    trendArrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
   }
   return `<span class="stats-trend ${trendClass}">${trendArrow} ${text}</span>`;
 }
@@ -1904,7 +1912,7 @@ function getTotalsFromDateKeys(keys) {
     totalXP: 0,
   };
 
-  const productiveSource = appData.statistics.productiveDays || {};
+  const productiveSource = appData.statistics?.productiveDays || {};
   safeKeys.forEach((key) => {
     const breakdown = getDailyStatisticsBreakdown(productiveSource[key] || {});
     totals.missions += breakdown.missions;
@@ -2161,11 +2169,19 @@ function updateProductiveDays() {
     tbody.innerHTML = '';
 
     // Ordenar dias por total XP
-    const productiveDays = Object.entries(appData.statistics.productiveDays || {})
-      .filter(([date]) => !isRestDay(date))
-      .map(([date, data]) => ({ date, ...data }))
-      .sort((a, b) => b.totalXP - a.totalXP)
+    const productiveDays = Object.entries(appData.statistics?.productiveDays || {})
+      .filter(([date]) => typeof isRestDay !== 'function' || !isRestDay(date))
+      .map(([date, data]) => ({ date, ...getDailyStatisticsBreakdown(data) }))
+      .sort((a, b) => Number(b.totalXP || 0) - Number(a.totalXP || 0))
       .slice(0, 10); // Top 10 dias
+
+    if (productiveDays.length === 0) {
+      const row = document.createElement('tr');
+      row.innerHTML =
+        '<td colspan="6" class="empty-table-message">Nenhum dia produtivo registrado ainda.</td>';
+      tbody.appendChild(row);
+      return;
+    }
 
     productiveDays.forEach((day) => {
       const row = document.createElement('tr');
@@ -2189,6 +2205,7 @@ function updateProductiveDays() {
 // __appActivitiesBridge: exposes activity APIs for legacy scripts during module migration
 Object.assign(globalThis, {
   getActivityCategoryMeta,
+  parseLocalDateString,
   getScheduledItemDueDateKey,
   getOneOffScheduledFailureDateKey,
   getUnifiedTodayActivities,
@@ -2238,6 +2255,7 @@ Object.assign(globalThis, {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     compareManagedActivityEntries,
+    parseLocalDateString,
     getEventDateKey,
     getScheduledItemDueDateKey,
     getOneOffScheduledFailureDateKey,
@@ -2253,6 +2271,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getWorkoutHistoryDetailLines,
     formatWorkoutPace,
     formatWorkoutSpeedSummary,
+    formatTrendHtml,
     getTotalsFromDateKeys,
   };
 }

@@ -100,18 +100,6 @@ function initSelectAllDays(containerSelector) {
 
 // Inicializar eventos
 function initEvents() {
-  // Toggle do calendário
-  document.getElementById('calendar-collapse-toggle')?.addEventListener('click', function () {
-    const panel = document.getElementById('calendar-panel');
-    if (!panel) return;
-    panel.classList.toggle('collapsed');
-    const icon = this.querySelector('.fa-chevron-down');
-    if (icon)
-      icon.style.transform = panel.classList.contains('collapsed')
-        ? 'rotate(-90deg)'
-        : 'rotate(0deg)';
-  });
-
   // Toggle das seções do perfil
   document.querySelectorAll('.section-collapse-toggle').forEach((btn) => {
     btn.addEventListener('click', function () {
@@ -361,47 +349,6 @@ function initEvents() {
     updateFinanceView();
   });
 
-  // Calendário
-  document.getElementById('cal-prev-month')?.addEventListener('click', () => {
-    calendarState.month -= 1;
-    if (calendarState.month < 0) {
-      calendarState.month = 11;
-      calendarState.year -= 1;
-    }
-    renderMissionsCalendar();
-  });
-  document.getElementById('cal-next-month')?.addEventListener('click', () => {
-    calendarState.month += 1;
-    if (calendarState.month > 11) {
-      calendarState.month = 0;
-      calendarState.year += 1;
-    }
-    renderMissionsCalendar();
-  });
-  document.getElementById('cal-go-today')?.addEventListener('click', () => {
-    const today = getGameNow();
-    calendarState.month = today.getMonth();
-    calendarState.year = today.getFullYear();
-    calendarState.selectedDate = getLocalDateString(today);
-    renderMissionsCalendar();
-  });
-  document.getElementById('cal-rest-toggle')?.addEventListener('click', () => {
-    if (!calendarState.selectedDate) return;
-    toggleRestDay(calendarState.selectedDate);
-  });
-  document.getElementById('cal-work-off-toggle')?.addEventListener('click', () => {
-    if (!calendarState.selectedDate) return;
-    toggleWorkOffDay(calendarState.selectedDate);
-  });
-  document.getElementById('cal-details-filter')?.addEventListener('change', function () {
-    calendarState.detailsFilter = this.value || 'all';
-    if (calendarState.selectedDate) {
-      renderCalendarDetails(calendarState.selectedDate);
-    } else {
-      resetCalendarDetails();
-    }
-  });
-
   // Modal
   document.querySelector('.close-modal')?.addEventListener('click', closeModal);
   document.getElementById('item-form')?.addEventListener('submit', handleItemFormSubmit);
@@ -429,62 +376,6 @@ function initEvents() {
 
   // Botões de conclusão de treinos do dia
   document.addEventListener('click', function (e) {
-     const calendarCompleteMissionBtn = e.target.closest('.calendar-complete-mission-btn');
-     if (calendarCompleteMissionBtn) {
-       const missionId = parseInt(calendarCompleteMissionBtn.getAttribute('data-id'), 10);
-       if (Number.isFinite(missionId)) showMissionCompletionModal(missionId);
-       return;
-     }
-
-    const calendarSkipMissionBtn = e.target.closest('.calendar-skip-mission-btn');
-    if (calendarSkipMissionBtn) {
-      const missionId = parseInt(calendarSkipMissionBtn.getAttribute('data-id'), 10);
-      if (Number.isFinite(missionId)) skipMission(missionId);
-      return;
-    }
-
-     const calendarCompleteWorkBtn = e.target.closest('.calendar-complete-work-btn');
-     if (calendarCompleteWorkBtn) {
-       const workId = parseInt(calendarCompleteWorkBtn.getAttribute('data-id'), 10);
-       if (Number.isFinite(workId)) showWorkCompletionModal(workId);
-       return;
-     }
-
-    const calendarSkipWorkBtn = e.target.closest('.calendar-skip-work-btn');
-    if (calendarSkipWorkBtn) {
-      const workId = parseInt(calendarSkipWorkBtn.getAttribute('data-id'), 10);
-      if (Number.isFinite(workId)) skipWork(workId);
-      return;
-    }
-
-    const calendarCompleteWorkoutBtn = e.target.closest('.calendar-complete-workout-btn');
-    if (calendarCompleteWorkoutBtn) {
-      const workoutDayId = parseInt(calendarCompleteWorkoutBtn.getAttribute('data-id'), 10);
-      if (Number.isFinite(workoutDayId)) showWorkoutCompletionModal(workoutDayId);
-      return;
-    }
-
-    const calendarSkipWorkoutBtn = e.target.closest('.calendar-skip-workout-btn');
-    if (calendarSkipWorkoutBtn) {
-      const workoutDayId = parseInt(calendarSkipWorkoutBtn.getAttribute('data-id'), 10);
-      if (Number.isFinite(workoutDayId)) skipDailyWorkout(workoutDayId);
-      return;
-    }
-
-    const calendarCompleteStudyBtn = e.target.closest('.calendar-complete-study-btn');
-    if (calendarCompleteStudyBtn) {
-      const studyDayId = parseInt(calendarCompleteStudyBtn.getAttribute('data-id'), 10);
-      if (Number.isFinite(studyDayId)) showStudyCompletionModal(studyDayId);
-      return;
-    }
-
-    const calendarSkipStudyBtn = e.target.closest('.calendar-skip-study-btn');
-    if (calendarSkipStudyBtn) {
-      const studyDayId = parseInt(calendarSkipStudyBtn.getAttribute('data-id'), 10);
-      if (Number.isFinite(studyDayId)) skipDailyStudy(studyDayId);
-      return;
-    }
-
      const unifiedCompleteMissionBtn = e.target.closest('.unified-complete-mission-btn');
      if (unifiedCompleteMissionBtn) {
        const missionId = parseInt(unifiedCompleteMissionBtn.getAttribute('data-id'), 10);
@@ -599,9 +490,6 @@ function updateUI(options = {}) {
   const shouldUpdateFinance = isFull || isFinance;
   const shouldUpdateNutrition =
     (isFull || isActivity || options.forceNutrition) && isTabActive('alimentacao');
-  const shouldUpdateCalendar =
-    (isFull || isActivity || options.forceCalendar) && isTabActive('atividades');
-
   const levelEl = document.getElementById('level');
   if (levelEl) levelEl.textContent = appData.hero.level;
 
@@ -667,11 +555,6 @@ function updateUI(options = {}) {
 
     // Atualizar lista de itens da loja para gerenciamento
     updateShopItemsList();
-  }
-
-  if (shouldUpdateCalendar) {
-    // Atualizar calendário de missões
-    renderMissionsCalendar();
   }
 
   if (shouldUpdateFinance) {

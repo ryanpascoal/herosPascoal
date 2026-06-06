@@ -3,8 +3,6 @@
   console.log('Gráficos inicializados');
 }
 
-// Adicione esta função para adicionar a quarta aba com calendário
-
 // Atualizar gráficos
 function updateCharts() {
   // Verificar se Chart.js está disponível
@@ -351,24 +349,25 @@ function updateWeeklyChart() {
 
   const periodDays = getSelectedStatsChartPeriodDays();
   const periodDates = getStatsChartPeriodDateKeys(periodDays);
+  const productiveDays = appData.statistics?.productiveDays || {};
 
   const missionsData = periodDates.map((date) => {
-    const dayData = appData.statistics.productiveDays[date];
+    const dayData = productiveDays[date];
     return dayData ? dayData.missions : 0;
   });
 
   const workoutsData = periodDates.map((date) => {
-    const dayData = appData.statistics.productiveDays[date];
+    const dayData = productiveDays[date];
     return dayData ? dayData.workouts : 0;
   });
 
   const worksData = periodDates.map((date) => {
-    const dayData = appData.statistics.productiveDays[date];
+    const dayData = productiveDays[date];
     return dayData ? dayData.works || 0 : 0;
   });
 
   const studiesData = periodDates.map((date) => {
-    const dayData = appData.statistics.productiveDays[date];
+    const dayData = productiveDays[date];
     return dayData ? dayData.studies : 0;
   });
 
