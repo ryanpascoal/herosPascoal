@@ -22,7 +22,8 @@
           <span class="auth-brand-badge">HEROSPASCOAL</span>
           <h1>Entre para carregar seu progresso</h1>
           <p id="auth-screen-text">
-            O sistema libera o painel principal somente depois da autenticação e da sincronização inicial.
+            O sistema libera o painel principal somente depois da autenticação e da sincronização
+            inicial.
           </p>
         </div>
         <div class="auth-screen-card">
@@ -147,8 +148,16 @@
                     <option value="penalty">Penalidades</option>
                     <option value="system">Sistema</option>
                   </select>
-                  <input type="date" id="activity-history-date" class="activity-filter activity-date-filter" />
-                  <button type="button" id="activity-history-date-clear" class="action-btn secondary activity-filter-btn">
+                  <input
+                    type="date"
+                    id="activity-history-date"
+                    class="activity-filter activity-date-filter"
+                  />
+                  <button
+                    type="button"
+                    id="activity-history-date-clear"
+                    class="action-btn secondary activity-filter-btn"
+                  >
                     Limpar dia
                   </button>
                 </div>
@@ -158,10 +167,18 @@
                     <span id="timeline-day-status" class="timeline-day-status">Dia normal.</span>
                   </div>
                   <div class="timeline-day-actions">
-                    <button type="button" id="timeline-rest-day-toggle" class="action-btn secondary timeline-day-toggle">
+                    <button
+                      type="button"
+                      id="timeline-rest-day-toggle"
+                      class="action-btn secondary timeline-day-toggle"
+                    >
                       Marcar descanso
                     </button>
-                    <button type="button" id="timeline-work-off-toggle" class="action-btn secondary timeline-day-toggle">
+                    <button
+                      type="button"
+                      id="timeline-work-off-toggle"
+                      class="action-btn secondary timeline-day-toggle"
+                    >
                       Marcar folga
                     </button>
                   </div>
@@ -357,7 +374,12 @@
                   <div class="planning-meta-grid">
                     <div class="form-group">
                       <label for="objective-name">Nome</label>
-                      <input type="text" id="objective-name" placeholder="Ex: Saúde de alto nível" required />
+                      <input
+                        type="text"
+                        id="objective-name"
+                        placeholder="Ex: Saúde de alto nível"
+                        required
+                      />
                     </div>
 
                     <div class="form-group">
@@ -529,11 +551,6 @@
               </div>
             </div>
           </div>
-          <div class="hero-logs-section">
-            <h3><i class="fas fa-scroll"></i> Linha do Tempo do Herói</h3>
-            <div class="logs-container" id="hero-logs"></div>
-          </div>
-          <br />
           <div class="settings-section">
             <h3><i class="fas fa-cog"></i> Configurações</h3>
             <br />
@@ -879,7 +896,8 @@
                 </div>
               </div>
               <p class="finance-kpi-note" id="finance-kpi-note">
-                KPIs do topo consideram apenas o mês selecionado (ignoram filtros de tipo e categoria).
+                KPIs do topo consideram apenas o mês selecionado (ignoram filtros de tipo e
+                categoria).
               </p>
             </div>
 
@@ -924,7 +942,13 @@
                     </div>
                     <div class="form-group">
                       <label for="finance-recurring-amount">Valor (R$)</label>
-                      <input type="number" id="finance-recurring-amount" min="0" step="0.01" required />
+                      <input
+                        type="number"
+                        id="finance-recurring-amount"
+                        min="0"
+                        step="0.01"
+                        required
+                      />
                     </div>
                     <div class="form-group">
                       <label for="finance-recurring-category">Categoria (opcional)</label>
@@ -1010,7 +1034,11 @@
                   </div>
                   <div class="form-group">
                     <label for="finance-category">Categoria (opcional)</label>
-                    <input type="text" id="finance-category" placeholder="Ex: Saúde, Estudos, Lazer" />
+                    <input
+                      type="text"
+                      id="finance-category"
+                      placeholder="Ex: Saúde, Estudos, Lazer"
+                    />
                   </div>
                   <div class="form-group">
                     <label for="finance-desc">Descrição (opcional)</label>
@@ -1198,18 +1226,10 @@
                       <button type="submit" class="submit-btn">Salvar alimento</button>
                     </form>
                     <div class="import-section">
-                      <button
-                        type="button"
-                        class="submit-btn success"
-                        id="import-foods-btn"
-                      >
+                      <button type="button" class="submit-btn success" id="import-foods-btn">
                         <i class="fas fa-file-upload"></i> Importar de JSON
                       </button>
-                      <button
-                        type="button"
-                        class="submit-btn danger"
-                        id="reset-foods-btn"
-                      >
+                      <button type="button" class="submit-btn danger" id="reset-foods-btn">
                         <i class="fas fa-trash-alt"></i> Resetar alimentos cadastrados
                       </button>
                       <input
@@ -1273,10 +1293,7 @@
                     <button class="hydration-btn" id="hydration-add-btn">
                       <i class="fas fa-plus"></i> Adicionar
                     </button>
-                    <button
-                      class="hydration-btn hydration-btn-remove"
-                      id="hydration-remove-btn"
-                    >
+                    <button class="hydration-btn hydration-btn-remove" id="hydration-remove-btn">
                       <i class="fas fa-minus"></i> Remover
                     </button>
                   </div>

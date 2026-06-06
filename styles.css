@@ -546,36 +546,6 @@ body.light-theme .planning-feedback-card p {
   }
 }
 
-/* Hero logs visual override (avoid gray-heavy look) */
-.hero-logs-section {
-  background: linear-gradient(160deg, rgba(10, 16, 28, 0.98), rgba(19, 78, 112, 0.22));
-  border: 1px solid rgba(64, 164, 255, 0.2);
-  box-shadow: 0 18px 35px rgba(10, 18, 32, 0.4);
-}
-
-.hero-logs-section .log-item {
-  background: linear-gradient(120deg, rgba(17, 25, 40, 0.92), rgba(24, 36, 54, 0.9));
-  border: 1px solid rgba(96, 196, 255, 0.12);
-  box-shadow: 0 10px 20px rgba(9, 15, 26, 0.35);
-}
-
-.hero-logs-section .log-item:nth-child(even) {
-  background: linear-gradient(120deg, rgba(19, 30, 48, 0.95), rgba(28, 52, 72, 0.9));
-}
-
-.hero-logs-section .log-icon {
-  background: rgba(96, 196, 255, 0.14);
-  border: 1px solid rgba(96, 196, 255, 0.28);
-  color: #d6ecff;
-}
-
-.hero-logs-section .log-title {
-  color: #f2f6ff;
-}
-
-.hero-logs-section .log-text {
-  color: rgba(220, 232, 246, 0.78);
-}
 :root {
   --primary-color: #8a5cff;
   --secondary-color: #10f2ff;
@@ -903,8 +873,7 @@ body {
 .streaks-container h3,
 .workouts-display h3,
 .studies-display h3,
-.existing-items h3,
-.hero-logs-section h3 {
+.existing-items h3 {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -4016,7 +3985,6 @@ body {
 .table-container,
 .chart-box,
 .streaks-container,
-.hero-logs-section,
 .mission-card,
 .workout-card,
 .study-card,
@@ -4339,7 +4307,6 @@ textarea:focus {
   border-radius: 12px;
 }
 
-#hero-logs .log-item,
 .log-item {
   border-left: 3px solid rgba(96, 165, 250, 0.6);
   background: rgba(15, 24, 42, 0.66);
@@ -4380,7 +4347,6 @@ textarea:focus {
   .shop-inventory,
   .settings-section,
   .form-container,
-  .hero-logs-section,
   .streak-card,
   .table-container,
   .boss-card,
@@ -4522,7 +4488,6 @@ textarea:focus {
   .profile-tabs,
   .shop-inventory,
   .settings-section,
-  .hero-logs-section,
   .streaks-container,
   .preparation-section,
   .stats-tabs,
@@ -6669,31 +6634,6 @@ body.light-theme .history-card.planned .mission-details {
   display: block !important;
 }
 
-#perfil .hero-logs-section .log-item {
-  border-left: 3px solid rgba(56, 189, 248, 0.35) !important;
-  background: rgba(7, 14, 26, 0.78) !important;
-  box-shadow: none !important;
-}
-
-#perfil .hero-logs-section .log-item:nth-child(even) {
-  background: rgba(7, 14, 26, 0.78) !important;
-}
-
-#perfil .hero-logs-section .log-icon {
-  background: rgba(56, 189, 248, 0.1) !important;
-  border: 1px solid rgba(56, 189, 248, 0.18) !important;
-  color: #d8f3ff !important;
-  box-shadow: none !important;
-}
-
-#perfil .hero-logs-section .log-title {
-  color: #f2f7ff;
-}
-
-#perfil .hero-logs-section .log-text {
-  color: var(--gray-color);
-}
-
 #perfil .streaks-container {
   padding: 20px;
 }
@@ -6777,26 +6717,18 @@ body.light-theme .submit-btn {
   color: #f8fbff !important;
 }
 
-body.light-theme #perfil .hero-logs-section .log-title,
 body.light-theme #perfil .shop-item-name,
 body.light-theme #perfil .inventory-item-name,
 body.light-theme #perfil .streak-count {
   color: #162235 !important;
 }
 
-body.light-theme #perfil .hero-logs-section .log-text,
 body.light-theme #perfil .streak-record,
 body.light-theme #perfil .shop-item-level,
 body.light-theme #perfil .shop-item-desc,
 body.light-theme #perfil .inventory-item-desc,
 body.light-theme #perfil .inventory-item-meta {
   color: #526277 !important;
-}
-
-body.light-theme #perfil .hero-logs-section .log-icon {
-  color: #0f766e !important;
-  background: rgba(15, 118, 110, 0.08) !important;
-  border-color: rgba(15, 118, 110, 0.12) !important;
 }
 
 @media (max-width: 768px) {
@@ -6810,7 +6742,6 @@ body.light-theme #perfil .hero-logs-section .log-icon {
   #perfil .level-xp-integrated,
   #perfil .profile-tabs,
   #perfil .shop-inventory,
-  #perfil .hero-logs-section,
   #perfil .settings-section,
   #perfil .streaks-container {
     min-width: 0;
@@ -6942,7 +6873,6 @@ body.light-theme #perfil .hero-logs-section .log-icon {
   #perfil .profile-header,
   #perfil .profile-tabs,
   #perfil .shop-inventory,
-  #perfil .hero-logs-section,
   #perfil .settings-section,
   #perfil .streaks-container {
     padding-left: 12px;
@@ -8398,7 +8328,6 @@ body.light-theme
     .profile-tabs,
     .shop-inventory,
     .settings-section,
-    .hero-logs-section,
     .streaks-container,
     .level-xp-integrated,
     .workouts-display,

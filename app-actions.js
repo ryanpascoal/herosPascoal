@@ -55,7 +55,11 @@
   }
 }
 
-function getOneOffScheduleValidationMessage(scheduleType, dueValue, todayStr = getLocalDateString()) {
+function getOneOffScheduleValidationMessage(
+  scheduleType,
+  dueValue,
+  todayStr = getLocalDateString()
+) {
   if (scheduleType !== 'eventual' && scheduleType !== 'epica') return '';
 
   const normalizedDueValue = String(dueValue || '').trim();
@@ -96,7 +100,9 @@ function resolveScheduledActivityFormState(existingItem, formState = {}) {
   const dueDateWasLocked =
     existingItem?.dueDateLocked === true &&
     (existingItem?.type === 'eventual' || existingItem?.type === 'epica');
-  const scheduleType = dueDateWasLocked ? String(existingItem.type || requestedScheduleType) : requestedScheduleType;
+  const scheduleType = dueDateWasLocked
+    ? String(existingItem.type || requestedScheduleType)
+    : requestedScheduleType;
   const isOneOffSchedule = scheduleType === 'eventual' || scheduleType === 'epica';
 
   return {
@@ -173,7 +179,12 @@ function getWorkoutBestDayRepsRecord(workout, completedWorkouts = []) {
 function getWorkoutSpeedValue(distance = 0, time = 0) {
   const safeDistance = Number(distance || 0);
   const safeTime = Number(time || 0);
-  if (!Number.isFinite(safeDistance) || safeDistance <= 0 || !Number.isFinite(safeTime) || safeTime <= 0) {
+  if (
+    !Number.isFinite(safeDistance) ||
+    safeDistance <= 0 ||
+    !Number.isFinite(safeTime) ||
+    safeTime <= 0
+  ) {
     return 0;
   }
 
@@ -404,7 +415,11 @@ function applyRewardPackage(options = {}) {
   }
 }
 
-function buildAttributeRewards(attributeIds = [], amountPerAttribute = 1, wealthAmount = amountPerAttribute) {
+function buildAttributeRewards(
+  attributeIds = [],
+  amountPerAttribute = 1,
+  wealthAmount = amountPerAttribute
+) {
   return (Array.isArray(attributeIds) ? attributeIds : []).map((attrId) => ({
     id: attrId,
     amount: attrId === 14 ? wealthAmount : amountPerAttribute,
@@ -491,10 +506,7 @@ function inferLastDailyResetForStartupReview(todayStr) {
   if (appData.serverMeta?.lastDailyReset) {
     return appData.serverMeta.lastDailyReset;
   }
-  if (
-    window.AppRules &&
-    typeof window.AppRules.inferLegacyLastDailyResetDate === 'function'
-  ) {
+  if (window.AppRules && typeof window.AppRules.inferLegacyLastDailyResetDate === 'function') {
     return window.AppRules.inferLegacyLastDailyResetDate(appData, todayStr);
   }
   return null;
@@ -518,8 +530,7 @@ function prepareStartupFailureReviews() {
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
   const yesterdayDayOfWeek = yesterday.getDay();
-  const workOffYesterday =
-    typeof isWorkOffDay === 'function' && isWorkOffDay(yesterdayStr);
+  const workOffYesterday = typeof isWorkOffDay === 'function' && isWorkOffDay(yesterdayStr);
   let queuedCount = 0;
 
   const collectPendingReviews = (category) => {
@@ -617,7 +628,8 @@ function prepareStartupFailureReviews() {
     const indexesToRemove = [];
 
     dailyList.forEach((item, index) => {
-      if (!item || item.date !== yesterdayStr || item.completed || item.skipped || item.failed) return;
+      if (!item || item.date !== yesterdayStr || item.completed || item.skipped || item.failed)
+        return;
       const source = sourceList.find(
         (entry) => String(entry?.id || '') === String(item?.[idField] || '')
       );
@@ -661,8 +673,7 @@ function prepareStartupFailureReviews() {
 
       const hadDailyEntry = dailyList.some(
         (item) =>
-          String(item?.[idField] || '') === sourceId &&
-          String(item?.date || '') === yesterdayStr
+          String(item?.[idField] || '') === sourceId && String(item?.date || '') === yesterdayStr
       );
       if (hadDailyEntry) return;
 
@@ -960,7 +971,11 @@ function recordCompletedWorkoutFromReview(workoutDay, completedDate, review = nu
   );
   const completedAt = buildHistoryActionTimestamp(completedDate);
 
-  if (!appData.completedWorkouts.some((entry) => entry.workoutId === workoutDay.workoutId && entry.date === completedDate)) {
+  if (
+    !appData.completedWorkouts.some(
+      (entry) => entry.workoutId === workoutDay.workoutId && entry.date === completedDate
+    )
+  ) {
     appData.completedWorkouts.push({
       id: createUniqueId(appData.completedWorkouts),
       workoutId: workoutDay.workoutId,
@@ -1050,7 +1065,11 @@ function recordCompletedStudyFromReview(studyDay, completedDate, review = null) 
   );
   const completedAt = buildHistoryActionTimestamp(completedDate);
 
-  if (!appData.completedStudies.some((entry) => entry.studyId === studyDay.studyId && entry.date === completedDate)) {
+  if (
+    !appData.completedStudies.some(
+      (entry) => entry.studyId === studyDay.studyId && entry.date === completedDate
+    )
+  ) {
     appData.completedStudies.push({
       id: createUniqueId(appData.completedStudies),
       studyId: studyDay.studyId,
@@ -1158,7 +1177,10 @@ function recordFailedWorkoutFromReview(workoutDay, missedDate, review = null) {
   applyPenalties(missedDate, { onlyTypes: ['workout'] });
 
   if (typeof showFeedback === 'function') {
-    showFeedback(`Treino "${workoutDay.name || 'Treino'}" mantido como falha em ${missedDate}.`, 'warn');
+    showFeedback(
+      `Treino "${workoutDay.name || 'Treino'}" mantido como falha em ${missedDate}.`,
+      'warn'
+    );
   }
 
   return true;
@@ -1190,7 +1212,10 @@ function recordFailedStudyFromReview(studyDay, missedDate, review = null) {
   applyPenalties(missedDate, { onlyTypes: ['study'] });
 
   if (typeof showFeedback === 'function') {
-    showFeedback(`Estudo "${studyDay.name || 'Estudo'}" mantido como falha em ${missedDate}.`, 'warn');
+    showFeedback(
+      `Estudo "${studyDay.name || 'Estudo'}" mantido como falha em ${missedDate}.`,
+      'warn'
+    );
   }
 
   return true;
@@ -1321,7 +1346,7 @@ function handleWorkoutCompletion() {
     const distance = parseFloat(document.querySelector('input[name="distance"]')?.value || 0);
     const timeMin = parseFloat(document.querySelector('input[name="time-min"]')?.value || 0);
     const timeSec = parseFloat(document.querySelector('input[name="time-sec"]')?.value || 0);
-    const time = (timeMin * 60) + timeSec;
+    const time = timeMin * 60 + timeSec;
     const speed = getWorkoutSpeedValue(distance, time);
     workoutDay.distance = distance;
     workoutDay.time = time;
@@ -1343,7 +1368,7 @@ function handleWorkoutCompletion() {
   } else if (workout.type === 'maior-tempo' || workout.type === 'menor-tempo') {
     const timeMin = parseFloat(document.querySelector('input[name="time-min"]')?.value || 0);
     const timeSec = parseFloat(document.querySelector('input[name="time-sec"]')?.value || 0);
-    const time = (timeMin * 60) + timeSec;
+    const time = timeMin * 60 + timeSec;
     workoutDay.time = time;
 
     if (!workout.stats) workout.stats = {};
@@ -1368,7 +1393,9 @@ function handleWorkoutCompletion() {
       type: 'workout',
       activityId: workoutDay.workoutId,
       objectiveId: workout.objectiveId || null,
-      objectiveName: workout.objectiveId ? appData.objectives.find((objective) => objective.id === workout.objectiveId)?.name || '' : '',
+      objectiveName: workout.objectiveId
+        ? appData.objectives.find((objective) => objective.id === workout.objectiveId)?.name || ''
+        : '',
       feedback: feedback,
       date: new Date().toISOString(),
     });
@@ -1433,17 +1460,12 @@ function handleWorkoutCompletion() {
   // Atualizar dia produtivo
   updateProductiveDay(1, 0, 0, xpGained, 0, { xpWorkout: xpGained });
 
-  addHeroLog(
-    'workout',
-    `Treino concluído: ${workout.name}`,
-    `+${xpGained} XP, +1 moeda`,
-    {
-      category: 'workout',
-      sourceId: String(workoutDay.workoutId || workout.id || ''),
-      eventDateKey: completedDateKey,
-      status: 'completed',
-    }
-  );
+  addHeroLog('workout', `Treino concluído: ${workout.name}`, `+${xpGained} XP, +1 moeda`, {
+    category: 'workout',
+    sourceId: String(workoutDay.workoutId || workout.id || ''),
+    eventDateKey: completedDateKey,
+    status: 'completed',
+  });
 
   updateUI({ mode: 'activity' });
   celebrateAction({
@@ -1530,7 +1552,9 @@ function completeStudy(studyDayId, feedbackText = '') {
       type: 'study',
       activityId: studyDay.studyId,
       objectiveId: study.objectiveId || null,
-      objectiveName: study.objectiveId ? appData.objectives.find((objective) => objective.id === study.objectiveId)?.name || '' : '',
+      objectiveName: study.objectiveId
+        ? appData.objectives.find((objective) => objective.id === study.objectiveId)?.name || ''
+        : '',
       feedback: feedbackText,
       date: new Date().toISOString(),
     });
@@ -1618,7 +1642,9 @@ function completeBook(bookId, feedbackText = '') {
       type: 'book',
       activityId: bookId,
       objectiveId: book.objectiveId || null,
-      objectiveName: book.objectiveId ? appData.objectives.find((objective) => objective.id === book.objectiveId)?.name || '' : '',
+      objectiveName: book.objectiveId
+        ? appData.objectives.find((objective) => objective.id === book.objectiveId)?.name || ''
+        : '',
       feedback: feedbackText,
       date: new Date().toISOString(),
     });
@@ -1709,7 +1735,9 @@ function updateActivityForm() {
   const editIdValue = parseInt(document.getElementById('activity-edit-id')?.value || '', 10);
   const currentItem =
     Number.isFinite(editIdValue) && (category === 'mission' || category === 'work')
-      ? (category === 'mission' ? appData.missions : appData.works).find((item) => item.id === editIdValue) || null
+      ? (category === 'mission' ? appData.missions : appData.works).find(
+          (item) => item.id === editIdValue
+        ) || null
       : null;
   const dueDateWasLocked =
     currentItem?.dueDateLocked === true &&
@@ -1775,13 +1803,15 @@ function updateActivityForm() {
   if (scheduleTypeInput) scheduleTypeInput.disabled = dueDateWasLocked;
   if (dateInput) {
     dateInput.disabled = dueDateWasLocked && currentItem?.type === 'eventual';
-    dateInput.title =
-      dateInput.disabled ? 'O prazo desta atividade foi trancado e não pode mais ser alterado.' : '';
+    dateInput.title = dateInput.disabled
+      ? 'O prazo desta atividade foi trancado e não pode mais ser alterado.'
+      : '';
   }
   if (deadlineInput) {
     deadlineInput.disabled = dueDateWasLocked && currentItem?.type === 'epica';
-    deadlineInput.title =
-      deadlineInput.disabled ? 'O prazo desta atividade foi trancado e não pode mais ser alterado.' : '';
+    deadlineInput.title = deadlineInput.disabled
+      ? 'O prazo desta atividade foi trancado e não pode mais ser alterado.'
+      : '';
   }
   if (dueLockInput) {
     if (dueDateWasLocked) {
@@ -1793,7 +1823,8 @@ function updateActivityForm() {
   }
   if (dueLockHint) {
     if (dueDateWasLocked) {
-      dueLockHint.textContent = 'Prazo trancado: esse campo não pode mais ser alterado depois de salvo.';
+      dueLockHint.textContent =
+        'Prazo trancado: esse campo não pode mais ser alterado depois de salvo.';
     } else if (shouldShowDueLock && dueLockInput?.checked) {
       dueLockHint.textContent = 'Esse prazo será permanente depois de salvar esta atividade.';
     } else {
@@ -1837,7 +1868,9 @@ function handleActivitySubmit(e) {
   const selectedDays = Array.from(document.querySelectorAll(daySelector)).map((cb) =>
     parseInt(cb.value, 10)
   );
-  const existingMission = isEditing ? appData.missions.find((item) => item.id === editIdValue) : null;
+  const existingMission = isEditing
+    ? appData.missions.find((item) => item.id === editIdValue)
+    : null;
   const existingWork = isEditing ? appData.works.find((item) => item.id === editIdValue) : null;
   const existingScheduledItem =
     category === 'mission' ? existingMission : category === 'work' ? existingWork : null;
@@ -1893,13 +1926,11 @@ function handleActivitySubmit(e) {
       document.querySelectorAll('#activity-attributes input[type="checkbox"]:checked')
     ).map((cb) => parseInt(cb.value, 10));
     const mission = existingMission;
-    const targetMission =
-      mission ||
-      {
-        id: createUniqueId(appData.missions, appData.completedMissions),
-        completed: false,
-        dateAdded: getLocalDateString(),
-      };
+    const targetMission = mission || {
+      id: createUniqueId(appData.missions, appData.completedMissions),
+      completed: false,
+      dateAdded: getLocalDateString(),
+    };
     targetMission.name = name;
     targetMission.emoji = emoji || '🎯';
     targetMission.type = resolvedScheduleState.scheduleType;
@@ -1933,13 +1964,11 @@ function handleActivitySubmit(e) {
     const classIdRaw = document.getElementById('activity-class')?.value;
     const classId = classIdRaw ? parseInt(classIdRaw, 10) : null;
     const work = existingWork;
-    const targetWork =
-      work ||
-      {
-        id: createUniqueId(appData.works, appData.completedWorks),
-        completed: false,
-        dateAdded: getLocalDateString(),
-      };
+    const targetWork = work || {
+      id: createUniqueId(appData.works, appData.completedWorks),
+      completed: false,
+      dateAdded: getLocalDateString(),
+    };
     targetWork.name = name;
     targetWork.emoji = emoji || '💼';
     targetWork.type = resolvedScheduleState.scheduleType;
@@ -1970,7 +1999,9 @@ function handleActivitySubmit(e) {
     if (!work) appData.works.push(targetWork);
   } else if (category === 'workout') {
     const workoutType = document.getElementById('activity-workout-type')?.value || 'repeticao';
-    const existingWorkout = isEditing ? appData.workouts.find((item) => item.id === editIdValue) : null;
+    const existingWorkout = isEditing
+      ? appData.workouts.find((item) => item.id === editIdValue)
+      : null;
     const workout = existingWorkout || createWorkoutPayload(name, emoji, workoutType, selectedDays);
     workout.name = name;
     workout.emoji = emoji || '💪';
@@ -1983,7 +2014,9 @@ function handleActivitySubmit(e) {
     if (!existingWorkout) appData.workouts.push(workout);
   } else if (category === 'study') {
     const studyType = document.getElementById('activity-study-type')?.value || 'logico';
-    const existingStudy = isEditing ? appData.studies.find((item) => item.id === editIdValue) : null;
+    const existingStudy = isEditing
+      ? appData.studies.find((item) => item.id === editIdValue)
+      : null;
     const study = existingStudy || createStudyPayload(name, emoji, studyType, selectedDays);
     study.name = name;
     study.emoji = emoji || '📚';
@@ -2023,7 +2056,10 @@ function handleActivitySubmit(e) {
   e.target.reset();
   updateActivityForm();
   updateUI({ mode: 'activity' });
-  showFeedback(isEditing ? 'Atividade atualizada com sucesso!' : 'Atividade cadastrada com sucesso!', 'success');
+  showFeedback(
+    isEditing ? 'Atividade atualizada com sucesso!' : 'Atividade cadastrada com sucesso!',
+    'success'
+  );
 }
 
 //Formulário de missão baseado no tipo
@@ -2060,7 +2096,9 @@ function completeMission(missionId, feedbackText = '') {
       type: 'mission',
       activityId: missionId,
       objectiveId: mission.objectiveId || null,
-      objectiveName: mission.objectiveId ? appData.objectives.find((objective) => objective.id === mission.objectiveId)?.name || '' : '',
+      objectiveName: mission.objectiveId
+        ? appData.objectives.find((objective) => objective.id === mission.objectiveId)?.name || ''
+        : '',
       feedback: feedbackText,
       date: new Date().toISOString(),
     });
@@ -2163,7 +2201,9 @@ function completeWork(workId, feedbackText = '') {
       type: 'work',
       activityId: workId,
       objectiveId: work.objectiveId || null,
-      objectiveName: work.objectiveId ? appData.objectives.find((objective) => objective.id === work.objectiveId)?.name || '' : '',
+      objectiveName: work.objectiveId
+        ? appData.objectives.find((objective) => objective.id === work.objectiveId)?.name || ''
+        : '',
       feedback: feedbackText,
       date: new Date().toISOString(),
     });
@@ -2408,8 +2448,7 @@ function cleanupOldDailyWorks() {
             entry.skippedDate === failedDate)
       );
       if (!alreadyResolved) {
-        const workOffActive =
-          typeof isWorkOffDay === 'function' && isWorkOffDay(failedDate);
+        const workOffActive = typeof isWorkOffDay === 'function' && isWorkOffDay(failedDate);
         const resolvedAt = buildHistoryActionTimestamp(failedDate);
         if (workOffActive) {
           appData.completedWorks.push({
@@ -2579,7 +2618,10 @@ async function useItem(itemId) {
   // Aplicar efeito
   switch (item.effect) {
     case 'heal':
-      showToast('Esse item legado não tem mais efeito porque o sistema de vidas foi removido.', 'info');
+      showToast(
+        'Esse item legado não tem mais efeito porque o sistema de vidas foi removido.',
+        'info'
+      );
       addHeroLog('item', 'Item legado sem efeito', 'A antiga poção de vida foi desativada.');
       break;
 
@@ -2660,7 +2702,9 @@ function addAttributeXP(attributeId, amount) {
   const progressionApi = getProgressionApi();
   if (typeof progressionApi.advanceLinearProgress !== 'function') return;
 
-  const oldLevel = Number.isFinite(attribute.level) ? attribute.level : Math.floor((attribute.xp || 0) / 100);
+  const oldLevel = Number.isFinite(attribute.level)
+    ? attribute.level
+    : Math.floor((attribute.xp || 0) / 100);
   const nextState = progressionApi.advanceLinearProgress(attribute, amount, { step: 100 });
   const newLevel = nextState.level;
 
@@ -2693,80 +2737,6 @@ function addClassXP(classId, amount) {
   if (newLevel > oldLevel) {
     console.log(`Classe ${cls.name} alcançou o nível ${newLevel}!`);
   }
-}
-
-function generateHeroLogs() {
-  const container = document.getElementById('hero-logs');
-  if (!container) return;
-
-  container.innerHTML = '';
-  const timelineEvents =
-    typeof getUnifiedTimelineEvents === 'function' ? getUnifiedTimelineEvents().slice(0, 12) : [];
-
-  if (timelineEvents.length > 0) {
-    timelineEvents.forEach((event) => {
-      const logElement = document.createElement('div');
-      const isActivity = event.timelineKind === 'activity';
-      const icon = isActivity
-        ? event.item?.emoji || getActivityCategoryMeta(event.category).emoji
-        : event.log?.type === 'level'
-          ? '🏆'
-          : event.log?.type === 'item'
-            ? '🎁'
-            : event.log?.type === 'penalty'
-              ? '⚠️'
-              : event.log?.type === 'system'
-                ? '⚙️'
-                : '📝';
-      const title = isActivity ? event.title : event.title || 'Registro do herói';
-      const text = isActivity
-        ? event.matchedLog?.content ||
-          `${getActivityCategoryMeta(event.category).label} • ${event.statusMeta?.text || 'CONCLUÍDO'}`
-        : event.log?.content || 'Sem detalhes adicionais.';
-      const dateLabel = isActivity
-        ? formatDate(event.eventDateKey)
-        : event.log?.date
-          ? new Date(event.log.date).toLocaleString('pt-BR')
-          : formatDate(event.eventDateKey);
-
-      logElement.className = `log-item ${isActivity ? event.statusMeta?.tone || event.category : event.category || 'system'}`;
-
-      const iconEl = document.createElement('div');
-      iconEl.className = 'log-icon';
-      iconEl.textContent = icon;
-
-      const contentEl = document.createElement('div');
-      contentEl.className = 'log-content';
-
-      const titleEl = document.createElement('div');
-      titleEl.className = 'log-title';
-      titleEl.textContent = title;
-
-      const textEl = document.createElement('div');
-      textEl.className = 'log-text';
-      textEl.textContent = text;
-
-      const dateEl = document.createElement('div');
-      dateEl.className = 'log-text';
-      dateEl.textContent = dateLabel;
-
-      contentEl.appendChild(titleEl);
-      contentEl.appendChild(textEl);
-      contentEl.appendChild(dateEl);
-
-      logElement.appendChild(iconEl);
-      logElement.appendChild(contentEl);
-      container.appendChild(logElement);
-    });
-    return;
-  }
-
-  if (!appData.heroLogs || appData.heroLogs.length === 0) {
-    container.innerHTML = '<p class="empty-message">Nenhum registro ainda.</p>';
-    return;
-  }
-
-  container.innerHTML = '<p class="empty-message">A linha do tempo ainda não está disponível.</p>';
 }
 
 // Inicializar gráficos
@@ -2805,7 +2775,6 @@ Object.assign(globalThis, {
   addXP,
   addAttributeXP,
   addClassXP,
-  generateHeroLogs,
   getBestWorkoutSetValue,
   getWorkoutBestRepsRecord,
   getWorkoutBestDayRepsRecord,

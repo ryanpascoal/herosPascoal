@@ -158,13 +158,17 @@ function initEvents() {
   });
   document.getElementById('timeline-rest-day-toggle')?.addEventListener('click', function () {
     const targetDateKey =
-      typeof getTimelineControlDateKey === 'function' ? getTimelineControlDateKey() : getLocalDateString();
+      typeof getTimelineControlDateKey === 'function'
+        ? getTimelineControlDateKey()
+        : getLocalDateString();
     if (!targetDateKey || typeof toggleRestDay !== 'function') return;
     toggleRestDay(targetDateKey);
   });
   document.getElementById('timeline-work-off-toggle')?.addEventListener('click', function () {
     const targetDateKey =
-      typeof getTimelineControlDateKey === 'function' ? getTimelineControlDateKey() : getLocalDateString();
+      typeof getTimelineControlDateKey === 'function'
+        ? getTimelineControlDateKey()
+        : getLocalDateString();
     if (!targetDateKey || typeof toggleWorkOffDay !== 'function') return;
     toggleWorkOffDay(targetDateKey);
   });
@@ -196,7 +200,7 @@ function initEvents() {
     btn.addEventListener('click', function () {
       const subtab = this.getAttribute('data-subtab');
       // Encontrar o sub-content mais próximo do botão
-      const parentElement = 
+      const parentElement =
         this.closest('.sub-content') ||
         this.closest('.shop-inventory, .profile-tabs, .stats-tabs') ||
         this.closest('.tab-content');
@@ -238,13 +242,13 @@ function initEvents() {
     'theme-toggle-btn': toggleTheme,
   });
   bindManyById('submit', {
-     'activity-form': handleActivitySubmit,
-      'shop-item-form': handleShopItemSubmit,
-      'class-form': handleClassSubmit,
-      'objective-form': handleObjectiveSubmit,
-      'finance-form': handleFinanceSubmit,
-     'finance-budget-form': handleFinanceBudgetSubmit,
-     'finance-recurring-form': handleFinanceRecurringSubmit,
+    'activity-form': handleActivitySubmit,
+    'shop-item-form': handleShopItemSubmit,
+    'class-form': handleClassSubmit,
+    'objective-form': handleObjectiveSubmit,
+    'finance-form': handleFinanceSubmit,
+    'finance-budget-form': handleFinanceBudgetSubmit,
+    'finance-recurring-form': handleFinanceRecurringSubmit,
     'nutrition-food-form': handleNutritionFoodSubmit,
     'nutrition-entry-form': handleNutritionEntrySubmit,
     'nutrition-goals-form': handleNutritionGoalsSubmit,
@@ -376,12 +380,12 @@ function initEvents() {
 
   // Botões de conclusão de treinos do dia
   document.addEventListener('click', function (e) {
-     const unifiedCompleteMissionBtn = e.target.closest('.unified-complete-mission-btn');
-     if (unifiedCompleteMissionBtn) {
-       const missionId = parseInt(unifiedCompleteMissionBtn.getAttribute('data-id'), 10);
-       if (Number.isFinite(missionId)) showMissionCompletionModal(missionId);
-       return;
-     }
+    const unifiedCompleteMissionBtn = e.target.closest('.unified-complete-mission-btn');
+    if (unifiedCompleteMissionBtn) {
+      const missionId = parseInt(unifiedCompleteMissionBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(missionId)) showMissionCompletionModal(missionId);
+      return;
+    }
 
     const unifiedSkipMissionBtn = e.target.closest('.unified-skip-mission-btn');
     if (unifiedSkipMissionBtn) {
@@ -390,12 +394,12 @@ function initEvents() {
       return;
     }
 
-     const unifiedCompleteWorkBtn = e.target.closest('.unified-complete-work-btn');
-     if (unifiedCompleteWorkBtn) {
-       const workId = parseInt(unifiedCompleteWorkBtn.getAttribute('data-id'), 10);
-       if (Number.isFinite(workId)) showWorkCompletionModal(workId);
-       return;
-     }
+    const unifiedCompleteWorkBtn = e.target.closest('.unified-complete-work-btn');
+    if (unifiedCompleteWorkBtn) {
+      const workId = parseInt(unifiedCompleteWorkBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(workId)) showWorkCompletionModal(workId);
+      return;
+    }
 
     const unifiedSkipWorkBtn = e.target.closest('.unified-skip-work-btn');
     if (unifiedSkipWorkBtn) {
@@ -535,15 +539,15 @@ function updateUI(options = {}) {
     if (typeof updateUnifiedActivities === 'function') {
       updateUnifiedActivities();
     }
-    if (typeof getUnifiedTodayActivities === 'function' && typeof renderPlanningViews === 'function') {
+    if (
+      typeof getUnifiedTodayActivities === 'function' &&
+      typeof renderPlanningViews === 'function'
+    ) {
       renderPlanningViews(getUnifiedTodayActivities());
     }
 
     // Atualizar estatísticas
     updateStatistics();
-
-    // Atualizar logs do herói
-    generateHeroLogs();
   }
 
   if (shouldUpdateShop) {
@@ -726,7 +730,10 @@ function getWorkoutStats(workout) {
         : Number(workout?.stats?.bestSpeed || 0);
     const bestSpeedLabel =
       typeof formatWorkoutSpeedSummary === 'function'
-        ? formatWorkoutSpeedSummary(bestDistance, bestDistance > 0 && bestSpeed > 0 ? (bestDistance * 3600) / bestSpeed : 0)
+        ? formatWorkoutSpeedSummary(
+            bestDistance,
+            bestDistance > 0 && bestSpeed > 0 ? (bestDistance * 3600) / bestSpeed : 0
+          )
         : `${bestSpeed.toFixed(1)} km/h`;
     return `Melhor distância: ${bestDistance.toFixed(2)} km | Melhor velocidade: ${bestSpeedLabel}`;
   } else if (workout.type === 'maior-tempo') {
@@ -1305,7 +1312,9 @@ function failMission(missionId, reason = '', options = {}) {
   const todayStr = getLocalDateString();
   const penaltyDate = options.missedDate || todayStr;
   const failedAt =
-    typeof buildHistoryActionTimestamp === 'function' ? buildHistoryActionTimestamp(penaltyDate) : new Date().toISOString();
+    typeof buildHistoryActionTimestamp === 'function'
+      ? buildHistoryActionTimestamp(penaltyDate)
+      : new Date().toISOString();
 
   // Marcar como falhada (sem remover itens de rotina da lista)
   if (!isRoutine) {
@@ -1410,7 +1419,9 @@ async function skipMission(missionId) {
   const isRoutine = isRoutineType(mission.type);
   const todayStr = getLocalDateString();
   const skippedAt =
-    typeof buildHistoryActionTimestamp === 'function' ? buildHistoryActionTimestamp(todayStr) : new Date().toISOString();
+    typeof buildHistoryActionTimestamp === 'function'
+      ? buildHistoryActionTimestamp(todayStr)
+      : new Date().toISOString();
   const routineAlreadyResolvedToday =
     isRoutine &&
     appData.completedMissions.some(
@@ -1471,7 +1482,9 @@ function failWork(workId, reason = '', options = {}) {
   const todayStr = getLocalDateString();
   const penaltyDate = options.missedDate || todayStr;
   const failedAt =
-    typeof buildHistoryActionTimestamp === 'function' ? buildHistoryActionTimestamp(penaltyDate) : new Date().toISOString();
+    typeof buildHistoryActionTimestamp === 'function'
+      ? buildHistoryActionTimestamp(penaltyDate)
+      : new Date().toISOString();
   if (!isRoutine) {
     work.failed = true;
     work.failedDate = todayStr;
@@ -1528,7 +1541,9 @@ async function skipWork(workId) {
   const isRoutine = isRoutineType(work.type);
   const todayStr = getLocalDateString();
   const skippedAt =
-    typeof buildHistoryActionTimestamp === 'function' ? buildHistoryActionTimestamp(todayStr) : new Date().toISOString();
+    typeof buildHistoryActionTimestamp === 'function'
+      ? buildHistoryActionTimestamp(todayStr)
+      : new Date().toISOString();
   const routineAlreadyResolvedToday =
     isRoutine &&
     appData.completedWorks.some(
