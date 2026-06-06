@@ -8283,6 +8283,104 @@ body.light-theme .activity-due-date {
   }
 }
 
+/* Tall narrow phones, including Galaxy A22 portrait (~360x800 CSS px). */
+@media (max-width: 380px) and (orientation: portrait) {
+  #atividades #daily-activities {
+    gap: 10px;
+  }
+
+  #atividades #daily-activities .compact-activity-card {
+    grid-template-columns: 4px minmax(0, 1fr) clamp(82px, 27vw, 96px);
+    grid-template-areas:
+      'bar main actions'
+      'bar meta actions';
+    align-items: start;
+    column-gap: 7px;
+    row-gap: 6px;
+    padding: 9px 7px;
+    overflow: clip;
+  }
+
+  #atividades #daily-activities .activity-color-bar {
+    min-height: 100%;
+  }
+
+  #atividades #daily-activities .activity-main {
+    grid-template-columns: 19px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  #atividades #daily-activities .activity-emoji {
+    width: 19px;
+    line-height: 1;
+  }
+
+  #atividades #daily-activities .activity-name-row,
+  #atividades #daily-activities .activity-meta,
+  #atividades #daily-activities .activity-actions {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  #atividades #daily-activities .activity-name {
+    font-size: 0.72rem;
+    line-height: 1.18;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  #atividades #daily-activities .activity-due-date {
+    font-size: 0.58rem;
+    line-height: 1.15;
+    padding: 2px 4px;
+  }
+
+  #atividades #daily-activities .activity-actions {
+    grid-auto-rows: minmax(32px, auto);
+    align-content: start;
+    align-self: stretch;
+    gap: 5px;
+    min-width: 0;
+    max-width: 96px;
+    overflow: clip;
+  }
+
+  #atividades #daily-activities .activity-actions.has-skip {
+    grid-template-columns: minmax(42px, 1fr) 30px;
+    max-width: 96px;
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle {
+    grid-template-columns: 16px minmax(34px, 1fr);
+    max-width: 86px;
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
+    grid-template-columns: 16px minmax(30px, 1fr) 30px;
+    max-width: 96px;
+  }
+
+  #atividades #daily-activities .activity-actions .apply-study-checkbox {
+    width: 16px;
+    height: 16px;
+  }
+
+  #atividades #daily-activities .activity-actions .complete-btn,
+  #atividades #daily-activities .activity-actions .complete-workout-btn,
+  #atividades #daily-activities .activity-actions .complete-study-btn,
+  #atividades #daily-activities .activity-actions .skip-btn {
+    min-height: 32px;
+    padding: 4px 5px;
+    font-size: 0.62rem;
+    line-height: 1.05;
+  }
+
+  #atividades #daily-activities .activity-actions .skip-btn {
+    width: 30px;
+    min-width: 30px;
+  }
+}
+
 /* Light theme final pass: flat, minimal, and fully bright. */
 body.light-theme {
   --primary-color: #0f766e;
