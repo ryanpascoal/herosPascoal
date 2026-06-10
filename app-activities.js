@@ -641,6 +641,22 @@ function getUnifiedFutureTimelineActivities(targetDateKey) {
   return sortActivityItems(items);
 }
 
+function getPlannedActivityTimelineEvents(targetDateKey) {
+  return getUnifiedFutureTimelineActivities(targetDateKey).map(({ category, item, plannedDateKey }) => ({
+    timelineKind: 'activity',
+    category,
+    item,
+    eventDateKey: plannedDateKey,
+    eventTimestamp: '',
+    sortTimestamp: getTimelineSortTimestamp(plannedDateKey, ''),
+    matchedLog: null,
+    statusMeta: getPlannedTimelineStatusMeta(),
+    typeLabel: getHistoryEntryTypeLabel(category, item),
+    title: getPlannedActivityTimelineTitle(category, item),
+    isPlanned: true,
+  }));
+}
+
 function getExpectedHistoryLogPrefixes(category, item) {
   if (category === 'mission') {
     if (item?.failed) return ['tarefa falhada'];
@@ -1050,21 +1066,7 @@ function getUnifiedTimelineEvents() {
   });
 
   const selectedFutureDate = getSelectedTimelineDateFilter();
-  const plannedEvents = getUnifiedFutureTimelineActivities(selectedFutureDate).map(
-    ({ category, item, plannedDateKey }) => ({
-      timelineKind: 'activity',
-      category,
-      item,
-      eventDateKey: plannedDateKey,
-      eventTimestamp: '',
-      sortTimestamp: getTimelineSortTimestamp(plannedDateKey, ''),
-      matchedLog: null,
-      statusMeta: getPlannedTimelineStatusMeta(),
-      typeLabel: getHistoryEntryTypeLabel(category, item),
-      title: getPlannedActivityTimelineTitle(category, item),
-      isPlanned: true,
-    })
-  );
+  const plannedEvents = getPlannedActivityTimelineEvents(selectedFutureDate);
 
   const logEvents = heroLogs
     .filter((log) => !consumedLogIds.has(log.id))
@@ -1447,7 +1449,11 @@ function renderUnifiedActivitiesHistory() {
   const container = document.getElementById('completed-activities');
   if (!container) return;
   renderTimelineDayControls();
-  const items = filterTimelineEntries(getActivityTimelineEvents(), 'activity-history-filter');
+  const selectedDate = getSelectedTimelineDateFilter();
+  const sourceItems = isFutureTimelineDate(selectedDate)
+    ? getPlannedActivityTimelineEvents(selectedDate)
+    : getActivityTimelineEvents();
+  const items = filterTimelineEntries(sourceItems, 'activity-history-filter');
   renderPaginatedHistory(
     container,
     items,
