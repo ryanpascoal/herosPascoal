@@ -10,6 +10,8 @@
       return { label: 'Estudo', emoji: '📚', className: 'study' };
     case 'book':
       return { label: 'Livro', emoji: '📖', className: 'study' };
+    case 'nutrition':
+      return { label: 'Alimentação', emoji: '🍽️', className: 'nutrition' };
     default:
       return { label: 'Atividade', emoji: '⭐', className: 'kind' };
   }
@@ -19,7 +21,9 @@ function sortActivityItems(items) {
   if (typeof comparePlannedActivities === 'function') {
     return items.sort(comparePlannedActivities);
   }
-  return items.sort((a, b) => String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR'));
+  return items.sort((a, b) =>
+    String(a.item.name || '').localeCompare(String(b.item.name || ''), 'pt-BR')
+  );
 }
 
 function isUrgentWorkActivity(entry) {
@@ -134,7 +138,9 @@ function collectDailyTrackerItems(config) {
       return !entry.completed && !entry.skipped;
     })
     .forEach((entry) => {
-      const item = (itemList || []).find((candidate) => String(candidate.id) === String(entry[idKey]));
+      const item = (itemList || []).find(
+        (candidate) => String(candidate.id) === String(entry[idKey])
+      );
       if (item) items.push({ category, item, dailyEntry: entry });
     });
 
@@ -331,7 +337,7 @@ function getPlannedTimelineStatusMeta() {
 }
 
 function getHistoryEntryTypeLabel(category, item) {
-  if (category === 'workout') return getWorkoutTypeName(item.type);
+  if (category === 'workout') return getWorkoutTypeName(item);
   if (category === 'study') return item.type === 'logico' ? 'Lógico' : 'Criativo';
   if (category === 'book') return getBookActivityStatusLabel(item);
   return getMissionTypeName(item.type);
@@ -360,7 +366,9 @@ function getTimelineSortTimestamp(dateKey, isoDate = '') {
   const safeDateKey = String(dateKey || '').trim();
   if (!safeDateKey) return 0;
   const parsedDate =
-    typeof parseLocalDateString === 'function' ? parseLocalDateString(safeDateKey) : new Date(safeDateKey);
+    typeof parseLocalDateString === 'function'
+      ? parseLocalDateString(safeDateKey)
+      : new Date(safeDateKey);
   if (!Number.isFinite(parsedDate.getTime())) return 0;
   parsedDate.setHours(12, 0, 0, 0);
   return parsedDate.getTime();
@@ -439,7 +447,8 @@ function hasDailyTrackerResolutionForDate(item, completedList, pendingList, idKe
   const inCompletedHistory = Array.isArray(completedList)
     ? completedList.some(
         (entry) =>
-          String(entry?.[idKey] || entry?.id || '').trim() === itemId && getEventDateKey(entry) === dateKey
+          String(entry?.[idKey] || entry?.id || '').trim() === itemId &&
+          getEventDateKey(entry) === dateKey
       )
     : false;
   if (inCompletedHistory) return true;
@@ -488,13 +497,22 @@ function collectFutureScheduledItemsForDate(config) {
 }
 
 function collectFutureTrackerItemsForDate(config) {
-  const { sourceList, pendingList, completedList, category, idKey, targetDateKey, targetDayOfWeek } = config;
+  const {
+    sourceList,
+    pendingList,
+    completedList,
+    category,
+    idKey,
+    targetDateKey,
+    targetDayOfWeek,
+  } = config;
   const items = [];
 
   (sourceList || []).forEach((item) => {
     if (!item || item.completed || item.failed) return;
     if (!getRoutineDays(item).includes(targetDayOfWeek)) return;
-    if (hasDailyTrackerResolutionForDate(item, completedList, pendingList, idKey, targetDateKey)) return;
+    if (hasDailyTrackerResolutionForDate(item, completedList, pendingList, idKey, targetDateKey))
+      return;
     items.push({ category, item, plannedDateKey: targetDateKey });
   });
 
@@ -506,7 +524,9 @@ function getUnifiedFutureTimelineActivities(targetDateKey) {
   if (!isFutureTimelineDate(safeDateKey)) return [];
 
   const targetDate =
-    typeof parseLocalDateString === 'function' ? parseLocalDateString(safeDateKey) : new Date(safeDateKey);
+    typeof parseLocalDateString === 'function'
+      ? parseLocalDateString(safeDateKey)
+      : new Date(safeDateKey);
   if (!Number.isFinite(targetDate.getTime())) return [];
 
   const targetDayOfWeek = targetDate.getDay();
@@ -653,20 +673,32 @@ function doesHeroLogMatchHistoryEntry(log, category, item, eventDateKey) {
 }
 
 function getStandaloneTimelineLogCategory(log) {
+  const specializedCategory = getNutritionHydrationTimelineLogCategory(log);
+  if (specializedCategory) return specializedCategory;
   const safeType = String(log?.type || 'system').trim();
-  if (safeType === 'level' || safeType === 'item' || safeType === 'penalty' || safeType === 'system') {
+  if (
+    safeType === 'level' ||
+    safeType === 'item' ||
+    safeType === 'penalty' ||
+    safeType === 'system'
+  ) {
     return safeType;
   }
   return 'hero-log';
 }
 
 function getStandaloneTimelineLogStatusClass(log) {
+  if (getNutritionHydrationTimelineLogCategory(log) === 'hydration') return 'completed';
+  if (getNutritionHydrationTimelineLogCategory(log) === 'nutrition') return 'completed';
   if (log?.type === 'penalty') return 'failed';
   if (log?.type === 'system') return 'skipped';
   return 'completed';
 }
 
 function getStandaloneTimelineLogLabel(log) {
+  const specializedCategory = getNutritionHydrationTimelineLogCategory(log);
+  if (specializedCategory === 'nutrition') return 'Alimentação';
+  if (specializedCategory === 'hydration') return 'Hidratação';
   switch (log?.type) {
     case 'level':
       return 'Nível';
@@ -682,6 +714,9 @@ function getStandaloneTimelineLogLabel(log) {
 }
 
 function getStandaloneTimelineLogIcon(log) {
+  const specializedCategory = getNutritionHydrationTimelineLogCategory(log);
+  if (specializedCategory === 'nutrition') return '🍽️';
+  if (specializedCategory === 'hydration') return '💧';
   switch (log?.type) {
     case 'mission':
       return '🎯';
@@ -704,13 +739,207 @@ function getStandaloneTimelineLogIcon(log) {
   }
 }
 
+function getNutritionHydrationTimelineLogCategory(log) {
+  const metaCategory = String(log?.meta?.category || '').trim();
+  if (metaCategory === 'nutrition' || metaCategory === 'hydration') {
+    return metaCategory;
+  }
+
+  const title = String(log?.title || '').trim();
+  const content = String(log?.content || '').trim();
+  const normalizedTitle = normalizeTimelineText(title);
+  const normalizedContent = normalizeTimelineText(content);
+
+  if (
+    normalizedTitle === normalizeTimelineText('Metas de alimentação batidas') ||
+    normalizedTitle.startsWith(normalizeTimelineText('Refeição registrada:'))
+  ) {
+    return 'nutrition';
+  }
+  if (normalizedTitle === normalizeTimelineText('Meta de hidratação batida')) {
+    return 'hydration';
+  }
+  if (log?.type === 'penalty') {
+    const mentionsNutrition =
+      normalizedTitle.includes('alimentacao') ||
+      normalizedTitle.includes('hidratacao') ||
+      normalizedContent.includes('refeicao') ||
+      normalizedContent.includes('hidratacao') ||
+      normalizedContent.includes('alimentacao');
+    const mentionsActivity =
+      normalizedContent.includes('missao') ||
+      normalizedContent.includes('tarefa') ||
+      normalizedContent.includes('trabalho') ||
+      normalizedContent.includes('treino') ||
+      normalizedContent.includes('estudo') ||
+      normalizedContent.includes('livro');
+    if (mentionsNutrition && !mentionsActivity) {
+      return normalizedContent.includes('hidratacao') && !normalizedContent.includes('refeicao')
+        ? 'hydration'
+        : 'nutrition';
+    }
+  }
+  return '';
+}
+
+function isAggregatePenaltyTimelineLog(log) {
+  if (log?.type !== 'penalty') return false;
+  const title = String(log?.title || '').trim();
+  const content = String(log?.content || '').trim();
+  return title === 'Atividades não concluídas' && content.startsWith('Registros com falha: ');
+}
+
+function getMergedPenaltyNarrative(log) {
+  const content = String(log?.content || '').trim();
+  if (!content) return '';
+  const aggregatePrefixMatch = content.match(/^Registros com falha: .*?\. (.+)$/);
+  return (aggregatePrefixMatch?.[1] || content).trim();
+}
+
+function getNutritionTimelineMealOrder() {
+  if (typeof NUTRITION_MEAL_ORDER !== 'undefined' && Array.isArray(NUTRITION_MEAL_ORDER)) {
+    return NUTRITION_MEAL_ORDER;
+  }
+  return ['cafe', 'almoco', 'jantar', 'lanche'];
+}
+
+function getNutritionTimelineMealLabel(mealKey) {
+  const labels =
+    typeof NUTRITION_MEALS !== 'undefined' && NUTRITION_MEALS
+      ? NUTRITION_MEALS
+      : {
+          cafe: 'Café da manhã',
+          almoco: 'Almoço',
+          jantar: 'Jantar',
+          lanche: 'Lanche',
+        };
+  return labels[mealKey] || labels.lanche || 'Lanche';
+}
+
+function getNutritionTimelineMealOrderIndex(mealKey) {
+  const index = getNutritionTimelineMealOrder().indexOf(mealKey);
+  return index >= 0 ? index : Number.MAX_SAFE_INTEGER;
+}
+
+function normalizeNutritionTimelineEntry(entry) {
+  const source = entry || {};
+  return {
+    ...source,
+    id: Number.isFinite(Number(source.id)) ? Number(source.id) : 0,
+    date: String(source.date || '').trim(),
+    meal: String(source.meal || 'lanche').trim() || 'lanche',
+    foodName:
+      String(source.foodName || source.name || 'Alimento sem nome').trim() || 'Alimento sem nome',
+    grams: Number(source.grams || 0),
+    kcal: Number(source.kcal || 0),
+    protein: Number(source.protein || 0),
+    carbs: Number(source.carbs || 0),
+    fat: Number(source.fat || 0),
+    fiber: Number(source.fiber || 0),
+    notes: String(source.notes || '').trim(),
+    createdAt: String(source.createdAt || '').trim(),
+    consolidated: source.consolidated !== false,
+    consolidatedAt: String(source.consolidatedAt || '').trim(),
+  };
+}
+
+function getNutritionEntryTimelineTimestamp(entry) {
+  const candidates = [String(entry?.consolidatedAt || '').trim(), String(entry?.createdAt || '').trim()];
+  for (const isoValue of candidates) {
+    if (!isoValue) continue;
+    const parsed = new Date(isoValue);
+    if (!Number.isFinite(parsed.getTime())) continue;
+    if (getLocalDateString(parsed) === entry.date) return isoValue;
+  }
+  return '';
+}
+
+function getNutritionFallbackSortTimestamp(dateKey, mealKey) {
+  const parsedDate =
+    typeof parseLocalDateString === 'function' ? parseLocalDateString(dateKey) : new Date(dateKey);
+  if (!Number.isFinite(parsedDate.getTime())) return 0;
+
+  const fallbackHours = {
+    cafe: 8,
+    almoco: 12,
+    lanche: 16,
+    jantar: 19,
+  };
+  parsedDate.setHours(fallbackHours[mealKey] || 21, 0, 0, 0);
+  return parsedDate.getTime();
+}
+
+function formatNutritionTimelineNumber(value, decimals = 1) {
+  const parsed = Number(value || 0);
+  return parsed.toFixed(decimals);
+}
+
+function getNutritionTimelineEvents() {
+  const buckets = new Map();
+
+  (Array.isArray(appData.nutritionEntries) ? appData.nutritionEntries : [])
+    .map(normalizeNutritionTimelineEntry)
+    .filter((entry) => entry.date && entry.consolidated !== false)
+    .forEach((entry) => {
+      const key = `${entry.date}|${entry.meal}`;
+      if (!buckets.has(key)) {
+        const rewardKey = `${entry.date}|${entry.meal}`;
+        const rewardedMealKeys = Array.isArray(appData.nutritionStats?.rewardedMealKeys)
+          ? appData.nutritionStats.rewardedMealKeys
+          : [];
+        buckets.set(key, {
+          timelineKind: 'nutrition',
+          category: 'nutrition',
+          eventDateKey: entry.date,
+          eventTimestamp: '',
+          sortTimestamp: getNutritionFallbackSortTimestamp(entry.date, entry.meal),
+          meal: entry.meal,
+          mealLabel: getNutritionTimelineMealLabel(entry.meal),
+          entries: [],
+          totals: { grams: 0, kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+          foodNames: new Set(),
+          notes: [],
+          rewardSummary: rewardedMealKeys.includes(rewardKey)
+            ? '+1 XP, +1 moeda, +1 disciplina'
+            : '',
+          title: `${getNutritionTimelineMealLabel(entry.meal)} consolidado`,
+        });
+      }
+
+      const bucket = buckets.get(key);
+      const timestamp = getNutritionEntryTimelineTimestamp(entry);
+      if (timestamp && (!bucket.eventTimestamp || timestamp > bucket.eventTimestamp)) {
+        bucket.eventTimestamp = timestamp;
+        bucket.sortTimestamp = getTimelineSortTimestamp(entry.date, timestamp);
+      }
+      bucket.entries.push(entry);
+      bucket.totals.grams += entry.grams;
+      bucket.totals.kcal += entry.kcal;
+      bucket.totals.protein += entry.protein;
+      bucket.totals.carbs += entry.carbs;
+      bucket.totals.fat += entry.fat;
+      bucket.totals.fiber += entry.fiber;
+      bucket.foodNames.add(entry.foodName);
+      if (entry.notes) bucket.notes.push(entry.notes);
+    });
+
+  return Array.from(buckets.values()).map((bucket) => ({
+    ...bucket,
+    foodNames: Array.from(bucket.foodNames),
+    notes: Array.from(new Set(bucket.notes)),
+    mealOrder: getNutritionTimelineMealOrderIndex(bucket.meal),
+  }));
+}
+
 function getUnifiedTimelineEvents() {
   const heroLogs = Array.isArray(appData.heroLogs) ? appData.heroLogs.slice() : [];
   const consumedLogIds = new Set();
   const activityEvents = getUnifiedHistoryActivities().map(({ category, item }) => {
     const eventDateKey = getEventDateKey(item);
     const matchedLog = heroLogs.find(
-      (log) => !consumedLogIds.has(log.id) && doesHeroLogMatchHistoryEntry(log, category, item, eventDateKey)
+      (log) =>
+        !consumedLogIds.has(log.id) &&
+        doesHeroLogMatchHistoryEntry(log, category, item, eventDateKey)
     );
     if (matchedLog?.id !== undefined) {
       consumedLogIds.add(matchedLog.id);
@@ -722,7 +951,10 @@ function getUnifiedTimelineEvents() {
       item,
       eventDateKey,
       eventTimestamp: historyTimestamp || matchedLog?.date || '',
-      sortTimestamp: getTimelineSortTimestamp(eventDateKey, historyTimestamp || matchedLog?.date || ''),
+      sortTimestamp: getTimelineSortTimestamp(
+        eventDateKey,
+        historyTimestamp || matchedLog?.date || ''
+      ),
       matchedLog: matchedLog || null,
       statusMeta: getTimelineStatusMeta(item),
       typeLabel: getHistoryEntryTypeLabel(category, item),
@@ -730,20 +962,46 @@ function getUnifiedTimelineEvents() {
     };
   });
 
+  const failedActivityEventsByDate = new Map();
+  activityEvents.forEach((entry) => {
+    if (!entry?.item?.failed) return;
+    const dateKey = String(entry.eventDateKey || '').trim();
+    if (!dateKey) return;
+    if (!failedActivityEventsByDate.has(dateKey)) {
+      failedActivityEventsByDate.set(dateKey, []);
+    }
+    failedActivityEventsByDate.get(dateKey).push(entry);
+  });
+
+  heroLogs.forEach((log) => {
+    if (consumedLogIds.has(log?.id) || !isAggregatePenaltyTimelineLog(log)) return;
+    const eventDateKey = getTimelineLogDateKey(log);
+    const failedEntries = failedActivityEventsByDate.get(eventDateKey) || [];
+    if (failedEntries.length === 0) return;
+    const targetEntry = failedEntries[0];
+    if (!Array.isArray(targetEntry.mergedPenaltyLogs)) {
+      targetEntry.mergedPenaltyLogs = [];
+    }
+    targetEntry.mergedPenaltyLogs.push(log);
+    consumedLogIds.add(log.id);
+  });
+
   const selectedFutureDate = getSelectedTimelineDateFilter();
-  const plannedEvents = getUnifiedFutureTimelineActivities(selectedFutureDate).map(({ category, item, plannedDateKey }) => ({
-    timelineKind: 'activity',
-    category,
-    item,
-    eventDateKey: plannedDateKey,
-    eventTimestamp: '',
-    sortTimestamp: getTimelineSortTimestamp(plannedDateKey, ''),
-    matchedLog: null,
-    statusMeta: getPlannedTimelineStatusMeta(),
-    typeLabel: getHistoryEntryTypeLabel(category, item),
-    title: getPlannedActivityTimelineTitle(category, item),
-    isPlanned: true,
-  }));
+  const plannedEvents = getUnifiedFutureTimelineActivities(selectedFutureDate).map(
+    ({ category, item, plannedDateKey }) => ({
+      timelineKind: 'activity',
+      category,
+      item,
+      eventDateKey: plannedDateKey,
+      eventTimestamp: '',
+      sortTimestamp: getTimelineSortTimestamp(plannedDateKey, ''),
+      matchedLog: null,
+      statusMeta: getPlannedTimelineStatusMeta(),
+      typeLabel: getHistoryEntryTypeLabel(category, item),
+      title: getPlannedActivityTimelineTitle(category, item),
+      isPlanned: true,
+    })
+  );
 
   const logEvents = heroLogs
     .filter((log) => !consumedLogIds.has(log.id))
@@ -760,14 +1018,41 @@ function getUnifiedTimelineEvents() {
       };
     });
 
-  return [...plannedEvents, ...activityEvents, ...logEvents].sort((left, right) => {
-    const timeDelta = Number(right.sortTimestamp || 0) - Number(left.sortTimestamp || 0);
-    if (timeDelta !== 0) return timeDelta;
-    const isoDelta = String(right.eventTimestamp || '').localeCompare(String(left.eventTimestamp || ''));
-    if (isoDelta !== 0) return isoDelta;
-    if (left.timelineKind !== right.timelineKind) return left.timelineKind === 'log' ? -1 : 1;
-    return String(right.eventDateKey || '').localeCompare(String(left.eventDateKey || ''));
-  });
+  const nutritionEvents = getNutritionTimelineEvents();
+
+  return [...plannedEvents, ...activityEvents, ...nutritionEvents, ...logEvents].sort(
+    (left, right) => {
+      const timeDelta = Number(right.sortTimestamp || 0) - Number(left.sortTimestamp || 0);
+      if (timeDelta !== 0) return timeDelta;
+      const isoDelta = String(right.eventTimestamp || '').localeCompare(
+        String(left.eventTimestamp || '')
+      );
+      if (isoDelta !== 0) return isoDelta;
+      if (left.timelineKind === 'nutrition' && right.timelineKind === 'nutrition') {
+        return Number(right.mealOrder || 0) - Number(left.mealOrder || 0);
+      }
+      if (left.timelineKind !== right.timelineKind) return left.timelineKind === 'log' ? -1 : 1;
+      return String(right.eventDateKey || '').localeCompare(String(left.eventDateKey || ''));
+    }
+  );
+}
+
+function isNutritionHydrationTimelineEntry(entry) {
+  if (!entry || typeof entry !== 'object') return false;
+  if (entry.timelineKind === 'nutrition') return true;
+  if (entry.timelineKind === 'log') {
+    const category = String(entry.category || '').trim();
+    return category === 'nutrition' || category === 'hydration';
+  }
+  return false;
+}
+
+function getActivityTimelineEvents() {
+  return getUnifiedTimelineEvents().filter((entry) => !isNutritionHydrationTimelineEntry(entry));
+}
+
+function getNutritionHydrationTimelineEvents() {
+  return getUnifiedTimelineEvents().filter(isNutritionHydrationTimelineEntry);
 }
 
 function filterTimelineEntries(items, filterId = 'activity-history-filter') {
@@ -788,10 +1073,23 @@ function getSelectedTimelineDateFilter() {
   return String(document.getElementById('activity-history-date')?.value || '').trim();
 }
 
+function getSelectedNutritionTimelineDateFilter() {
+  if (typeof document === 'undefined') return '';
+  return String(document.getElementById('nutrition-history-date')?.value || '').trim();
+}
+
 function getTimelineControlDateKey() {
   const selectedDate = getSelectedTimelineDateFilter();
   if (selectedDate) return selectedDate;
   return typeof getLocalDateString === 'function' ? getLocalDateString() : '';
+}
+
+function filterNutritionTimelineEntries(items) {
+  const selectedDate = getSelectedNutritionTimelineDateFilter();
+  return (items || []).filter((entry) => {
+    if (selectedDate && String(entry.eventDateKey || '') !== selectedDate) return false;
+    return true;
+  });
 }
 
 function renderTimelineDayControls() {
@@ -844,6 +1142,37 @@ function renderTimelineDayControls() {
 }
 
 function renderTimelineEventCard(entry) {
+  if (entry.timelineKind === 'nutrition') {
+    const card = document.createElement('div');
+    const timelineTime = formatTimelineTime(entry.eventTimestamp);
+    const foods = entry.foodNames.slice(0, 4).join(', ');
+    const extraFoods = entry.foodNames.length > 4 ? ` +${entry.foodNames.length - 4}` : '';
+    const notes = entry.notes.length
+      ? `<p class="timeline-narrative">Obs: ${escapeHtml(entry.notes.join(' • '))}</p>`
+      : '';
+    card.className = 'mission-card history-card compact-history timeline-nutrition-card completed';
+    card.innerHTML = `
+      <div class="mission-header">
+        <div class="mission-name">
+          <span class="mission-emoji">🍽️</span>
+          <span>${escapeHtml(entry.title)}</span>
+        </div>
+        <span class="mission-status completed-status">CONSOLIDADO</span>
+        <span class="mission-type nutrition">Alimentação</span>
+      </div>
+      <div class="mission-details">
+        <p>Refeição: ${escapeHtml(entry.mealLabel)}</p>
+        <p>Data: ${formatDate(entry.eventDateKey)}</p>
+        ${timelineTime ? `<p>Hora: ${escapeHtml(timelineTime)}</p>` : ''}
+        <p>Alimentos: ${escapeHtml(foods || 'Sem alimento')}${escapeHtml(extraFoods)}</p>
+        <p>Macros: ${formatNutritionTimelineNumber(entry.totals.grams, 0)}g • ${formatNutritionTimelineNumber(entry.totals.kcal, 0)} kcal • P ${formatNutritionTimelineNumber(entry.totals.protein)}g • C ${formatNutritionTimelineNumber(entry.totals.carbs)}g • G ${formatNutritionTimelineNumber(entry.totals.fat)}g • F ${formatNutritionTimelineNumber(entry.totals.fiber)}g</p>
+        ${entry.rewardSummary ? `<p class="timeline-narrative">Recompensa: ${escapeHtml(entry.rewardSummary)}</p>` : ''}
+        ${notes}
+      </div>
+    `;
+    return card;
+  }
+
   if (entry.timelineKind === 'log') {
     const card = document.createElement('div');
     const toneClass = getStandaloneTimelineLogStatusClass(entry.log);
@@ -874,6 +1203,12 @@ function renderTimelineEventCard(entry) {
   const card = document.createElement('div');
   card.className = `mission-card history-card compact-history ${statusMeta.tone}`;
   const timelineTime = formatTimelineTime(entry.eventTimestamp);
+  const mergedPenaltyNarrative = Array.isArray(entry.mergedPenaltyLogs)
+    ? entry.mergedPenaltyLogs
+        .map((log) => getMergedPenaltyNarrative(log))
+        .filter(Boolean)
+        .join(' ')
+    : '';
   const workoutDetailLines =
     category === 'workout'
       ? getWorkoutHistoryDetailLines(item)
@@ -897,6 +1232,7 @@ function renderTimelineEventCard(entry) {
       ${workoutDetailLines}
       ${category === 'book' && item.author ? `<p>Autor: ${escapeHtml(item.author)}</p>` : ''}
       ${item.reason ? `<p class="mission-reason">Motivo: ${escapeHtml(item.reason)}</p>` : ''}
+      ${mergedPenaltyNarrative ? `<p class="timeline-narrative">Penalidade do dia: ${escapeHtml(mergedPenaltyNarrative)}</p>` : ''}
       ${matchedLog?.content ? `<p class="timeline-narrative">Registro do herói: ${escapeHtml(matchedLog.content)}</p>` : ''}
       ${item.feedback ? `<p class="mission-feedback">Feedback: ${escapeHtml(item.feedback)}</p>` : ''}
     </div>
@@ -1048,13 +1384,26 @@ function renderUnifiedActivitiesHistory() {
   const container = document.getElementById('completed-activities');
   if (!container) return;
   renderTimelineDayControls();
-  const items = filterTimelineEntries(getUnifiedTimelineEvents(), 'activity-history-filter');
+  const items = filterTimelineEntries(getActivityTimelineEvents(), 'activity-history-filter');
   renderPaginatedHistory(
     container,
     items,
     renderTimelineEventCard,
     'Nenhum evento na linha do tempo para este filtro.',
     renderUnifiedActivitiesHistory
+  );
+}
+
+function renderNutritionHydrationHistory() {
+  const container = document.getElementById('nutrition-timeline-list');
+  if (!container) return;
+  const items = filterNutritionTimelineEntries(getNutritionHydrationTimelineEvents());
+  renderPaginatedHistory(
+    container,
+    items,
+    renderTimelineEventCard,
+    'Nenhum registro de alimentação ou hidratação para este filtro.',
+    renderNutritionHydrationHistory
   );
 }
 
@@ -1075,7 +1424,7 @@ function renderUnifiedActivitiesList() {
       typeof getActivityPlanningMeta === 'function' ? getActivityPlanningMeta(item) : null;
     const secondary =
       category === 'workout'
-        ? getWorkoutTypeName(item.type)
+        ? getWorkoutTypeName(item)
         : category === 'study'
           ? item.type === 'logico'
             ? 'Lógico'
@@ -1279,8 +1628,7 @@ function checkOverdueWorks(options = {}) {
       const availableFrom = work.availableDate || work.dateAdded || todayStr;
       const shouldCheckYesterday =
         getRoutineDays(work).includes(yesterdayDayOfWeek) && availableFrom <= yesterdayStr;
-      const workOffActive =
-        typeof isWorkOffDay === 'function' && isWorkOffDay(yesterdayStr);
+      const workOffActive = typeof isWorkOffDay === 'function' && isWorkOffDay(yesterdayStr);
       if (shouldCheckYesterday && !workOffActive) {
         const alreadyLoggedYesterday = wasItemLoggedForDate(
           work,
@@ -1515,7 +1863,12 @@ function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
         id: safeId,
         name: fallback.name || 'Treino',
         emoji: fallback.emoji || '💪',
-        type: fallback.type || '',
+        metric:
+          typeof getWorkoutMetric === 'function' ? getWorkoutMetric(fallback) : 'reps',
+        goalDirection:
+          typeof getWorkoutGoalDirection === 'function'
+            ? getWorkoutGoalDirection(fallback)
+            : 'maximize',
         totalReps: 0,
         totalDistance: 0,
         totalTime: 0,
@@ -1526,7 +1879,12 @@ function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
     const bucket = summaryById.get(safeId);
     if (!bucket.name && fallback.name) bucket.name = fallback.name;
     if ((!bucket.emoji || bucket.emoji === '💪') && fallback.emoji) bucket.emoji = fallback.emoji;
-    if (!bucket.type && fallback.type) bucket.type = fallback.type;
+    if (!bucket.metric && typeof getWorkoutMetric === 'function') {
+      bucket.metric = getWorkoutMetric(fallback);
+    }
+    if (!bucket.goalDirection && typeof getWorkoutGoalDirection === 'function') {
+      bucket.goalDirection = getWorkoutGoalDirection(fallback);
+    }
     return bucket;
   };
 
@@ -1552,12 +1910,12 @@ function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
 
     bucket.timesDone += 1;
 
-    if (entry.type === 'repeticao' && Array.isArray(entry.series)) {
+    if (isRepetitionWorkoutType(entry) && Array.isArray(entry.series)) {
       bucket.totalReps += entry.series.reduce((sum, value) => sum + (parseInt(value, 10) || 0), 0);
       return;
     }
 
-    if (entry.type === 'distancia') {
+    if (isDistanceWorkoutType(entry)) {
       bucket.totalDistance += Number(entry.distance || 0);
       bucket.totalTime += Number(entry.time || 0);
       return;
@@ -1585,7 +1943,8 @@ function formatWorkoutDuration(totalTimeSeconds) {
   const minutes = Math.floor((safeSeconds % 3600) / 60);
   const seconds = safeSeconds % 60;
 
-  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+  if (hours > 0)
+    return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
   if (minutes > 0) return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
   return `${seconds}s`;
 }
@@ -1593,7 +1952,12 @@ function formatWorkoutDuration(totalTimeSeconds) {
 function formatWorkoutAverageSpeed(totalDistanceKm, totalTimeSeconds) {
   const safeDistance = Number(totalDistanceKm || 0);
   const safeSeconds = Number(totalTimeSeconds || 0);
-  if (!Number.isFinite(safeDistance) || safeDistance <= 0 || !Number.isFinite(safeSeconds) || safeSeconds <= 0) {
+  if (
+    !Number.isFinite(safeDistance) ||
+    safeDistance <= 0 ||
+    !Number.isFinite(safeSeconds) ||
+    safeSeconds <= 0
+  ) {
     return '-';
   }
 
@@ -1603,7 +1967,12 @@ function formatWorkoutAverageSpeed(totalDistanceKm, totalTimeSeconds) {
 function formatWorkoutPace(totalDistanceKm, totalTimeSeconds) {
   const safeDistance = Number(totalDistanceKm || 0);
   const safeSeconds = Number(totalTimeSeconds || 0);
-  if (!Number.isFinite(safeDistance) || safeDistance <= 0 || !Number.isFinite(safeSeconds) || safeSeconds <= 0) {
+  if (
+    !Number.isFinite(safeDistance) ||
+    safeDistance <= 0 ||
+    !Number.isFinite(safeSeconds) ||
+    safeSeconds <= 0
+  ) {
     return '-';
   }
 
@@ -1629,13 +1998,13 @@ function formatWorkoutSpeedSummary(totalDistanceKm, totalTimeSeconds) {
 function getWorkoutHistoryDetailLines(item = {}) {
   if (!item || item.failed || item.skipped) return [];
 
-  if (item.type === 'repeticao' && Array.isArray(item.series)) {
+  if (isRepetitionWorkoutType(item) && Array.isArray(item.series)) {
     const series = item.series.map((value) => parseInt(value, 10) || 0);
     const totalReps = series.reduce((sum, value) => sum + value, 0);
     return [`Séries: ${series.join(' / ')}`, `Total repetições: ${totalReps}`];
   }
 
-  if (item.type === 'distancia') {
+  if (isDistanceWorkoutType(item)) {
     const details = [];
     const distance = Number(item.distance || 0);
     const time = Number(item.time || 0);
@@ -1653,7 +2022,7 @@ function getWorkoutHistoryDetailLines(item = {}) {
     return details;
   }
 
-  if (item.type === 'maior-tempo' || item.type === 'menor-tempo') {
+  if (isTimedWorkoutType(item)) {
     const time = Number(item.time || 0);
     if (Number.isFinite(time) && time > 0) {
       return [`Tempo: ${formatWorkoutDuration(time)}`];
@@ -1699,7 +2068,9 @@ function updateStatistics() {
   const statMissionsIgnored = document.getElementById('stat-missions-ignored');
   if (statMissionsIgnored) statMissionsIgnored.textContent = stats.missionsIgnored || 0;
   if (typeof renderPlanningStatisticsPanel === 'function') {
-    renderPlanningStatisticsPanel(typeof getUnifiedTodayActivities === 'function' ? getUnifiedTodayActivities() : []);
+    renderPlanningStatisticsPanel(
+      typeof getUnifiedTodayActivities === 'function' ? getUnifiedTodayActivities() : []
+    );
   }
 
   // Atualizar tabela de detalhes de treinos
@@ -1731,7 +2102,11 @@ function updateAdvancedStatistics() {
         )
       : null;
   const planningObjectivesHealthy = planningSnapshot
-    ? Math.max(0, Number(planningSnapshot.objectivesActive || 0) - Number(planningSnapshot.atRiskObjectives || 0))
+    ? Math.max(
+        0,
+        Number(planningSnapshot.objectivesActive || 0) -
+          Number(planningSnapshot.atRiskObjectives || 0)
+      )
     : 0;
 
   const weeklyCurrent = getPeriodTotals(7, 0);
@@ -1997,18 +2372,21 @@ function updateWorkoutDetailsTable() {
   buildWorkoutHistorySummary(appData.workouts, appData.completedWorkouts).forEach((workout) => {
     const row = document.createElement('tr');
     const safeWorkoutLabel = escapeHtml(`${workout.emoji || '💪'} ${workout.name || 'Treino'}`);
+    const isDistanceWorkout = typeof isDistanceWorkoutType === 'function' && isDistanceWorkoutType(workout);
+    const isTimedWorkout = typeof isTimedWorkoutType === 'function' && isTimedWorkoutType(workout);
+    const isRepetitionWorkout =
+      typeof isRepetitionWorkoutType === 'function' && isRepetitionWorkoutType(workout);
     const totalTimeLabel =
-      workout.timesDone > 0 &&
-      (workout.type === 'distancia' || workout.type === 'maior-tempo' || workout.type === 'menor-tempo')
+      workout.timesDone > 0 && (isDistanceWorkout || isTimedWorkout)
         ? formatWorkoutTotalMinutes(workout.totalTime)
         : '-';
 
     row.innerHTML = `
             <td>${safeWorkoutLabel}</td>
-            <td>${workout.type === 'repeticao' ? workout.totalReps : '-'}</td>
-            <td>${workout.type === 'distancia' ? workout.totalDistance.toFixed(2) + ' km' : '-'}</td>
+            <td>${isRepetitionWorkout ? workout.totalReps : '-'}</td>
+            <td>${isDistanceWorkout ? workout.totalDistance.toFixed(2) + ' km' : '-'}</td>
             <td>${totalTimeLabel}</td>
-            <td>${workout.type === 'distancia' ? formatWorkoutSpeedSummary(workout.totalDistance, workout.totalTime) : '-'}</td>
+            <td>${isDistanceWorkout ? formatWorkoutSpeedSummary(workout.totalDistance, workout.totalTime) : '-'}</td>
             <td>${workout.timesDone}</td>
         `;
 
@@ -2211,13 +2589,18 @@ Object.assign(globalThis, {
   getUnifiedTodayActivities,
   getAllTodayActivities,
   getUnifiedHistoryActivities,
+  getNutritionTimelineEvents,
   getUnifiedTimelineEvents,
+  getActivityTimelineEvents,
+  getNutritionHydrationTimelineEvents,
   filterTimelineEntries,
+  filterNutritionTimelineEntries,
   getTimelineControlDateKey,
   getUnifiedManagedActivities,
   updateUnifiedActivities,
   renderUnifiedTodayActivities,
   renderUnifiedActivitiesHistory,
+  renderNutritionHydrationHistory,
   renderTimelineDayControls,
   resetHistoryPage,
   wasItemLoggedForDate,
@@ -2262,8 +2645,12 @@ if (typeof module !== 'undefined' && module.exports) {
     getEmergencyBadgeHtml,
     isOneOffScheduledItemOverdue,
     isUrgentWorkActivity,
+    getNutritionTimelineEvents,
     getUnifiedTimelineEvents,
+    getActivityTimelineEvents,
+    getNutritionHydrationTimelineEvents,
     filterTimelineEntries,
+    filterNutritionTimelineEntries,
     getTimelineControlDateKey,
     getDailyStatisticsBreakdown,
     buildStatisticsRecordSnapshot,

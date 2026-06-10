@@ -140,13 +140,13 @@ function getWorkoutDayTotalReps(series = []) {
 function getWorkoutBestRepsRecord(workout, completedWorkouts = []) {
   const stats = workout?.stats || {};
   const explicitBestSet = Number(stats.bestSetReps || 0);
-  const workoutId = String(workout?.id || workout?.workoutId || '');
+  const workoutId = String(workout?.id || '');
   let bestFromHistory = 0;
 
   if (workoutId && Array.isArray(completedWorkouts)) {
     completedWorkouts.forEach((entry) => {
-      if (!entry || entry.failed || entry.skipped || entry.type !== 'repeticao') return;
-      if (String(entry.workoutId || entry.id || '') !== workoutId) return;
+      if (!entry || entry.failed || entry.skipped || !isRepetitionWorkoutType(entry)) return;
+      if (String(entry.workoutId || '') !== workoutId) return;
       bestFromHistory = Math.max(bestFromHistory, getBestWorkoutSetValue(entry.series));
     });
   }
@@ -161,19 +161,18 @@ function getWorkoutBestRepsRecord(workout, completedWorkouts = []) {
 function getWorkoutBestDayRepsRecord(workout, completedWorkouts = []) {
   const stats = workout?.stats || {};
   const explicitBestDay = Number(stats.bestDayReps || 0);
-  const legacyBestDay = Number(stats.bestReps || 0);
-  const workoutId = String(workout?.id || workout?.workoutId || '');
+  const workoutId = String(workout?.id || '');
   let bestFromHistory = 0;
 
   if (workoutId && Array.isArray(completedWorkouts)) {
     completedWorkouts.forEach((entry) => {
-      if (!entry || entry.failed || entry.skipped || entry.type !== 'repeticao') return;
-      if (String(entry.workoutId || entry.id || '') !== workoutId) return;
+      if (!entry || entry.failed || entry.skipped || !isRepetitionWorkoutType(entry)) return;
+      if (String(entry.workoutId || '') !== workoutId) return;
       bestFromHistory = Math.max(bestFromHistory, getWorkoutDayTotalReps(entry.series));
     });
   }
 
-  return Math.max(explicitBestDay, legacyBestDay, bestFromHistory);
+  return Math.max(explicitBestDay, bestFromHistory);
 }
 
 function getWorkoutSpeedValue(distance = 0, time = 0) {
@@ -194,13 +193,13 @@ function getWorkoutSpeedValue(distance = 0, time = 0) {
 function getWorkoutBestSpeedRecord(workout, completedWorkouts = []) {
   const stats = workout?.stats || {};
   const explicitBestSpeed = Number(stats.bestSpeed || 0);
-  const workoutId = String(workout?.id || workout?.workoutId || '');
+  const workoutId = String(workout?.id || '');
   let bestFromHistory = 0;
 
   if (workoutId && Array.isArray(completedWorkouts)) {
     completedWorkouts.forEach((entry) => {
-      if (!entry || entry.failed || entry.skipped || entry.type !== 'distancia') return;
-      if (String(entry.workoutId || entry.id || '') !== workoutId) return;
+      if (!entry || entry.failed || entry.skipped || !isDistanceWorkoutType(entry)) return;
+      if (String(entry.workoutId || '') !== workoutId) return;
       bestFromHistory = Math.max(bestFromHistory, getWorkoutSpeedValue(entry.distance, entry.time));
     });
   }
@@ -225,11 +224,22 @@ function buildHistoryActionTimestamp(dateKey = getLocalDateString()) {
   return parsedDate.toISOString();
 }
 
+function readWorkoutTypeSelection(selectId) {
+  const selection = String(document.getElementById(selectId)?.value || 'reps|maximize').trim();
+  return typeof getWorkoutTypeConfig === 'function'
+    ? getWorkoutTypeConfig(selection)
+    : {
+        metric: 'reps',
+        goalDirection: 'maximize',
+        selectionValue: 'reps|maximize',
+      };
+}
+
 // Manipular novo treino
 function handleNewWorkout() {
   const name = document.getElementById('modal-item-name').value.trim();
   const emoji = document.getElementById('modal-item-emoji').value;
-  const type = document.getElementById('modal-item-type').value;
+  const workoutModel = readWorkoutTypeSelection('modal-item-type');
 
   if (!name) {
     showFeedback('Informe um nome válido para o treino.', 'warn');
@@ -237,7 +247,13 @@ function handleNewWorkout() {
   }
 
   const days = getCheckedDays('#item-form .days-selector input[type="checkbox"]:checked');
-  const newWorkout = createWorkoutPayload(name, emoji, type, days);
+  const newWorkout = createWorkoutPayload(
+    name,
+    emoji,
+    workoutModel.metric,
+    workoutModel.goalDirection,
+    days
+  );
 
   appData.workouts.push(newWorkout);
   updateUI();
@@ -272,7 +288,7 @@ function handleEditWorkout() {
 
   const name = document.getElementById('modal-item-name').value.trim();
   const emoji = document.getElementById('modal-item-emoji').value.trim();
-  const type = document.getElementById('modal-item-type').value;
+  const workoutModel = readWorkoutTypeSelection('modal-item-type');
   const days = getCheckedDays('#item-form .days-selector input[type="checkbox"]:checked');
 
   if (!name) {
@@ -282,7 +298,12 @@ function handleEditWorkout() {
 
   workout.name = name;
   workout.emoji = emoji || '💪';
-  workout.type = type;
+  if (typeof applyWorkoutModel === 'function') {
+    applyWorkoutModel(workout, workoutModel);
+  } else {
+    workout.metric = workoutModel.metric;
+    workout.goalDirection = workoutModel.goalDirection;
+  }
   workout.days = days;
 
   updateUI({ mode: 'activity' });
@@ -502,14 +523,8 @@ function queuePendingFailureReview(category, item, options = {}) {
   return true;
 }
 
-function inferLastDailyResetForStartupReview(todayStr) {
-  if (appData.serverMeta?.lastDailyReset) {
-    return appData.serverMeta.lastDailyReset;
-  }
-  if (window.AppRules && typeof window.AppRules.inferLegacyLastDailyResetDate === 'function') {
-    return window.AppRules.inferLegacyLastDailyResetDate(appData, todayStr);
-  }
-  return null;
+function inferLastDailyResetForStartupReview() {
+  return appData.serverMeta?.lastDailyReset || null;
 }
 
 function shouldPrepareStartupFailureReviews() {
@@ -518,7 +533,7 @@ function shouldPrepareStartupFailureReviews() {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
-  return inferLastDailyResetForStartupReview(todayStr) === yesterdayStr;
+  return inferLastDailyResetForStartupReview() === yesterdayStr;
 }
 
 function prepareStartupFailureReviews() {
@@ -607,14 +622,14 @@ function prepareStartupFailureReviews() {
   const buildStudyReviewSnapshot = (studyDay, study, missedDate) => ({
     studyId: studyDay?.studyId || study?.id || null,
     date: missedDate,
-    name: study?.name || studyDay?.name || 'Estudo',
-    emoji: study?.emoji || studyDay?.emoji || '📚',
-    type: study?.type || studyDay?.type || 'logico',
-    objectiveId: study?.objectiveId || null,
-    priority: study?.priority || 'medium',
-    impact: study?.impact || 'medium',
-    effort: study?.effort || 'medium',
-    energy: study?.energy || 'medium',
+    name: studyDay?.name || study?.name || 'Estudo',
+    emoji: studyDay?.emoji || study?.emoji || '📚',
+    type: studyDay?.type || study?.type || 'logico',
+    objectiveId: studyDay?.objectiveId ?? study?.objectiveId ?? null,
+    priority: studyDay?.priority || study?.priority || 'medium',
+    impact: studyDay?.impact || study?.impact || 'medium',
+    effort: studyDay?.effort || study?.effort || 'medium',
+    energy: studyDay?.energy || study?.energy || 'medium',
     applied: Boolean(studyDay?.applied),
     feedback: studyDay?.feedback || '',
   });
@@ -633,6 +648,10 @@ function prepareStartupFailureReviews() {
       const source = sourceList.find(
         (entry) => String(entry?.id || '') === String(item?.[idField] || '')
       );
+      if (!source) {
+        indexesToRemove.push(index);
+        return;
+      }
       const reviewActivity = isWorkout
         ? buildWorkoutReviewSnapshot(item, source, yesterdayStr)
         : buildStudyReviewSnapshot(item, source, yesterdayStr);
@@ -970,6 +989,7 @@ function recordCompletedWorkoutFromReview(workoutDay, completedDate, review = nu
     (entry) => String(entry?.id || '') === String(workoutDay.workoutId || '')
   );
   const completedAt = buildHistoryActionTimestamp(completedDate);
+  const workoutModelSource = workoutDay?.metric ? workoutDay : workout || workoutDay;
 
   if (
     !appData.completedWorkouts.some(
@@ -981,7 +1001,14 @@ function recordCompletedWorkoutFromReview(workoutDay, completedDate, review = nu
       workoutId: workoutDay.workoutId,
       name: workoutDay.name || workout?.name || 'Treino',
       emoji: workoutDay.emoji || workout?.emoji || '💪',
-      type: workoutDay.type || workout?.type || 'normal',
+      metric:
+        typeof getWorkoutMetric === 'function'
+          ? getWorkoutMetric(workoutModelSource)
+          : 'reps',
+      goalDirection:
+        typeof getWorkoutGoalDirection === 'function'
+          ? getWorkoutGoalDirection(workoutModelSource)
+          : 'maximize',
       date: completedDate,
       completedDate,
       completedAt,
@@ -1000,14 +1027,31 @@ function recordCompletedWorkoutFromReview(workoutDay, completedDate, review = nu
     });
   }
 
+  const workoutGoalDirection =
+    typeof getWorkoutGoalDirection === 'function'
+      ? getWorkoutGoalDirection(workoutModelSource)
+      : 'maximize';
+  const isRepetitionWorkout =
+    typeof isRepetitionWorkoutType === 'function'
+      ? isRepetitionWorkoutType(workoutModelSource)
+      : true;
+  const isDistanceWorkout =
+    typeof isDistanceWorkoutType === 'function'
+      ? isDistanceWorkoutType(workoutModelSource)
+      : false;
+  const isTimedWorkout =
+    typeof isTimedWorkoutType === 'function'
+      ? isTimedWorkoutType(workoutModelSource)
+      : false;
+
   const attributeRewards = [{ id: 2, amount: 1 }];
-  if (workoutDay.type === 'menor-tempo') {
+  if (isTimedWorkout && workoutGoalDirection === 'minimize') {
     attributeRewards.push({ id: 3, amount: 1 });
   }
-  if (workoutDay.type === 'repeticao' || workoutDay.type === 'maior-tempo') {
+  if (isRepetitionWorkout || (isTimedWorkout && workoutGoalDirection === 'maximize')) {
     attributeRewards.push({ id: 1, amount: 1 });
   }
-  if (workoutDay.type === 'distancia') {
+  if (isDistanceWorkout) {
     attributeRewards.push({ id: 6, amount: 1 });
   }
 
@@ -1163,7 +1207,12 @@ function recordFailedWorkoutFromReview(workoutDay, missedDate, review = null) {
     workoutId: workoutDay.workoutId,
     name: workoutDay.name || 'Treino',
     emoji: workoutDay.emoji || '💪',
-    type: workoutDay.type || 'normal',
+    metric:
+      typeof getWorkoutMetric === 'function' ? getWorkoutMetric(workoutDay) : 'reps',
+    goalDirection:
+      typeof getWorkoutGoalDirection === 'function'
+        ? getWorkoutGoalDirection(workoutDay)
+        : 'maximize',
     date: missedDate,
     completedDate: missedDate,
     failedDate: missedDate,
@@ -1318,7 +1367,18 @@ function handleWorkoutCompletion() {
   const completedAt = buildHistoryActionTimestamp(completedDateKey);
 
   // Atualizar valores
-  if (workout.type === 'repeticao') {
+  const workoutGoalDirection =
+    typeof getWorkoutGoalDirection === 'function'
+      ? getWorkoutGoalDirection(workout)
+      : 'maximize';
+  const isRepetitionWorkout =
+    typeof isRepetitionWorkoutType === 'function' ? isRepetitionWorkoutType(workout) : true;
+  const isDistanceWorkout =
+    typeof isDistanceWorkoutType === 'function' ? isDistanceWorkoutType(workout) : false;
+  const isTimedWorkout =
+    typeof isTimedWorkoutType === 'function' ? isTimedWorkoutType(workout) : false;
+
+  if (isRepetitionWorkout) {
     const series1 = parseInt(document.querySelector('input[name="series-0"]')?.value || 0);
     const series2 = parseInt(document.querySelector('input[name="series-1"]')?.value || 0);
     const series3 = parseInt(document.querySelector('input[name="series-2"]')?.value || 0);
@@ -1340,9 +1400,8 @@ function handleWorkoutCompletion() {
       getWorkoutBestRepsRecord(workout, appData.completedWorkouts || []),
       bestSetReps
     );
-    workout.stats.bestReps = workout.stats.bestDayReps;
     workout.stats.completed = (workout.stats.completed || 0) + 1;
-  } else if (workout.type === 'distancia') {
+  } else if (isDistanceWorkout) {
     const distance = parseFloat(document.querySelector('input[name="distance"]')?.value || 0);
     const timeMin = parseFloat(document.querySelector('input[name="time-min"]')?.value || 0);
     const timeSec = parseFloat(document.querySelector('input[name="time-sec"]')?.value || 0);
@@ -1365,7 +1424,7 @@ function handleWorkoutCompletion() {
       }
     }
     workout.stats.completed = (workout.stats.completed || 0) + 1;
-  } else if (workout.type === 'maior-tempo' || workout.type === 'menor-tempo') {
+  } else if (isTimedWorkout) {
     const timeMin = parseFloat(document.querySelector('input[name="time-min"]')?.value || 0);
     const timeSec = parseFloat(document.querySelector('input[name="time-sec"]')?.value || 0);
     const time = timeMin * 60 + timeSec;
@@ -1374,7 +1433,7 @@ function handleWorkoutCompletion() {
     if (!workout.stats) workout.stats = {};
     workout.stats.totalTime = (workout.stats.totalTime || 0) + time;
 
-    if (workout.type === 'menor-tempo') {
+    if (workoutGoalDirection === 'minimize') {
       if (workout.stats.bestTime === undefined || time < workout.stats.bestTime) {
         workout.stats.bestTime = time;
       }
@@ -1411,7 +1470,12 @@ function handleWorkoutCompletion() {
       workoutId: workoutDay.workoutId,
       name: workout.name,
       emoji: workout.emoji,
-      type: workout.type,
+      metric:
+        typeof getWorkoutMetric === 'function' ? getWorkoutMetric(workout) : 'reps',
+      goalDirection:
+        typeof getWorkoutGoalDirection === 'function'
+          ? getWorkoutGoalDirection(workout)
+          : 'maximize',
       date: workoutDay.date,
       completedDate: completedDateKey,
       completedAt,
@@ -1432,15 +1496,15 @@ function handleWorkoutCompletion() {
   let xpGained = 3; // XP geral base
   const attributeRewards = [{ id: 2, amount: 1 }]; // Vigor sempre ganha XP
 
-  if (workout.type === 'menor-tempo') {
+  if (isTimedWorkout && workoutGoalDirection === 'minimize') {
     attributeRewards.push({ id: 3, amount: 1 }); // Agilidade
   }
 
-  if (workout.type === 'repeticao' || workout.type === 'maior-tempo') {
+  if (isRepetitionWorkout || (isTimedWorkout && workoutGoalDirection === 'maximize')) {
     attributeRewards.push({ id: 1, amount: 1 }); // Força
   }
 
-  if (workout.type === 'distancia') {
+  if (isDistanceWorkout) {
     attributeRewards.push({ id: 6, amount: 1 }); // Disciplina
   }
 
@@ -1998,14 +2062,27 @@ function handleActivitySubmit(e) {
     }
     if (!work) appData.works.push(targetWork);
   } else if (category === 'workout') {
-    const workoutType = document.getElementById('activity-workout-type')?.value || 'repeticao';
+    const workoutModel = readWorkoutTypeSelection('activity-workout-type');
     const existingWorkout = isEditing
       ? appData.workouts.find((item) => item.id === editIdValue)
       : null;
-    const workout = existingWorkout || createWorkoutPayload(name, emoji, workoutType, selectedDays);
+    const workout =
+      existingWorkout ||
+      createWorkoutPayload(
+        name,
+        emoji,
+        workoutModel.metric,
+        workoutModel.goalDirection,
+        selectedDays
+      );
     workout.name = name;
     workout.emoji = emoji || '💪';
-    workout.type = workoutType;
+    if (typeof applyWorkoutModel === 'function') {
+      applyWorkoutModel(workout, workoutModel);
+    } else {
+      workout.metric = workoutModel.metric;
+      workout.goalDirection = workoutModel.goalDirection;
+    }
     workout.days = selectedDays.length > 0 ? selectedDays : [1, 2, 3, 4, 5];
     workout.dateAdded = workout.dateAdded || getLocalDateString();
     if (typeof applyPlanningFields === 'function') {

@@ -798,19 +798,33 @@ function getCheckedDays(selector) {
   return Array.from(dayCheckboxes).map((cb) => parseInt(cb.value, 10));
 }
 
-function createWorkoutPayload(name, emoji, type, days) {
+function createWorkoutPayload(name, emoji, metricOrSelection, goalDirectionOrDays, maybeDays = []) {
+  const days = Array.isArray(goalDirectionOrDays) ? goalDirectionOrDays : maybeDays;
+  const fallbackGoalDirection = Array.isArray(goalDirectionOrDays)
+    ? 'maximize'
+    : goalDirectionOrDays;
+  const workoutModel =
+    typeof getWorkoutTypeConfig === 'function'
+      ? getWorkoutTypeConfig(metricOrSelection, fallbackGoalDirection)
+      : {
+          metric: String(metricOrSelection || 'reps'),
+          goalDirection: String(fallbackGoalDirection || 'maximize'),
+        };
+
   return {
     id: createUniqueId(appData.workouts),
     name,
     emoji: emoji || '??',
-    type,
+    metric: workoutModel.metric,
+    goalDirection: workoutModel.goalDirection,
     days: days.length > 0 ? days : [1, 2, 3, 4, 5],
     dateAdded: getLocalDateString(),
     xp: 0,
     level: 0,
     stats: {
       totalReps: 0,
-      bestReps: 0,
+      bestSetReps: 0,
+      bestDayReps: 0,
       totalDistance: 0,
       bestDistance: 0,
       totalTime: 0,

@@ -156,6 +156,24 @@ function initEvents() {
       renderTimelineDayControls();
     }
   });
+  document.getElementById('nutrition-history-date')?.addEventListener('change', function () {
+    if (typeof resetHistoryPage === 'function') {
+      resetHistoryPage('nutrition-timeline-list');
+    }
+    if (typeof renderNutritionHydrationHistory === 'function') {
+      renderNutritionHydrationHistory();
+    }
+  });
+  document.getElementById('nutrition-history-date-clear')?.addEventListener('click', function () {
+    const dateInput = document.getElementById('nutrition-history-date');
+    if (dateInput) dateInput.value = '';
+    if (typeof resetHistoryPage === 'function') {
+      resetHistoryPage('nutrition-timeline-list');
+    }
+    if (typeof renderNutritionHydrationHistory === 'function') {
+      renderNutritionHydrationHistory();
+    }
+  });
   document.getElementById('timeline-rest-day-toggle')?.addEventListener('click', function () {
     const targetDateKey =
       typeof getTimelineControlDateKey === 'function'
@@ -234,6 +252,8 @@ function initEvents() {
   bindManyById('click', {
     'hydration-add-btn': addHydrationGlass,
     'hydration-remove-btn': removeHydrationGlass,
+    'nutrition-consolidate-day-btn': () => globalThis.consolidateNutritionDay?.(),
+    'nutrition-reopen-day-btn': () => globalThis.reopenNutritionDay?.(),
     'save-stats-goals-btn': saveStatisticsGoals,
     'reset-foods-btn': resetNutritionFoods,
     'reset-btn': resetProgress,
@@ -493,7 +513,8 @@ function updateUI(options = {}) {
   const shouldUpdateShop = isFull || isShop;
   const shouldUpdateFinance = isFull || isFinance;
   const shouldUpdateNutrition =
-    (isFull || isActivity || options.forceNutrition) && isTabActive('alimentacao');
+    (isFull || isActivity || options.forceNutrition) &&
+    (typeof isTabActive === 'function' ? isTabActive('alimentacao') : false);
   const levelEl = document.getElementById('level');
   if (levelEl) levelEl.textContent = appData.hero.level;
 
@@ -711,18 +732,47 @@ function updateWorkClassOptions() {
 }
 
 // Obter estatísticas do treino
+function formatWorkoutStatsDuration(totalTimeSeconds) {
+  const safeSeconds = Math.max(0, Math.floor(Number(totalTimeSeconds || 0)));
+  if (typeof formatWorkoutDuration === 'function') {
+    return formatWorkoutDuration(safeSeconds);
+  }
+
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  if (minutes <= 0) return `${seconds}s`;
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+}
+
 function getWorkoutStats(workout) {
-  if (workout.type === 'repeticao') {
+  const workoutGoalDirection =
+    typeof getWorkoutGoalDirection === 'function'
+      ? getWorkoutGoalDirection(workout)
+      : 'maximize';
+  const isRepetitionWorkout =
+    typeof isRepetitionWorkoutType === 'function'
+      ? isRepetitionWorkoutType(workout)
+      : true;
+  const isDistanceWorkout =
+    typeof isDistanceWorkoutType === 'function'
+      ? isDistanceWorkoutType(workout)
+      : false;
+  const isTimedWorkout =
+    typeof isTimedWorkoutType === 'function'
+      ? isTimedWorkoutType(workout)
+      : false;
+
+  if (isRepetitionWorkout) {
     const bestSetReps =
       typeof getWorkoutBestRepsRecord === 'function'
         ? getWorkoutBestRepsRecord(workout, appData.completedWorkouts || [])
-        : Number(workout?.stats?.bestSetReps || workout?.stats?.bestReps || 0);
+        : Number(workout?.stats?.bestSetReps || 0);
     const bestDayReps =
       typeof getWorkoutBestDayRepsRecord === 'function'
         ? getWorkoutBestDayRepsRecord(workout, appData.completedWorkouts || [])
-        : Number(workout?.stats?.bestDayReps || workout?.stats?.bestReps || 0);
+        : Number(workout?.stats?.bestDayReps || 0);
     return `Melhor série: ${bestSetReps} rep | Melhor dia: ${bestDayReps} rep`;
-  } else if (workout.type === 'distancia') {
+  } else if (isDistanceWorkout) {
     const bestDistance = Number(workout?.stats?.bestDistance || 0);
     const bestSpeed =
       typeof getWorkoutBestSpeedRecord === 'function'
@@ -736,10 +786,12 @@ function getWorkoutStats(workout) {
           )
         : `${bestSpeed.toFixed(1)} km/h`;
     return `Melhor distância: ${bestDistance.toFixed(2)} km | Melhor velocidade: ${bestSpeedLabel}`;
-  } else if (workout.type === 'maior-tempo') {
-    return `${workout.stats.bestTime || 0} min`;
-  } else if (workout.type === 'menor-tempo') {
-    return `${workout.stats.bestTime || 0} min`;
+  } else if (isTimedWorkout) {
+    const bestTime = Number(workout?.stats?.bestTime || 0);
+    const bestTimeLabel = formatWorkoutStatsDuration(bestTime);
+    return workoutGoalDirection === 'minimize'
+      ? `Melhor tempo: ${bestTimeLabel}`
+      : `Maior duração: ${bestTimeLabel}`;
   }
   return '';
 }
@@ -837,7 +889,7 @@ function updateWorkoutsDisplay() {
                     <span class="display-emoji">${safeEmoji}</span>
                     <span>${safeName}</span>
                 </div>
-                <div class="display-type">${getWorkoutTypeName(workout.type)}</div>
+                <div class="display-type">${getWorkoutTypeName(workout)}</div>
             </div>
             
             <div class="display-xp-bar">
@@ -1615,7 +1667,11 @@ async function skipDailyWorkout(workoutDayId) {
       workoutId: workoutDay.workoutId,
       name: workout.name,
       emoji: workout.emoji,
-      type: workout.type,
+      metric: typeof getWorkoutMetric === 'function' ? getWorkoutMetric(workout) : 'reps',
+      goalDirection:
+        typeof getWorkoutGoalDirection === 'function'
+          ? getWorkoutGoalDirection(workout)
+          : 'maximize',
       date: workoutDay.date,
       skipped: true,
       skippedDate: workoutDay.skippedDate,
@@ -1695,8 +1751,11 @@ async function skipDailyStudy(studyDayId) {
     status: 'skipped',
   });
 
-  updateUI({ mode: 'activity' });
+  if (typeof document !== 'undefined') {
+    updateUI({ mode: 'activity' });
+  }
   showFeedback(`Estudo "${study.name}" pulado sem penalidade.`, 'info');
+  saveToLocalStorage();
 }
 
 // __appUiBridge: exposes ui APIs for legacy scripts during module migration
@@ -1740,6 +1799,7 @@ Object.assign(globalThis, {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    getWorkoutStats,
     hasGeneralFailure,
     hasNutritionHydrationFailure,
     checkNutritionHydrationActivity,

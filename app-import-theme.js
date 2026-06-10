@@ -74,7 +74,9 @@ function handleImportFoods(event) {
       jsonData.forEach((item) => {
         const name = (item.name || item.nome || '').trim();
         const brand = (item.brand || item.marca || '').trim();
-        const portionGrams = Number(item.portionGrams || item.porcao || item['por\u00e7\u00e3o'] || 100);
+        const portionGrams = Number(
+          item.portionGrams || item.porcao || item['por\u00e7\u00e3o'] || 100
+        );
         const kcal = Number(item.kcal || item.calorias || 0);
         const protein = Number(item.protein || item.proteina || item['prote\u00edna'] || 0);
         const carbs = Number(item.carbs || item.carboidratos || 0);
@@ -150,13 +152,14 @@ function handleNutritionEntrySubmit(event) {
     return;
   }
 
-  const today = getLocalDateString();
-  const mealRewardKey = `${date}|${meal}`;
-  const hasMealReward = appData.nutritionStats.rewardedMealKeys.includes(mealRewardKey);
+  if (typeof ensureNutritionStatsState === 'function') {
+    ensureNutritionStatsState();
+  }
   const entry = {
     id: createUniqueId(appData.nutritionEntries),
     date,
     meal,
+    createdAt: (typeof getGameNow === 'function' ? getGameNow() : new Date()).toISOString(),
     foodId: food.id,
     foodName: food.name,
     quantity,
@@ -167,26 +170,10 @@ function handleNutritionEntrySubmit(event) {
     fat: food.fat * quantity,
     fiber: food.fiber * quantity,
     notes,
+    consolidated: false,
+    consolidatedAt: '',
   };
   appData.nutritionEntries.push(entry);
-
-  if (date === today && !hasMealReward) {
-    appData.nutritionStats.rewardedMealKeys.push(mealRewardKey);
-    addXP(1);
-    addAttributeXP(6, 1);
-    appData.hero.coins += 1;
-    updateProductiveDay(0, 0, 0, 1, 0);
-    addHeroLog(
-      'study',
-      `Refeição registrada: ${formatMealName(meal)}`,
-      `+1 XP, +1 moeda (${food.name})`
-    );
-  }
-
-  if (!appData.nutritionStats.logDates.includes(date)) {
-    appData.nutritionStats.logDates.push(date);
-  }
-  maybeRewardNutritionGoal(date);
   recalcNutritionStats();
 
   event.target.reset();
@@ -200,7 +187,7 @@ function handleNutritionEntrySubmit(event) {
   if (diaryInput) diaryInput.value = date;
   if (typeof queueSave === 'function') queueSave();
   updateNutritionView();
-  showFeedback('Refeição registrada!', 'success');
+  showFeedback('Refeição adicionada ao diário. Consolide o dia para contar no histórico.', 'success');
 }
 
 function handleNutritionGoalsSubmit(event) {
@@ -421,7 +408,7 @@ function importData() {
 }
 
 // Funções auxiliares
-function getWorkoutTypeName(type) {
+function getWorkoutTypeNameLegacy(type) {
   const types = {
     repeticao: 'Repetição',
     distancia: 'Distância',
@@ -628,7 +615,12 @@ function openActivityEditor(category, item) {
 
   if (typeof updateActivityForm === 'function') updateActivityForm();
 
-  if (workoutTypeInput && category === 'workout') workoutTypeInput.value = item.type || 'repeticao';
+  if (workoutTypeInput && category === 'workout') {
+    workoutTypeInput.value =
+      typeof getWorkoutSelectionValue === 'function'
+        ? getWorkoutSelectionValue(item)
+        : 'reps|maximize';
+  }
   if (studyTypeInput && category === 'study') studyTypeInput.value = item.type || 'logico';
   if (dateInput) dateInput.value = item.date || '';
   if (deadlineInput) deadlineInput.value = item.deadline || '';
@@ -638,7 +630,9 @@ function openActivityEditor(category, item) {
   if (urgentInput) urgentInput.checked = item.urgent === true;
 
   document
-    .querySelectorAll('#activity-days-container input[type="checkbox"][value]:not([data-select-all])')
+    .querySelectorAll(
+      '#activity-days-container input[type="checkbox"][value]:not([data-select-all])'
+    )
     .forEach((checkbox) => {
       checkbox.checked = Array.isArray(item.days)
         ? item.days.map((day) => String(day)).includes(checkbox.value)
@@ -649,7 +643,9 @@ function openActivityEditor(category, item) {
     '#activity-days-container input[data-select-all="true"]'
   );
   const dayCheckboxes = Array.from(
-    document.querySelectorAll('#activity-days-container input[type="checkbox"][value]:not([data-select-all])')
+    document.querySelectorAll(
+      '#activity-days-container input[type="checkbox"][value]:not([data-select-all])'
+    )
   );
   if (selectAllDaysCheckbox) {
     const checkedCount = dayCheckboxes.filter((checkbox) => checkbox.checked).length;
@@ -701,14 +697,42 @@ function editStudy(id) {
   openActivityEditor('study', study);
 }
 
-function deleteStudy(id) {
-  deleteNamedEmojiItem({
-    list: appData.studies,
-    id,
-    confirmText: 'Tem certeza que deseja excluir este estudo?',
-    successText: 'Estudo excluído com sucesso!',
-    updateMode: 'activity',
+function removeStudyStateArtifacts(studyId) {
+  const studyKey = String(studyId || '').trim();
+  if (!studyKey) return;
+
+  if (Array.isArray(appData.dailyStudies)) {
+    appData.dailyStudies = appData.dailyStudies.filter(
+      (entry) => String(entry?.studyId || '') !== studyKey
+    );
+  }
+
+  if (Array.isArray(appData.pendingFailureReviews)) {
+    appData.pendingFailureReviews = appData.pendingFailureReviews.filter((review) => {
+      if (review?.category !== 'study') return true;
+      const lineageKey = String(review?.lineageKey || review?.activity?.studyId || '').trim();
+      return lineageKey !== studyKey;
+    });
+  }
+}
+
+async function deleteStudy(id) {
+  const confirmed = await askConfirmation('Tem certeza que deseja excluir este estudo?', {
+    title: 'Confirmar exclusao',
+    confirmText: 'Excluir',
   });
+  if (!confirmed) return;
+
+  const index = appData.studies.findIndex((item) => item.id === id);
+  if (index === -1) return;
+
+  removeStudyStateArtifacts(id);
+  appData.studies.splice(index, 1);
+  updateUI({ mode: 'activity' });
+  showFeedback('Estudo excluido com sucesso!', 'success');
+  if (typeof saveToLocalStorage === 'function') {
+    saveToLocalStorage();
+  }
 }
 
 function editBook(id) {
@@ -821,6 +845,58 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   const targetDateStr = dateStr;
   const onlyTypes = Array.isArray(options.onlyTypes) ? new Set(options.onlyTypes) : null;
   const shouldCheckType = (type) => !onlyTypes || onlyTypes.has(type);
+  const getFailedTypeLabel = (type) => {
+    if (type === 'workout') return 'treino';
+    if (type === 'study') return 'estudo';
+    if (type === 'mission') return 'missão';
+    if (type === 'work') return 'trabalho';
+    if (type === 'nutrition') return 'alimentação';
+    if (type === 'hydration') return 'hidratação';
+    return type;
+  };
+  const formatNamedFailure = (label, name, feminine = false) => {
+    const safeName = String(name || '').trim();
+    const suffix = feminine ? 'não concluída' : 'não concluído';
+    return safeName ? `${label} "${safeName}" ${suffix}` : `${label} ${suffix}`;
+  };
+  const resolveFailureItem = (category, item) => {
+    if (!item || typeof item !== 'object') return item || {};
+    if (item.name) return item;
+    if (category === 'workout') {
+      return (
+        appData.workouts?.find((workout) => workout.id === item.workoutId) ||
+        appData.dailyWorkouts?.find(
+          (workoutDay) => workoutDay.workoutId === item.workoutId && workoutDay.date === item.date
+        ) ||
+        item
+      );
+    }
+    if (category === 'study') {
+      return (
+        appData.studies?.find((study) => study.id === item.studyId) ||
+        appData.dailyStudies?.find(
+          (studyDay) => studyDay.studyId === item.studyId && studyDay.date === item.date
+        ) ||
+        item
+      );
+    }
+    return item;
+  };
+  const formatFailureDetail = (category, item = null) => {
+    const sourceItem = resolveFailureItem(category, item);
+    if (category === 'mission') return formatNamedFailure('Missão', sourceItem?.name, true);
+    if (category === 'work') return formatNamedFailure('Trabalho', sourceItem?.name);
+    if (category === 'workout') return formatNamedFailure('Treino', sourceItem?.name);
+    if (category === 'study') return formatNamedFailure('Estudo', sourceItem?.name);
+    if (category === 'nutrition') {
+      const mealLabel = String(item || '').trim();
+      return mealLabel
+        ? formatNamedFailure('Refeição', mealLabel, true)
+        : 'Refeição não registrada';
+    }
+    if (category === 'hydration') return 'Hidratação não concluída';
+    return getFailedTypeLabel(category);
+  };
   const hasPendingFailureReviewForType = (type) =>
     Array.isArray(appData.pendingFailureReviews) &&
     appData.pendingFailureReviews.some(
@@ -840,8 +916,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     Number(summary.studyFailureCount || 0) +
     Number(summary.nutritionFailureCount || 0) +
     Number(summary.hydrationFailureCount || 0);
-  const workOffActive =
-    typeof isWorkOffDay === 'function' && isWorkOffDay(targetDateStr);
+  const workOffActive = typeof isWorkOffDay === 'function' && isWorkOffDay(targetDateStr);
 
   if (isRestDay(targetDateStr)) {
     return;
@@ -857,7 +932,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   };
 
   const logMissedRoutineItems = (list, completedList, typeLabel, entryType) => {
-    if (entryType === 'work' && workOffActive) return 0;
+    if (entryType === 'work' && workOffActive) return [];
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const missed = list.filter(
       (item) =>
@@ -868,8 +943,8 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         isItemAvailableOnDate(item, targetDateStr) &&
         getRoutineDays(item).includes(dayOfWeek)
     );
-    if (missed.length === 0) return 0;
-    let added = 0;
+    if (missed.length === 0) return [];
+    const addedEntries = [];
     missed.forEach((item) => {
       const key = item.originalId || item.id;
       const alreadyLogged = completedList.some(
@@ -880,28 +955,31 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
             entry.skippedDate === targetDateStr)
       );
       if (alreadyLogged) return;
-      completedList.push({
+      const failedEntry = {
         ...item,
         completedDate: targetDateStr,
         failedDate: targetDateStr,
         failed: true,
         ...(entryType === 'mission' || entryType === 'work' ? { penaltyApplied: true } : {}),
         reason: `Não concluída no dia (${typeLabel} de rotina)`,
-      });
-      added++;
+      };
+      completedList.push(failedEntry);
+      addedEntries.push(failedEntry);
     });
-    if (added > 0 && typeof updateProductiveDay === 'function') {
+    if (addedEntries.length > 0 && typeof updateProductiveDay === 'function') {
       updateProductiveDay(0, 0, 0, 0, 0, {
         date: targetDateStr,
-        missionsMissed: entryType === 'mission' ? added : 0,
-        worksMissed: entryType === 'work' ? added : 0,
+        missionsMissed: entryType === 'mission' ? addedEntries.length : 0,
+        worksMissed: entryType === 'work' ? addedEntries.length : 0,
       });
     }
-    return added;
+    return addedEntries;
   };
 
   // Check for failed activities by type
   const failedTypes = [];
+  const failedMissionEntries = [];
+  const failedWorkEntries = [];
 
   // Check workouts - was there any failed workout on this day?
   let failedWorkouts = [];
@@ -1028,6 +1106,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     if (failedMissions.length > 0) {
       failedTypes.push('mission');
       missionFailureCount += failedMissions.length;
+      failedMissionEntries.push(...failedMissions);
       failedMissions.forEach((m) => {
         m.penaltyApplied = true;
       });
@@ -1039,8 +1118,9 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       'missão',
       'mission'
     );
-    missionFailureCount += missedRoutineMissions;
-    if (missedRoutineMissions > 0 && !failedTypes.includes('mission')) {
+    missionFailureCount += missedRoutineMissions.length;
+    failedMissionEntries.push(...missedRoutineMissions);
+    if (missedRoutineMissions.length > 0 && !failedTypes.includes('mission')) {
       failedTypes.push('mission');
     }
   }
@@ -1054,6 +1134,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     if (failedWorks.length > 0) {
       failedTypes.push('work');
       workFailureCount += failedWorks.length;
+      failedWorkEntries.push(...failedWorks);
       failedWorks.forEach((w) => {
         w.penaltyApplied = true;
       });
@@ -1065,8 +1146,9 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       'trabalho',
       'work'
     );
-    workFailureCount += missedRoutineWorks;
-    if (missedRoutineWorks > 0 && !failedTypes.includes('work')) {
+    workFailureCount += missedRoutineWorks.length;
+    failedWorkEntries.push(...missedRoutineWorks);
+    if (missedRoutineWorks.length > 0 && !failedTypes.includes('work')) {
       failedTypes.push('work');
     }
   }
@@ -1077,19 +1159,23 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     (appData.nutritionEntries && appData.nutritionEntries.length > 0) ||
     (appData.foodItems && appData.foodItems.length > 0) ||
     (appData.nutritionStats?.logDates && appData.nutritionStats.logDates.length > 0);
-  const hasNutritionLog = appData.nutritionStats?.logDates?.includes(targetDateStr);
   const penaltyDaySnapshot = getPenaltyDaySnapshot();
   const nutritionPenaltyAlreadyApplied = Number(penaltyDaySnapshot.nutritionFailed || 0) > 0;
+  const nutritionMissingMeals =
+    shouldCheckType('nutrition') &&
+    nutritionActive &&
+    !isRestDay(targetDateStr) &&
+    !nutritionPenaltyAlreadyApplied &&
+    typeof getNutritionMissingMealsForDate === 'function'
+      ? getNutritionMissingMealsForDate(targetDateStr)
+      : [];
   if (
     shouldCheckType('nutrition') &&
     nutritionActive &&
-    !hasNutritionLog &&
     !isRestDay(targetDateStr) &&
-    !nutritionPenaltyAlreadyApplied
+    !nutritionPenaltyAlreadyApplied &&
+    nutritionMissingMeals.length > 0
   ) {
-    // Check if there's any nutrition goal/activity that was expected
-    // For now, we assume nutrition should be logged daily
-    // You can modify this condition if nutrition should not be required every day
     failedTypes.push('nutrition');
   }
 
@@ -1170,7 +1256,12 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
           workoutId: item.workoutId,
           name: originalWorkout.name || 'Treino',
           emoji: originalWorkout.emoji || '💪',
-          type: originalWorkout.type || 'normal',
+          metric:
+            typeof getWorkoutMetric === 'function' ? getWorkoutMetric(originalWorkout) : 'reps',
+          goalDirection:
+            typeof getWorkoutGoalDirection === 'function'
+              ? getWorkoutGoalDirection(originalWorkout)
+              : 'maximize',
           date: item.date,
           completedDate: item.date,
           failedDate: item.date,
@@ -1216,7 +1307,10 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
         studiesMissed: failedStudies.length,
       });
     }
-    if ((nutritionFailureCount > 0 || hydrationFailureCount > 0) && typeof updateProductiveDay === 'function') {
+    if (
+      (nutritionFailureCount > 0 || hydrationFailureCount > 0) &&
+      typeof updateProductiveDay === 'function'
+    ) {
       updateProductiveDay(0, 0, 0, 0, 0, {
         date: targetDateStr,
         nutritionFailed: nutritionFailureCount,
@@ -1224,24 +1318,37 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       });
     }
 
-    const failedTypesLabel =
-      failedTypes
-        .map((t) => {
-          if (t === 'workout') return 'treino';
-          if (t === 'study') return 'estudo';
-          if (t === 'mission') return 'miss\u00e3o';
-          if (t === 'work') return 'trabalho';
-          if (t === 'nutrition') return 'alimenta\u00e7\u00e3o';
-          if (t === 'hydration') return 'hidrata\u00e7\u00e3o';
-          return t;
-        })
-        .join(', ');
+    const failedTypesLabel = failedTypes.map((type) => getFailedTypeLabel(type)).join(', ');
+    const failedDetails = [
+      ...failedMissionEntries.map((entry) => formatFailureDetail('mission', entry)),
+      ...failedWorkEntries.map((entry) => formatFailureDetail('work', entry)),
+      ...failedWorkouts.map((entry) => formatFailureDetail('workout', entry)),
+      ...failedStudies.map((entry) => formatFailureDetail('study', entry)),
+      ...(nutritionFailureCount > 0
+        ? (nutritionMissingMeals.length > 0
+            ? nutritionMissingMeals.map((mealLabel) => formatFailureDetail('nutrition', mealLabel))
+            : [formatFailureDetail('nutrition')])
+        : []),
+      ...(hydrationFailureCount > 0 ? [formatFailureDetail('hydration')] : []),
+    ].filter(Boolean);
+    const failedDetailsLabel =
+      failedDetails.length > 0 ? failedDetails.join(', ') : failedTypesLabel;
+    const penaltyLogMeta =
+      failedTypes.length > 0 &&
+      failedTypes.every((type) => type === 'nutrition' || type === 'hydration')
+        ? {
+            category: failedTypes.includes('nutrition') ? 'nutrition' : 'hydration',
+            eventDateKey: targetDateStr,
+            status: 'failed',
+          }
+        : null;
 
     applyCoinPenalty({
       requestedAmount: totalPenaltyItems,
-      failMessage: `Atividades não concluídas: ${failedTypesLabel}.`,
+      failMessage: `Atividades não concluídas: ${failedDetailsLabel}.`,
       failLogTitle: 'Atividades n\u00e3o conclu\u00eddas',
-      failLogContent: `Tipos com falha: ${failedTypes.join(', ')}. Streaks resetados e disciplina reduzida.`,
+      failLogContent: `Registros com falha: ${failedDetailsLabel}. Streaks resetados e disciplina reduzida.`,
+      failLogMeta: penaltyLogMeta,
     });
   }
 
@@ -1262,6 +1369,122 @@ function applySavedTheme() {
   }
 }
 
+function normalizeWorkoutMetric(metric) {
+  const normalizedMetric = String(metric || '').trim();
+  if (
+    normalizedMetric === 'reps' ||
+    normalizedMetric === 'distance' ||
+    normalizedMetric === 'duration'
+  ) {
+    return normalizedMetric;
+  }
+  if (normalizedMetric === 'repeticao') return 'reps';
+  if (normalizedMetric === 'distancia') return 'distance';
+  if (normalizedMetric === 'maior-tempo' || normalizedMetric === 'menor-tempo') return 'duration';
+  return 'reps';
+}
+
+function normalizeWorkoutGoalDirection(metric, goalDirection) {
+  const normalizedMetric = normalizeWorkoutMetric(metric);
+  const normalizedGoal = String(goalDirection || '').trim();
+  if (normalizedMetric === 'duration' && normalizedGoal === 'minimize') {
+    return 'minimize';
+  }
+  return 'maximize';
+}
+
+function normalizeWorkoutModel(source, fallbackGoalDirection = 'maximize') {
+  if (source && typeof source === 'object' && !Array.isArray(source)) {
+    const metric = source.metric || source.type || source.value || source.selection || 'reps';
+    const goalDirection = source.goalDirection || fallbackGoalDirection;
+    return normalizeWorkoutModel(metric, goalDirection);
+  }
+
+  const normalizedSource = String(source || '').trim();
+  if (normalizedSource.includes('|')) {
+    const [rawMetric, rawGoalDirection] = normalizedSource.split('|');
+    const metric = normalizeWorkoutMetric(rawMetric);
+    return {
+      metric,
+      goalDirection: normalizeWorkoutGoalDirection(
+        metric,
+        rawGoalDirection || fallbackGoalDirection
+      ),
+    };
+  }
+
+  const metric = normalizeWorkoutMetric(normalizedSource || 'reps');
+  const inferredGoalDirection =
+    normalizedSource === 'menor-tempo' ? 'minimize' : fallbackGoalDirection;
+  return {
+    metric,
+    goalDirection: normalizeWorkoutGoalDirection(metric, inferredGoalDirection),
+  };
+}
+
+function getWorkoutTypeConfig(source, fallbackGoalDirection = 'maximize') {
+  const { metric, goalDirection } = normalizeWorkoutModel(source, fallbackGoalDirection);
+  let label = 'Treino';
+
+  if (metric === 'reps') {
+    label = 'Repetição';
+  } else if (metric === 'distance') {
+    label = 'Distância';
+  } else if (metric === 'duration') {
+    label = goalDirection === 'minimize' ? 'Contra o tempo' : 'Duração';
+  }
+
+  return {
+    label,
+    metric,
+    goalDirection,
+    selectionValue: `${metric}|${goalDirection}`,
+  };
+}
+
+function getWorkoutTypeName(source, fallbackGoalDirection = 'maximize') {
+  return getWorkoutTypeConfig(source, fallbackGoalDirection).label;
+}
+
+function getWorkoutMetric(source, fallbackGoalDirection = 'maximize') {
+  return getWorkoutTypeConfig(source, fallbackGoalDirection).metric;
+}
+
+function getWorkoutTypeMetric(source, fallbackGoalDirection = 'maximize') {
+  return getWorkoutMetric(source, fallbackGoalDirection);
+}
+
+function getWorkoutGoalDirection(source, fallbackGoalDirection = 'maximize') {
+  return getWorkoutTypeConfig(source, fallbackGoalDirection).goalDirection;
+}
+
+function getWorkoutSelectionValue(source, fallbackGoalDirection = 'maximize') {
+  return getWorkoutTypeConfig(source, fallbackGoalDirection).selectionValue;
+}
+
+function applyWorkoutModel(target, source, fallbackGoalDirection = 'maximize') {
+  if (!target || typeof target !== 'object') return target;
+  const config = getWorkoutTypeConfig(source, fallbackGoalDirection);
+  target.metric = config.metric;
+  target.goalDirection = config.goalDirection;
+  if (Object.prototype.hasOwnProperty.call(target, 'type')) {
+    delete target.type;
+  }
+  return target;
+}
+
+function isRepetitionWorkoutType(source, fallbackGoalDirection = 'maximize') {
+  return getWorkoutMetric(source, fallbackGoalDirection) === 'reps';
+}
+
+function isDistanceWorkoutType(source, fallbackGoalDirection = 'maximize') {
+  return getWorkoutMetric(source, fallbackGoalDirection) === 'distance';
+}
+
+function isTimedWorkoutType(source, fallbackGoalDirection = 'maximize') {
+  return getWorkoutMetric(source, fallbackGoalDirection) === 'duration';
+}
+
 // __appImportThemeBridge: exposes import/theme APIs for legacy scripts during module migration
 Object.assign(globalThis, {
   handleNutritionFoodSubmit,
@@ -1273,7 +1496,19 @@ Object.assign(globalThis, {
   resetProgress,
   exportData,
   importData,
+  normalizeWorkoutMetric,
+  normalizeWorkoutGoalDirection,
+  normalizeWorkoutModel,
+  getWorkoutTypeConfig,
   getWorkoutTypeName,
+  getWorkoutMetric,
+  getWorkoutTypeMetric,
+  getWorkoutGoalDirection,
+  getWorkoutSelectionValue,
+  applyWorkoutModel,
+  isRepetitionWorkoutType,
+  isDistanceWorkoutType,
+  isTimedWorkoutType,
   getMissionTypeName,
   isRoutineType,
   getRoutineDays,
@@ -1303,9 +1538,20 @@ Object.assign(globalThis, {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    normalizeWorkoutMetric,
+    normalizeWorkoutGoalDirection,
+    normalizeWorkoutModel,
+    getWorkoutTypeConfig,
+    getWorkoutTypeName,
+    getWorkoutMetric,
+    getWorkoutTypeMetric,
+    getWorkoutGoalDirection,
+    getWorkoutSelectionValue,
+    applyWorkoutModel,
+    isRepetitionWorkoutType,
+    isDistanceWorkoutType,
+    isTimedWorkoutType,
     setPrimaryClass,
     applyPenalties,
   };
 }
-
-

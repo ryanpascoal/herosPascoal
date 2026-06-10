@@ -207,18 +207,9 @@ function checkDailyReset() {
   let lastReset = appData.serverMeta?.lastDailyReset;
   if (!lastReset) {
     if (!appData.serverMeta) appData.serverMeta = {};
-    const inferredLastReset =
-      window.AppRules && typeof window.AppRules.inferLegacyLastDailyResetDate === 'function'
-        ? window.AppRules.inferLegacyLastDailyResetDate(appData, today)
-        : null;
-
-    if (!inferredLastReset) {
-      appData.serverMeta.lastDailyReset = today;
-      queueSave();
-      return;
-    }
-
-    lastReset = inferredLastReset;
+    appData.serverMeta.lastDailyReset = today;
+    queueSave();
+    return;
   }
 
   const shouldRun =
@@ -599,6 +590,7 @@ function applyCoinPenalty(options = {}) {
     failMessage,
     failLogTitle,
     failLogContent,
+    failLogMeta = null,
   } = options;
 
   const penaltyAmount = Number.isFinite(Number(requestedAmount))
@@ -624,31 +616,13 @@ function applyCoinPenalty(options = {}) {
       coinsLost > 0
         ? `Penalidade: -${coinsLost} moeda${coinsLost === 1 ? '' : 's'}.`
         : 'Sem moedas suficientes para desconto.';
-    addHeroLog('penalty', failLogTitle, `${failLogContent} ${logSuffix}`);
+    addHeroLog('penalty', failLogTitle, `${failLogContent} ${logSuffix}`, failLogMeta);
   }
 
   return {
     coinsLost,
     requestedAmount: penaltyAmount,
   };
-}
-
-function applyActivityPenalties(config) {
-  const statsKey = config?.statsKey;
-  const targetDateStr = config?.targetDateStr || getLocalDateString();
-  const legacyTypeMap = {
-    missionsFailed: 'mission',
-    worksFailed: 'work',
-    workoutsFailed: 'workout',
-    studiesFailed: 'study',
-  };
-  const mappedType = legacyTypeMap[statsKey];
-  if (!mappedType || typeof globalThis.applyPenalties !== 'function') {
-    return;
-  }
-
-  // Legacy compatibility: route any old callers through the unified penalties flow.
-  globalThis.applyPenalties(targetDateStr, { onlyTypes: [mappedType] });
 }
 
 // Gerar atividades do dia
@@ -676,6 +650,14 @@ function generateDailyActivities() {
         appData.dailyWorkouts.push({
           id: createUniqueId(appData.dailyWorkouts),
           workoutId: workout.id,
+          name: workout.name,
+          emoji: workout.emoji,
+          metric:
+            typeof getWorkoutMetric === 'function' ? getWorkoutMetric(workout) : workout.metric,
+          goalDirection:
+            typeof getWorkoutGoalDirection === 'function'
+              ? getWorkoutGoalDirection(workout)
+              : workout.goalDirection,
           date: todayStr,
           completed: false,
           series: [null, null, null],
@@ -698,10 +680,18 @@ function generateDailyActivities() {
         appData.dailyStudies.push({
           id: createUniqueId(appData.dailyStudies),
           studyId: study.id,
+          name: study.name,
+          emoji: study.emoji,
+          type: study.type,
           date: todayStr,
           completed: false,
           applied: false,
           feedback: '',
+          objectiveId: study.objectiveId || null,
+          priority: study.priority || 'medium',
+          impact: study.impact || 'medium',
+          effort: study.effort || 'medium',
+          energy: study.energy || 'medium',
         });
       }
     }
@@ -736,7 +726,6 @@ Object.assign(globalThis, {
   spawnFloatingReward,
   celebrateAction,
   applyCoinPenalty,
-  applyActivityPenalties,
   generateDailyActivities,
 });
 

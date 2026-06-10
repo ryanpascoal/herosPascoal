@@ -74,7 +74,7 @@ function updateWorkoutHistory() {
   const lastDistancesByWorkoutId = new Map();
   allEntries.forEach((entry) => {
     if (entry.failed || entry.skipped) return;
-    if (entry.type === 'repeticao' && Array.isArray(entry.series)) {
+    if (isRepetitionWorkoutType(entry) && Array.isArray(entry.series)) {
       const totalReps = entry.series.reduce((sum, val) => sum + (parseInt(val) || 0), 0);
       const prevTotal = lastTotalsByWorkoutId.get(entry.workoutId);
       if (prevTotal !== undefined) {
@@ -82,7 +82,7 @@ function updateWorkoutHistory() {
       }
       lastTotalsByWorkoutId.set(entry.workoutId, totalReps);
     }
-    if (entry.type === 'distancia' && entry.distance !== null && entry.distance !== undefined) {
+    if (isDistanceWorkoutType(entry) && entry.distance !== null && entry.distance !== undefined) {
       const distance = Number(entry.distance);
       if (Number.isFinite(distance)) {
         const prevDistance = lastDistancesByWorkoutId.get(entry.workoutId);
@@ -115,14 +115,9 @@ function updateWorkoutHistory() {
       } else {
         details.push(`<p>Concluido em: ${formatDate(entry.completedDate || entry.date)}</p>`);
       }
-      details.push(`<p>Tipo: ${getWorkoutTypeName(entry.type)}</p>`);
+      details.push(`<p>Tipo: ${getWorkoutTypeName(entry)}</p>`);
 
-      if (
-        !entry.failed &&
-        !entry.skipped &&
-        entry.type === 'repeticao' &&
-        Array.isArray(entry.series)
-      ) {
+      if (!entry.failed && !entry.skipped && isRepetitionWorkoutType(entry) && Array.isArray(entry.series)) {
         const totalReps = entry.series.reduce((sum, val) => sum + (parseInt(val) || 0), 0);
         const prevTotal = prevTotalsByEntryId.get(entry.id);
         let trend = '';
@@ -134,13 +129,7 @@ function updateWorkoutHistory() {
           `<p>Séries: ${entry.series.map((v) => v || 0).join(' / ')} (Total: ${totalReps})${trend}</p>`
         );
       }
-      if (
-        !entry.failed &&
-        !entry.skipped &&
-        entry.type === 'distancia' &&
-        entry.distance !== null &&
-        entry.distance !== undefined
-      ) {
+      if (!entry.failed && !entry.skipped && isDistanceWorkoutType(entry) && entry.distance !== null && entry.distance !== undefined) {
         const distance = Number(entry.distance);
         let trend = '';
         const prevDistance = prevDistancesByEntryId.get(entry.id);
@@ -152,20 +141,25 @@ function updateWorkoutHistory() {
         if (entry.time !== null && entry.time !== undefined) {
           const time = Number(entry.time);
           if (Number.isFinite(time) && time > 0) {
-            const speed = (distance / time) * 60;
-            details.push(`<p>Tempo: ${time} min</p>`);
-            details.push(`<p>Velocidade média: ${speed.toFixed(1)} km/h</p>`);
+            const durationLabel =
+              typeof formatWorkoutDuration === 'function'
+                ? formatWorkoutDuration(time)
+                : `${time}s`;
+            const speedLabel =
+              typeof formatWorkoutSpeedSummary === 'function'
+                ? formatWorkoutSpeedSummary(distance, time)
+                : `${((distance * 3600) / time).toFixed(1)} km/h`;
+            details.push(`<p>Tempo: ${durationLabel}</p>`);
+            details.push(`<p>Velocidade média: ${speedLabel}</p>`);
           }
         }
       }
-      if (
-        !entry.failed &&
-        !entry.skipped &&
-        (entry.type === 'maior-tempo' || entry.type === 'menor-tempo') &&
-        entry.time !== null &&
-        entry.time !== undefined
-      ) {
-        details.push(`<p>Tempo: ${entry.time} min</p>`);
+      if (!entry.failed && !entry.skipped && isTimedWorkoutType(entry) && entry.time !== null && entry.time !== undefined) {
+        const timeLabel =
+          typeof formatWorkoutDuration === 'function'
+            ? formatWorkoutDuration(entry.time)
+            : `${entry.time}s`;
+        details.push(`<p>Tempo: ${timeLabel}</p>`);
       }
       if (entry.reason && !entry.failed) {
         details.push(`<p class="mission-reason">Motivo: ${escapeHtml(entry.reason)}</p>`);
@@ -440,10 +434,10 @@ function showItemModal(itemType, existingItem = null) {
                 <div class="form-group">
                     <label for="modal-item-type">Tipo de Treino</label>
                     <select id="modal-item-type" required>
-                        <option value="repeticao" ${existingItem?.type === 'repeticao' ? 'selected' : ''}>Repetição</option>
-                        <option value="distancia" ${existingItem?.type === 'distancia' ? 'selected' : ''}>Distância</option>
-                        <option value="maior-tempo" ${existingItem?.type === 'maior-tempo' ? 'selected' : ''}>Maior Tempo</option>
-                        <option value="menor-tempo" ${existingItem?.type === 'menor-tempo' ? 'selected' : ''}>Menor Tempo</option>
+                        <option value="reps|maximize" ${((typeof getWorkoutSelectionValue === 'function' ? getWorkoutSelectionValue(existingItem) : '') === 'reps|maximize') ? 'selected' : ''}>Repetição</option>
+                        <option value="distance|maximize" ${((typeof getWorkoutSelectionValue === 'function' ? getWorkoutSelectionValue(existingItem) : '') === 'distance|maximize') ? 'selected' : ''}>Distância</option>
+                        <option value="duration|maximize" ${((typeof getWorkoutSelectionValue === 'function' ? getWorkoutSelectionValue(existingItem) : '') === 'duration|maximize') ? 'selected' : ''}>Duração</option>
+                        <option value="duration|minimize" ${((typeof getWorkoutSelectionValue === 'function' ? getWorkoutSelectionValue(existingItem) : '') === 'duration|minimize') ? 'selected' : ''}>Contra o tempo</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -528,7 +522,7 @@ function showWorkoutCompletionModal(workoutDayId) {
   let inputFields = '';
   
   // Obter valores do workoutDay diretamente (não precisa procurar no DOM)
-  if (workout.type === 'repeticao') {
+  if (typeof isRepetitionWorkoutType === 'function' ? isRepetitionWorkoutType(workout) : false) {
     const series = workoutDay.series || [0, 0, 0];
     const seriesValues = [series[0] || 0, series[1] || 0, series[2] || 0];
 
@@ -542,7 +536,7 @@ function showWorkoutCompletionModal(workoutDayId) {
         `
       )
       .join('');
-  } else if (workout.type === 'distancia') {
+  } else if (typeof isDistanceWorkoutType === 'function' ? isDistanceWorkoutType(workout) : false) {
     const distance = workoutDay.distance ?? 0;
     const time = workoutDay.time ?? 0;
     const timeMin = Math.floor(time / 60);
@@ -562,7 +556,7 @@ function showWorkoutCompletionModal(workoutDayId) {
           <input type="number" name="time-sec" value="${timeSec}" min="0">
         </div>
     `;
-  } else if (workout.type === 'maior-tempo' || workout.type === 'menor-tempo') {
+  } else if (typeof isTimedWorkoutType === 'function' ? isTimedWorkoutType(workout) : false) {
     const time = workoutDay.time ?? 0;
     const timeMin = Math.floor(time / 60);
     const timeSec = time % 60;

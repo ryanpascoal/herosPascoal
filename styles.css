@@ -1827,6 +1827,58 @@ body.light-theme .auth-screen-form input {
 .nutrition-day-head {
   display: flex;
   justify-content: flex-end;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.nutrition-timeline-head {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.nutrition-day-head .form-group {
+  margin-bottom: 0;
+}
+
+.nutrition-day-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nutrition-timeline-head .form-group {
+  margin-bottom: 0;
+}
+
+.nutrition-day-status {
+  margin-bottom: 12px;
+  font-size: 0.84rem;
+  color: var(--gray-color);
+}
+
+.nutrition-entry-status {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.nutrition-entry-status.is-consolidated {
+  background: rgba(34, 197, 94, 0.14);
+  color: #86efac;
+}
+
+.nutrition-entry-status.is-pending {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fcd34d;
 }
 
 .nutrition-day-summary {
@@ -2604,6 +2656,12 @@ body.light-theme .auth-screen-form input {
 }
 .mission-type.epica {
   background-color: var(--danger-color);
+}
+.mission-type.nutrition {
+  background-color: #0f766e;
+}
+.timeline-nutrition-card {
+  border-left-color: #14b8a6;
 }
 .workout-type {
   background-color: #e05a5a;

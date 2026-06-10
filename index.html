@@ -235,10 +235,10 @@
                   >
                     <label for="activity-workout-type">Tipo de Treino</label>
                     <select id="activity-workout-type">
-                      <option value="repeticao">Repetição</option>
-                      <option value="distancia">Distância</option>
-                      <option value="maior-tempo">Maior Tempo</option>
-                      <option value="menor-tempo">Menor Tempo</option>
+                      <option value="reps|maximize">Repetição</option>
+                      <option value="distance|maximize">Distância</option>
+                      <option value="duration|maximize">Duração</option>
+                      <option value="duration|minimize">Contra o tempo</option>
                     </select>
                   </div>
 
@@ -1060,6 +1060,7 @@
           <div class="sub-nav">
             <button class="sub-nav-btn active" data-subtab="nutricao-registro">Registro</button>
             <button class="sub-nav-btn" data-subtab="nutricao-diario">Diário</button>
+            <button class="sub-nav-btn" data-subtab="nutricao-historico">Linha do tempo</button>
             <button class="sub-nav-btn" data-subtab="nutricao-metas">Metas</button>
             <button class="sub-nav-btn" data-subtab="nutricao-relatorios">Relatórios</button>
             <button class="sub-nav-btn" data-subtab="nutricao-hidratacao">Hidratação</button>
@@ -1324,10 +1325,38 @@
                   <label for="nutrition-diary-date">Data do diário</label>
                   <input type="date" id="nutrition-diary-date" />
                 </div>
+                <div class="nutrition-day-actions">
+                  <button type="button" id="nutrition-reopen-day-btn" class="action-btn secondary">
+                    Reabrir dia
+                  </button>
+                  <button type="button" id="nutrition-consolidate-day-btn" class="submit-btn">
+                    Consolidar dia
+                  </button>
+                </div>
               </div>
+              <div class="nutrition-day-status" id="nutrition-day-status"></div>
               <div class="nutrition-day-summary" id="nutrition-day-summary"></div>
               <div class="items-list nutrition-day-list" id="nutrition-day-list">
                 <p class="empty-message">Nenhuma refeição registrada para o dia.</p>
+              </div>
+            </div>
+
+            <div id="nutricao-historico" class="sub-tab">
+              <div class="nutrition-timeline-head">
+                <div class="form-group">
+                  <label for="nutrition-history-date">Filtrar por dia</label>
+                  <input type="date" id="nutrition-history-date" class="activity-filter activity-date-filter" />
+                </div>
+                <button
+                  type="button"
+                  id="nutrition-history-date-clear"
+                  class="action-btn secondary activity-filter-btn"
+                >
+                  Limpar dia
+                </button>
+              </div>
+              <div class="history-list" id="nutrition-timeline-list">
+                <p class="empty-message">Nenhum registro de alimentação ou hidratação ainda.</p>
               </div>
             </div>
 
