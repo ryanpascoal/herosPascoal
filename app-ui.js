@@ -391,6 +391,9 @@ function initEvents() {
   document.getElementById('activity-schedule-type')?.addEventListener('change', function () {
     updateActivityForm();
   });
+  document.getElementById('activity-workout-type')?.addEventListener('change', function () {
+    updateActivityForm();
+  });
   document.getElementById('activity-due-lock')?.addEventListener('change', function () {
     updateActivityForm();
   });
@@ -744,6 +747,15 @@ function formatWorkoutStatsDuration(totalTimeSeconds) {
   return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
 }
 
+function formatWorkoutWeightStat(weightKg) {
+  const safeWeight = Math.max(0, Number(weightKg || 0));
+  const roundedWeight = Math.round(safeWeight * 100) / 100;
+  const label = Number.isInteger(roundedWeight)
+    ? String(roundedWeight)
+    : String(roundedWeight).replace('.', ',');
+  return `${label} kg`;
+}
+
 function getWorkoutStats(workout) {
   const workoutGoalDirection =
     typeof getWorkoutGoalDirection === 'function'
@@ -763,6 +775,21 @@ function getWorkoutStats(workout) {
       : false;
 
   if (isRepetitionWorkout) {
+    const usesWeight =
+      typeof workoutUsesWeight === 'function'
+        ? workoutUsesWeight(workout)
+        : workout?.usesWeight === true;
+    if (usesWeight) {
+      const bestWeight =
+        typeof getWorkoutBestWeightRecord === 'function'
+          ? getWorkoutBestWeightRecord(workout, appData.completedWorkouts || [])
+          : Number(workout?.stats?.bestWeight || 0);
+      const bestDayLoad =
+        typeof getWorkoutBestDayLoadRecord === 'function'
+          ? getWorkoutBestDayLoadRecord(workout, appData.completedWorkouts || [])
+          : Number(workout?.stats?.bestDayLoad || 0);
+      return `Maior carga: ${formatWorkoutWeightStat(bestWeight)} | Melhor volume: ${formatWorkoutWeightStat(bestDayLoad)}`;
+    }
     const bestSetReps =
       typeof getWorkoutBestRepsRecord === 'function'
         ? getWorkoutBestRepsRecord(workout, appData.completedWorkouts || [])
@@ -1672,6 +1699,10 @@ async function skipDailyWorkout(workoutDayId) {
         typeof getWorkoutGoalDirection === 'function'
           ? getWorkoutGoalDirection(workout)
           : 'maximize',
+      usesWeight:
+        typeof workoutUsesWeight === 'function'
+          ? workoutUsesWeight(workout)
+          : workout.usesWeight === true,
       date: workoutDay.date,
       skipped: true,
       skippedDate: workoutDay.skippedDate,

@@ -798,17 +798,34 @@ function getCheckedDays(selector) {
   return Array.from(dayCheckboxes).map((cb) => parseInt(cb.value, 10));
 }
 
-function createWorkoutPayload(name, emoji, metricOrSelection, goalDirectionOrDays, maybeDays = []) {
+function createWorkoutPayload(
+  name,
+  emoji,
+  metricOrSelection,
+  goalDirectionOrDays,
+  maybeDays = [],
+  options = {}
+) {
   const days = Array.isArray(goalDirectionOrDays) ? goalDirectionOrDays : maybeDays;
   const fallbackGoalDirection = Array.isArray(goalDirectionOrDays)
     ? 'maximize'
     : goalDirectionOrDays;
+  const workoutSource = {
+    goalDirection: fallbackGoalDirection,
+    usesWeight: options?.usesWeight === true,
+  };
+  if (typeof metricOrSelection === 'string' && metricOrSelection.includes('|')) {
+    workoutSource.selection = metricOrSelection;
+  } else {
+    workoutSource.metric = metricOrSelection;
+  }
   const workoutModel =
     typeof getWorkoutTypeConfig === 'function'
-      ? getWorkoutTypeConfig(metricOrSelection, fallbackGoalDirection)
+      ? getWorkoutTypeConfig(workoutSource, fallbackGoalDirection)
       : {
           metric: String(metricOrSelection || 'reps'),
           goalDirection: String(fallbackGoalDirection || 'maximize'),
+          usesWeight: options?.usesWeight === true,
         };
 
   return {
@@ -817,6 +834,7 @@ function createWorkoutPayload(name, emoji, metricOrSelection, goalDirectionOrDay
     emoji: emoji || '??',
     metric: workoutModel.metric,
     goalDirection: workoutModel.goalDirection,
+    usesWeight: workoutModel.usesWeight === true,
     days: days.length > 0 ? days : [1, 2, 3, 4, 5],
     dateAdded: getLocalDateString(),
     xp: 0,
@@ -825,6 +843,9 @@ function createWorkoutPayload(name, emoji, metricOrSelection, goalDirectionOrDay
       totalReps: 0,
       bestSetReps: 0,
       bestDayReps: 0,
+      totalLoad: 0,
+      bestWeight: 0,
+      bestDayLoad: 0,
       totalDistance: 0,
       bestDistance: 0,
       totalTime: 0,

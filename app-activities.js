@@ -54,6 +54,13 @@ function parseLocalDateString(dateStr) {
   return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
+function addDaysToDateKey(dateStr, days) {
+  if (!dateStr) return '';
+  const date = parseLocalDateString(dateStr);
+  date.setDate(date.getDate() + Number(days || 0));
+  return getLocalDateString(date);
+}
+
 function getEmergencyBadgeHtml(entry, className = 'activity-emergency-badge') {
   if (!isUrgentWorkActivity(entry)) return '';
   return `<span class="${className}">Urgente</span>`;
@@ -78,26 +85,50 @@ function isOneOffScheduledItemOverdue(item, todayStr = getLocalDateString()) {
 
 function getOneOffScheduledFailureDateKey(item) {
   const dueDateKey = getScheduledItemDueDateKey(item);
+  return dueDateKey || '';
+}
+
+function getOneOffScheduledGraceDeadlineDateKey(item) {
+  const dueDateKey = getScheduledItemDueDateKey(item);
   if (!dueDateKey) return '';
-  const failureDate = parseLocalDateString(dueDateKey);
-  failureDate.setDate(failureDate.getDate() + 1);
-  return getLocalDateString(failureDate);
+  return addDaysToDateKey(dueDateKey, 1);
+}
+
+function isDatePastGraceWindow(dateKey, todayStr = getLocalDateString()) {
+  if (!dateKey) return false;
+  return addDaysToDateKey(dateKey, 1) < todayStr;
+}
+
+function isOneOffScheduledFailureDue(item, todayStr = getLocalDateString()) {
+  const dueDateKey = getScheduledItemDueDateKey(item);
+  if (!dueDateKey) return false;
+  return isDatePastGraceWindow(dueDateKey, todayStr);
 }
 
 function isScheduledItemVisibleToday(item, todayStr, dayOfWeek, completedList, options = {}) {
   if (!item || item.failed) return false;
 
   if (isRoutineType(item.type)) {
+    const activityDateKey = String(item.dateAdded || '').trim();
+    if (activityDateKey && activityDateKey < todayStr) {
+      if (isDatePastGraceWindow(activityDateKey, todayStr)) return false;
+      if (options.excludeResolvedRoutine === true) {
+        return !wasItemLoggedForDate(item, completedList, activityDateKey);
+      }
+      return true;
+    }
+
     const isScheduledToday = getRoutineDays(item).includes(dayOfWeek);
     if (!isScheduledToday) return false;
     if (options.excludeResolvedRoutine === true) {
-      return !wasItemLoggedForDate(item, completedList, todayStr);
+      return !wasItemLoggedForDate(item, completedList, activityDateKey || todayStr);
     }
     return true;
   }
 
   const dueDateKey = getScheduledItemDueDateKey(item);
-  return Boolean(dueDateKey) && dueDateKey >= todayStr;
+  if (!dueDateKey) return false;
+  return !isDatePastGraceWindow(dueDateKey, todayStr);
 }
 
 function collectVisibleScheduledItems(config) {
@@ -128,14 +159,26 @@ function collectVisibleScheduledItems(config) {
 }
 
 function collectDailyTrackerItems(config) {
-  const { sourceList, itemList, category, idKey, todayStr, pendingOnly = false } = config;
+  const {
+    sourceList,
+    itemList,
+    category,
+    idKey,
+    todayStr,
+    pendingOnly = false,
+    includeCurrentDay = true,
+  } = config;
   const items = [];
 
   (sourceList || [])
     .filter((entry) => {
-      if (!entry || entry.date !== todayStr) return false;
+      if (!entry || !entry.date || entry.failed) return false;
+      const isCurrentDay = entry.date === todayStr;
+      const isCarryover = entry.date < todayStr && !isDatePastGraceWindow(entry.date, todayStr);
+      if (!isCurrentDay && !isCarryover) return false;
+      if (isCurrentDay && includeCurrentDay === false) return false;
       if (!pendingOnly) return true;
-      return !entry.completed && !entry.skipped;
+      return !entry.completed && !entry.skipped && !entry.failed;
     })
     .forEach((entry) => {
       const item = (itemList || []).find(
@@ -159,36 +202,43 @@ function getAllTodayActivities() {
     dayOfWeek,
   });
 
-  if (!isWorkOffDay(todayStr)) {
+  const visibleWorks = collectVisibleScheduledItems({
+    sourceList: appData.works,
+    category: 'work',
+    completedList: appData.completedWorks,
+    todayStr,
+    dayOfWeek,
+  });
+  if (isWorkOffDay(todayStr)) {
     items.push(
-      ...collectVisibleScheduledItems({
-        sourceList: appData.works,
-        category: 'work',
-        completedList: appData.completedWorks,
-        todayStr,
-        dayOfWeek,
-      })
+      ...visibleWorks.filter(({ item }) =>
+        isRoutineType(item.type)
+          ? Boolean(item.dateAdded) && item.dateAdded < todayStr
+          : isOneOffScheduledItemOverdue(item, todayStr)
+      )
     );
+  } else {
+    items.push(...visibleWorks);
   }
 
-  if (!isRestDay(todayStr)) {
-    items.push(
-      ...collectDailyTrackerItems({
-        sourceList: appData.dailyWorkouts,
-        itemList: appData.workouts,
-        category: 'workout',
-        idKey: 'workoutId',
-        todayStr,
-      }),
-      ...collectDailyTrackerItems({
-        sourceList: appData.dailyStudies,
-        itemList: appData.studies,
-        category: 'study',
-        idKey: 'studyId',
-        todayStr,
-      })
-    );
-  }
+  items.push(
+    ...collectDailyTrackerItems({
+      sourceList: appData.dailyWorkouts,
+      itemList: appData.workouts,
+      category: 'workout',
+      idKey: 'workoutId',
+      todayStr,
+      includeCurrentDay: !isRestDay(todayStr),
+    }),
+    ...collectDailyTrackerItems({
+      sourceList: appData.dailyStudies,
+      itemList: appData.studies,
+      category: 'study',
+      idKey: 'studyId',
+      todayStr,
+      includeCurrentDay: !isRestDay(todayStr),
+    })
+  );
 
   (appData.books || []).forEach((book) => {
     if (!book || book.status === 'concluido') return;
@@ -211,16 +261,22 @@ function updateActivityProgressBar() {
   const total = filteredItems.length;
   totalCount.textContent = String(total);
 
+  const todayStr = getLocalDateString();
   const done = filteredItems.filter(({ category, item, dailyEntry }) => {
-    if (category === 'mission')
-      return (
-        item.completed ||
-        wasItemLoggedForDate(item, appData.completedMissions, getLocalDateString())
-      );
-    if (category === 'work')
-      return (
-        item.completed || wasItemLoggedForDate(item, appData.completedWorks, getLocalDateString())
-      );
+    if (category === 'mission') {
+      const referenceDate =
+        isRoutineType(item.type) && item.dateAdded && item.dateAdded < todayStr
+          ? item.dateAdded
+          : todayStr;
+      return item.completed || wasItemLoggedForDate(item, appData.completedMissions, referenceDate);
+    }
+    if (category === 'work') {
+      const referenceDate =
+        isRoutineType(item.type) && item.dateAdded && item.dateAdded < todayStr
+          ? item.dateAdded
+          : todayStr;
+      return item.completed || wasItemLoggedForDate(item, appData.completedWorks, referenceDate);
+    }
     if (category === 'workout') return dailyEntry?.completed;
     if (category === 'study') return dailyEntry?.completed;
     if (category === 'book') return item.completed || item.status === 'concluido';
@@ -251,40 +307,47 @@ function getUnifiedTodayActivities() {
     excludeResolvedRoutine: true,
   });
 
-  if (!isWorkOffDay(todayStr)) {
+  const visiblePendingWorks = collectVisibleScheduledItems({
+    sourceList: appData.works,
+    category: 'work',
+    completedList: appData.completedWorks,
+    todayStr,
+    dayOfWeek,
+    excludeCompleted: true,
+    excludeResolvedRoutine: true,
+  });
+  if (isWorkOffDay(todayStr)) {
     items.push(
-      ...collectVisibleScheduledItems({
-        sourceList: appData.works,
-        category: 'work',
-        completedList: appData.completedWorks,
-        todayStr,
-        dayOfWeek,
-        excludeCompleted: true,
-        excludeResolvedRoutine: true,
-      })
+      ...visiblePendingWorks.filter(({ item }) =>
+        isRoutineType(item.type)
+          ? Boolean(item.dateAdded) && item.dateAdded < todayStr
+          : isOneOffScheduledItemOverdue(item, todayStr)
+      )
     );
+  } else {
+    items.push(...visiblePendingWorks);
   }
 
-  if (!isRestDay(todayStr)) {
-    items.push(
-      ...collectDailyTrackerItems({
-        sourceList: appData.dailyWorkouts,
-        itemList: appData.workouts,
-        category: 'workout',
-        idKey: 'workoutId',
-        todayStr,
-        pendingOnly: true,
-      }),
-      ...collectDailyTrackerItems({
-        sourceList: appData.dailyStudies,
-        itemList: appData.studies,
-        category: 'study',
-        idKey: 'studyId',
-        todayStr,
-        pendingOnly: true,
-      })
-    );
-  }
+  items.push(
+    ...collectDailyTrackerItems({
+      sourceList: appData.dailyWorkouts,
+      itemList: appData.workouts,
+      category: 'workout',
+      idKey: 'workoutId',
+      todayStr,
+      pendingOnly: true,
+      includeCurrentDay: !isRestDay(todayStr),
+    }),
+    ...collectDailyTrackerItems({
+      sourceList: appData.dailyStudies,
+      itemList: appData.studies,
+      category: 'study',
+      idKey: 'studyId',
+      todayStr,
+      pendingOnly: true,
+      includeCurrentDay: !isRestDay(todayStr),
+    })
+  );
 
   (appData.books || []).forEach((book) => {
     if (!book || book.completed || book.status === 'concluido') return;
@@ -1264,6 +1327,7 @@ function renderUnifiedTodayActivities() {
   if (!container) return;
   const items = filterActivitiesByCategory(getUnifiedTodayActivities(), 'activity-filter');
   const skipCount = getSkipItemCount();
+  const todayStr = getLocalDateString();
 
   container.innerHTML = '';
   if (items.length === 0) {
@@ -1286,17 +1350,16 @@ function renderUnifiedTodayActivities() {
     const isMissionOrWork = category === 'mission' || category === 'work';
     let dueDateHtml = '';
     if (isMissionOrWork && (item.type === 'eventual' || item.type === 'epica')) {
-      const dueValue = item.type === 'epica' ? item.deadline : item.date;
-      if (dueValue) {
-        const dueDate = parseLocalDateString(dueValue);
-        const today = new Date();
-        const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-        let dateLabel = formatDate(dueValue);
-        if (diffDays >= 0 && diffDays <= 7) {
-          dateLabel = diffDays === 0 ? 'Hoje' : diffDays === 1 ? 'Amanhã' : `Em ${diffDays}d`;
-          dueDateHtml = `<span class="activity-due-date ${diffDays <= 2 ? 'urgent' : ''}">${dateLabel}</span>`;
-        }
+      const dueDateKey = getScheduledItemDueDateKey(item);
+      if (dueDateKey && typeof getDueBadgeHtml === 'function') {
+        dueDateHtml = getDueBadgeHtml(dueDateKey, todayStr, item.type);
       }
+    }
+    if (!dueDateHtml && isMissionOrWork && isRoutineType(item.type) && item.dateAdded && item.dateAdded < todayStr) {
+      dueDateHtml = '<span class="due-badge due-overdue">Atrasado 1d</span>';
+    }
+    if (!dueDateHtml && (isWorkout || isStudy) && dailyEntry?.date && dailyEntry.date < todayStr) {
+      dueDateHtml = '<span class="due-badge due-overdue">Atrasado 1d</span>';
     }
     const actionId = dailyEntry ? dailyEntry.id : item.id;
     const completeClass =
@@ -1611,13 +1674,13 @@ function checkOverdueWorks(options = {}) {
   appData.works.forEach((work) => {
     if (work.completed || work.failed) return;
 
-    if (isOneOffScheduledItemOverdue(work, todayStr)) {
+    if (isOneOffScheduledFailureDue(work, todayStr)) {
       overdueToFail.push({
         id: work.id,
         reason:
           work.type === 'epica'
-            ? 'Falha no dia seguinte ao prazo (Épica)'
-            : 'Falha no dia seguinte ao prazo (eventual)',
+            ? 'Prazo expirado sem registro dentro da janela de atraso (Épica)'
+            : 'Prazo expirado sem registro dentro da janela de atraso (eventual)',
         missedDate: getOneOffScheduledFailureDateKey(work),
       });
     }
@@ -1678,13 +1741,13 @@ function checkOverdueMissions(options = {}) {
   appData.missions.forEach((mission) => {
     if (mission.completed || mission.failed) return;
 
-    if (isOneOffScheduledItemOverdue(mission, todayStr)) {
+    if (isOneOffScheduledFailureDue(mission, todayStr)) {
       overdueToFail.push({
         id: mission.id,
         reason:
           mission.type === 'epica'
-            ? 'Falha no dia seguinte ao prazo (Épica)'
-            : 'Falha no dia seguinte ao prazo (eventual)',
+            ? 'Prazo expirado sem registro dentro da janela de atraso (Épica)'
+            : 'Prazo expirado sem registro dentro da janela de atraso (eventual)',
         missedDate: getOneOffScheduledFailureDateKey(mission),
       });
     }
@@ -1846,6 +1909,7 @@ function getWorkoutSummaryFromStats(workout = {}) {
 
   return {
     totalReps: Number(stats.totalReps || 0),
+    totalLoad: Number(stats.totalLoad || 0),
     totalDistance: Number(stats.totalDistance || 0),
     totalTime: Number(stats.totalTime || 0),
     timesDone: Number(stats.completed || 0),
@@ -1870,6 +1934,7 @@ function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
             ? getWorkoutGoalDirection(fallback)
             : 'maximize',
         totalReps: 0,
+        totalLoad: 0,
         totalDistance: 0,
         totalTime: 0,
         timesDone: 0,
@@ -1896,6 +1961,7 @@ function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
     if (!statsSummary) return;
 
     bucket.totalReps = statsSummary.totalReps;
+    bucket.totalLoad = statsSummary.totalLoad;
     bucket.totalDistance = statsSummary.totalDistance;
     bucket.totalTime = statsSummary.totalTime;
     bucket.timesDone = statsSummary.timesDone;
@@ -1912,6 +1978,10 @@ function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
 
     if (isRepetitionWorkoutType(entry) && Array.isArray(entry.series)) {
       bucket.totalReps += entry.series.reduce((sum, value) => sum + (parseInt(value, 10) || 0), 0);
+      bucket.totalLoad +=
+        typeof getWorkoutDayTotalLoad === 'function'
+          ? getWorkoutDayTotalLoad(entry.series, entry.weights)
+          : 0;
       return;
     }
 
@@ -1995,12 +2065,44 @@ function formatWorkoutSpeedSummary(totalDistanceKm, totalTimeSeconds) {
   return `${speedLabel} | ${paceLabel}`;
 }
 
+function formatWorkoutWeightValue(weightKg) {
+  const safeWeight = Math.max(0, Number(weightKg || 0));
+  const roundedWeight = Math.round(safeWeight * 100) / 100;
+  return Number.isInteger(roundedWeight)
+    ? `${roundedWeight} kg`
+    : `${String(roundedWeight).replace('.', ',')} kg`;
+}
+
 function getWorkoutHistoryDetailLines(item = {}) {
   if (!item || item.failed || item.skipped) return [];
 
   if (isRepetitionWorkoutType(item) && Array.isArray(item.series)) {
     const series = item.series.map((value) => parseInt(value, 10) || 0);
     const totalReps = series.reduce((sum, value) => sum + value, 0);
+    const usesWeight =
+      typeof workoutUsesWeight === 'function'
+        ? workoutUsesWeight(item)
+        : item?.usesWeight === true;
+    if (usesWeight) {
+      const weights = Array.isArray(item.weights)
+        ? item.weights.map((value) => {
+            const parsedValue = Number(value);
+            return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 0;
+          })
+        : [0, 0, 0];
+      const totalLoad =
+        typeof getWorkoutDayTotalLoad === 'function'
+          ? getWorkoutDayTotalLoad(series, weights)
+          : Math.round(
+              series.reduce((sum, reps, index) => sum + reps * (Number(weights[index]) || 0), 0) *
+                100
+            ) / 100;
+      return [
+        `Séries: ${series.map((reps, index) => `${reps} rep x ${formatWorkoutWeightValue(weights[index])}`).join(' / ')}`,
+        `Total repetições: ${totalReps}`,
+        `Volume: ${formatWorkoutWeightValue(totalLoad)}`,
+      ];
+    }
     return [`Séries: ${series.join(' / ')}`, `Total repetições: ${totalReps}`];
   }
 
@@ -2586,6 +2688,7 @@ Object.assign(globalThis, {
   parseLocalDateString,
   getScheduledItemDueDateKey,
   getOneOffScheduledFailureDateKey,
+  getOneOffScheduledGraceDeadlineDateKey,
   getUnifiedTodayActivities,
   getAllTodayActivities,
   getUnifiedHistoryActivities,
@@ -2605,6 +2708,7 @@ Object.assign(globalThis, {
   resetHistoryPage,
   wasItemLoggedForDate,
   isOneOffScheduledItemOverdue,
+  isOneOffScheduledFailureDue,
   checkOverdueWorks,
   checkOverdueMissions,
   updateStreaksDisplay,
@@ -2642,8 +2746,10 @@ if (typeof module !== 'undefined' && module.exports) {
     getEventDateKey,
     getScheduledItemDueDateKey,
     getOneOffScheduledFailureDateKey,
+    getOneOffScheduledGraceDeadlineDateKey,
     getEmergencyBadgeHtml,
     isOneOffScheduledItemOverdue,
+    isOneOffScheduledFailureDue,
     isUrgentWorkActivity,
     getNutritionTimelineEvents,
     getUnifiedTimelineEvents,

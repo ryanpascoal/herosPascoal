@@ -30,6 +30,12 @@ function runDeferredStartupResets() {
   runDailyResetHook();
   recreateDailyMissionsForToday();
   recreateDailyWorksForToday();
+  if (typeof cleanupOldDailyWorkouts === 'function') {
+    cleanupOldDailyWorkouts();
+  }
+  if (typeof cleanupOldDailyStudies === 'function') {
+    cleanupOldDailyStudies();
+  }
   cleanupOldDailyMissions();
   cleanupOldDailyWorks();
   checkOverdueMissions({ isInitialCheck: true });
@@ -218,6 +224,10 @@ function checkDailyReset() {
       : lastReset !== today;
 
   if (shouldRun) {
+    const todayDate = parseLocalDateString(today);
+    const yesterday = new Date(todayDate);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
     const missedDates =
       window.AppRules && typeof window.AppRules.getMissedDateKeys === 'function'
         ? window.AppRules.getMissedDateKeys(lastReset, today)
@@ -233,13 +243,21 @@ function checkDailyReset() {
             return keys;
           })();
 
-    missedDates.forEach((dateKey) => applyPenalties(dateKey));
-
-    // Limpar atividades do dia anterior
-    appData.dailyWorkouts = [];
-    appData.dailyStudies = [];
+    missedDates.forEach((dateKey) => {
+      if (dateKey === yesterdayStr) {
+        applyPenalties(dateKey, { onlyTypes: ['nutrition', 'hydration'] });
+        return;
+      }
+      applyPenalties(dateKey);
+    });
 
     // Atualizar missÃƒÆ’Ã‚Âµes/trabalhos diÃƒÆ’Ã‚Â¡rios e limpar antigos
+    if (typeof cleanupOldDailyWorkouts === 'function') {
+      cleanupOldDailyWorkouts();
+    }
+    if (typeof cleanupOldDailyStudies === 'function') {
+      cleanupOldDailyStudies();
+    }
     cleanupOldDailyMissions();
     cleanupOldDailyWorks();
 
@@ -635,9 +653,54 @@ function generateDailyActivities() {
   const today = getGameNow();
   const dayOfWeek = today.getDay();
   const todayStr = getLocalDateString(today);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = getLocalDateString(yesterday);
+  const yesterdayDayOfWeek = yesterday.getDay();
   const hasScheduledDay = (days) =>
     Array.isArray(days) && days.some((day) => normalizeWeekdayValue(day) === dayOfWeek);
+  const hadScheduledDayYesterday = (days) =>
+    Array.isArray(days) &&
+    days.some((day) => normalizeWeekdayValue(day) === normalizeWeekdayValue(yesterdayDayOfWeek));
   const sameId = (a, b) => String(a) === String(b);
+  const buildWorkoutEntry = (workout, dateKey) => ({
+    id: createUniqueId(appData.dailyWorkouts),
+    workoutId: workout.id,
+    name: workout.name,
+    emoji: workout.emoji,
+    metric: typeof getWorkoutMetric === 'function' ? getWorkoutMetric(workout) : workout.metric,
+    goalDirection:
+      typeof getWorkoutGoalDirection === 'function'
+        ? getWorkoutGoalDirection(workout)
+        : workout.goalDirection,
+    usesWeight:
+      typeof workoutUsesWeight === 'function'
+        ? workoutUsesWeight(workout)
+        : workout.usesWeight === true,
+    date: dateKey,
+    completed: false,
+    series: [null, null, null],
+    weights: [null, null, null],
+    distance: null,
+    time: null,
+    feedback: '',
+  });
+  const buildStudyEntry = (study, dateKey) => ({
+    id: createUniqueId(appData.dailyStudies),
+    studyId: study.id,
+    name: study.name,
+    emoji: study.emoji,
+    type: study.type,
+    date: dateKey,
+    completed: false,
+    applied: false,
+    feedback: '',
+    objectiveId: study.objectiveId || null,
+    priority: study.priority || 'medium',
+    impact: study.impact || 'medium',
+    effort: study.effort || 'medium',
+    energy: study.energy || 'medium',
+  });
 
   // Gerar treinos do dia
   appData.workouts.forEach((workout) => {
@@ -647,25 +710,26 @@ function generateDailyActivities() {
       );
 
       if (!alreadyExists) {
-        appData.dailyWorkouts.push({
-          id: createUniqueId(appData.dailyWorkouts),
-          workoutId: workout.id,
-          name: workout.name,
-          emoji: workout.emoji,
-          metric:
-            typeof getWorkoutMetric === 'function' ? getWorkoutMetric(workout) : workout.metric,
-          goalDirection:
-            typeof getWorkoutGoalDirection === 'function'
-              ? getWorkoutGoalDirection(workout)
-              : workout.goalDirection,
-          date: todayStr,
-          completed: false,
-          series: [null, null, null],
-          distance: null,
-          time: null,
-          feedback: '',
-        });
+        appData.dailyWorkouts.push(buildWorkoutEntry(workout, todayStr));
       }
+    }
+
+    const shouldBackfillYesterday =
+      hadScheduledDayYesterday(workout.days) &&
+      !(typeof isRestDay === 'function' && isRestDay(yesterdayStr)) &&
+      !appData.completedWorkouts.some(
+        (entry) =>
+          sameId(entry.workoutId, workout.id) &&
+          (entry.date === yesterdayStr ||
+            entry.completedDate === yesterdayStr ||
+            entry.failedDate === yesterdayStr ||
+            entry.skippedDate === yesterdayStr)
+      ) &&
+      !appData.dailyWorkouts.some(
+        (entry) => sameId(entry.workoutId, workout.id) && entry.date === yesterdayStr
+      );
+    if (shouldBackfillYesterday) {
+      appData.dailyWorkouts.push(buildWorkoutEntry(workout, yesterdayStr));
     }
   });
 
@@ -677,23 +741,26 @@ function generateDailyActivities() {
       );
 
       if (!alreadyExists) {
-        appData.dailyStudies.push({
-          id: createUniqueId(appData.dailyStudies),
-          studyId: study.id,
-          name: study.name,
-          emoji: study.emoji,
-          type: study.type,
-          date: todayStr,
-          completed: false,
-          applied: false,
-          feedback: '',
-          objectiveId: study.objectiveId || null,
-          priority: study.priority || 'medium',
-          impact: study.impact || 'medium',
-          effort: study.effort || 'medium',
-          energy: study.energy || 'medium',
-        });
+        appData.dailyStudies.push(buildStudyEntry(study, todayStr));
       }
+    }
+
+    const shouldBackfillYesterday =
+      hadScheduledDayYesterday(study.days) &&
+      !(typeof isRestDay === 'function' && isRestDay(yesterdayStr)) &&
+      !appData.completedStudies.some(
+        (entry) =>
+          sameId(entry.studyId, study.id) &&
+          (entry.date === yesterdayStr ||
+            entry.completedDate === yesterdayStr ||
+            entry.failedDate === yesterdayStr ||
+            entry.skippedDate === yesterdayStr)
+      ) &&
+      !appData.dailyStudies.some(
+        (entry) => sameId(entry.studyId, study.id) && entry.date === yesterdayStr
+      );
+    if (shouldBackfillYesterday) {
+      appData.dailyStudies.push(buildStudyEntry(study, yesterdayStr));
     }
   });
 }

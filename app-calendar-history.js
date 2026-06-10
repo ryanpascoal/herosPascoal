@@ -62,6 +62,14 @@ function parseLocalDateString(dateStr) {
   return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
+function formatWorkoutWeightValue(weightKg) {
+  const safeWeight = Math.max(0, Number(weightKg || 0));
+  const roundedWeight = Math.round(safeWeight * 100) / 100;
+  return Number.isInteger(roundedWeight)
+    ? `${roundedWeight} kg`
+    : `${String(roundedWeight).replace('.', ',')} kg`;
+}
+
 // Atualizar histórico de treinos (concluídos e falhas)
 function updateWorkoutHistory() {
   const completedContainer = document.getElementById('completed-workouts');
@@ -75,12 +83,20 @@ function updateWorkoutHistory() {
   allEntries.forEach((entry) => {
     if (entry.failed || entry.skipped) return;
     if (isRepetitionWorkoutType(entry) && Array.isArray(entry.series)) {
-      const totalReps = entry.series.reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+      const totalReps = entry.series.reduce((sum, val) => sum + (parseInt(val, 10) || 0), 0);
+      const usesWeight =
+        typeof workoutUsesWeight === 'function'
+          ? workoutUsesWeight(entry)
+          : entry?.usesWeight === true;
+      const totalValue =
+        usesWeight && typeof getWorkoutDayTotalLoad === 'function'
+          ? getWorkoutDayTotalLoad(entry.series, entry.weights)
+          : totalReps;
       const prevTotal = lastTotalsByWorkoutId.get(entry.workoutId);
       if (prevTotal !== undefined) {
         prevTotalsByEntryId.set(entry.id, prevTotal);
       }
-      lastTotalsByWorkoutId.set(entry.workoutId, totalReps);
+      lastTotalsByWorkoutId.set(entry.workoutId, totalValue);
     }
     if (isDistanceWorkoutType(entry) && entry.distance !== null && entry.distance !== undefined) {
       const distance = Number(entry.distance);
@@ -118,16 +134,35 @@ function updateWorkoutHistory() {
       details.push(`<p>Tipo: ${getWorkoutTypeName(entry)}</p>`);
 
       if (!entry.failed && !entry.skipped && isRepetitionWorkoutType(entry) && Array.isArray(entry.series)) {
-        const totalReps = entry.series.reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+        const totalReps = entry.series.reduce((sum, val) => sum + (parseInt(val, 10) || 0), 0);
+        const usesWeight =
+          typeof workoutUsesWeight === 'function'
+            ? workoutUsesWeight(entry)
+            : entry?.usesWeight === true;
+        const weights = Array.isArray(entry.weights) ? entry.weights : [null, null, null];
+        const totalLoad =
+          usesWeight && typeof getWorkoutDayTotalLoad === 'function'
+            ? getWorkoutDayTotalLoad(entry.series, weights)
+            : 0;
+        const comparisonValue = usesWeight ? totalLoad : totalReps;
         const prevTotal = prevTotalsByEntryId.get(entry.id);
         let trend = '';
         if (prevTotal !== undefined) {
-          if (totalReps > prevTotal) trend = ' <span class="trend-up">&uarr;</span>';
-          else if (totalReps < prevTotal) trend = ' <span class="trend-down">&darr;</span>';
+          if (comparisonValue > prevTotal) trend = ' <span class="trend-up">&uarr;</span>';
+          else if (comparisonValue < prevTotal) trend = ' <span class="trend-down">&darr;</span>';
         }
-        details.push(
-          `<p>Séries: ${entry.series.map((v) => v || 0).join(' / ')} (Total: ${totalReps})${trend}</p>`
-        );
+        const seriesLabel = usesWeight
+          ? entry.series
+              .map(
+                (value, index) =>
+                  `${value || 0} rep x ${formatWorkoutWeightValue(weights[index])}`
+              )
+              .join(' / ')
+          : entry.series.map((v) => v || 0).join(' / ');
+        const totalsLabel = usesWeight
+          ? `Total: ${totalReps} rep | Volume: ${formatWorkoutWeightValue(totalLoad)}`
+          : `Total: ${totalReps}`;
+        details.push(`<p>Séries: ${seriesLabel} (${totalsLabel})${trend}</p>`);
       }
       if (!entry.failed && !entry.skipped && isDistanceWorkoutType(entry) && entry.distance !== null && entry.distance !== undefined) {
         const distance = Number(entry.distance);
@@ -179,7 +214,7 @@ function updateWorkoutHistory() {
                 <span class="mission-status ${statusClass}">
                     ${statusText}
                 </span>
-                <span class="workout-type compact-history-type">${getWorkoutTypeName(entry.type)}</span>
+                <span class="workout-type compact-history-type">${getWorkoutTypeName(entry)}</span>
             </div>
             <div class="mission-details compact-history-details">
                 ${details.join('')}
@@ -416,6 +451,10 @@ function showItemModal(itemType, existingItem = null) {
     Array.isArray(existingItem?.days) ? existingItem.days.map((day) => String(day)) : []
   );
   const isEditing = !!existingItem;
+  const existingUsesWeight =
+    typeof workoutUsesWeight === 'function'
+      ? workoutUsesWeight(existingItem)
+      : existingItem?.usesWeight === true;
   const safeExistingName = escapeHtml(existingItem?.name || '');
   const safeExistingEmoji = escapeHtml(existingItem?.emoji || '');
 
@@ -439,6 +478,12 @@ function showItemModal(itemType, existingItem = null) {
                         <option value="duration|maximize" ${((typeof getWorkoutSelectionValue === 'function' ? getWorkoutSelectionValue(existingItem) : '') === 'duration|maximize') ? 'selected' : ''}>Duração</option>
                         <option value="duration|minimize" ${((typeof getWorkoutSelectionValue === 'function' ? getWorkoutSelectionValue(existingItem) : '') === 'duration|minimize') ? 'selected' : ''}>Contra o tempo</option>
                     </select>
+                </div>
+                <div class="form-group" id="modal-item-weight-container">
+                    <label class="day-checkbox" for="modal-item-uses-weight">
+                        <input type="checkbox" id="modal-item-uses-weight" ${existingUsesWeight ? 'checked' : ''}>
+                        Registrar carga (kg)
+                    </label>
                 </div>
                 <div class="form-group">
                     <label>Dias da Semana</label>
@@ -499,6 +544,28 @@ function showItemModal(itemType, existingItem = null) {
         <button type="submit" class="submit-btn">Salvar</button>
     `;
 
+  const modalWorkoutTypeInput = document.getElementById('modal-item-type');
+  const modalWorkoutWeightContainer = document.getElementById('modal-item-weight-container');
+  const modalWorkoutUsesWeightInput = document.getElementById('modal-item-uses-weight');
+  if (modalWorkoutTypeInput && modalWorkoutWeightContainer && modalWorkoutUsesWeightInput) {
+    const syncModalWorkoutWeightVisibility = () => {
+      const metric =
+        typeof getWorkoutMetric === 'function'
+          ? getWorkoutMetric(modalWorkoutTypeInput.value)
+          : String(modalWorkoutTypeInput.value || '').trim().startsWith('reps')
+            ? 'reps'
+            : 'other';
+      const isRepetitionWorkout = metric === 'reps';
+      modalWorkoutWeightContainer.style.display = isRepetitionWorkout ? 'block' : 'none';
+      modalWorkoutUsesWeightInput.disabled = !isRepetitionWorkout;
+      if (!isRepetitionWorkout) {
+        modalWorkoutUsesWeightInput.checked = false;
+      }
+    };
+    syncModalWorkoutWeightVisibility();
+    modalWorkoutTypeInput.addEventListener('change', syncModalWorkoutWeightVisibility);
+  }
+
   // Mostrar modal
   modal.classList.add('active');
 }
@@ -520,19 +587,35 @@ function showWorkoutCompletionModal(workoutDayId) {
   modalTitle.textContent = `Concluir ${workout.name}`;
 
   let inputFields = '';
+  const usesWeight =
+    typeof workoutUsesWeight === 'function'
+      ? workoutUsesWeight(workoutDay) || workoutUsesWeight(workout)
+      : workoutDay?.usesWeight === true || workout?.usesWeight === true;
   
   // Obter valores do workoutDay diretamente (não precisa procurar no DOM)
   if (typeof isRepetitionWorkoutType === 'function' ? isRepetitionWorkoutType(workout) : false) {
     const series = workoutDay.series || [0, 0, 0];
     const seriesValues = [series[0] || 0, series[1] || 0, series[2] || 0];
+    const weights = workoutDay.weights || [0, 0, 0];
+    const weightValues = [weights[0] || 0, weights[1] || 0, weights[2] || 0];
 
     inputFields = seriesValues
       .map(
         (value, index) => `
           <div class="form-group">
-            <label>Série ${index + 1}:</label>
+            <label>Série ${index + 1} (repetições):</label>
             <input type="number" name="series-${index}" value="${value}" min="0">
           </div>
+          ${
+            usesWeight
+              ? `
+          <div class="form-group">
+            <label>Carga ${index + 1} (kg):</label>
+            <input type="number" name="weight-${index}" value="${weightValues[index]}" min="0" step="0.5">
+          </div>
+          `
+              : ''
+          }
         `
       )
       .join('');

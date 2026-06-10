@@ -595,6 +595,7 @@ function openActivityEditor(category, item) {
   const emojiInput = document.getElementById('activity-emoji');
   const scheduleTypeInput = document.getElementById('activity-schedule-type');
   const workoutTypeInput = document.getElementById('activity-workout-type');
+  const workoutUsesWeightInput = document.getElementById('activity-workout-uses-weight');
   const studyTypeInput = document.getElementById('activity-study-type');
   const dateInput = document.getElementById('activity-date');
   const deadlineInput = document.getElementById('activity-deadline');
@@ -620,6 +621,10 @@ function openActivityEditor(category, item) {
       typeof getWorkoutSelectionValue === 'function'
         ? getWorkoutSelectionValue(item)
         : 'reps|maximize';
+  }
+  if (workoutUsesWeightInput && category === 'workout') {
+    workoutUsesWeightInput.checked =
+      typeof workoutUsesWeight === 'function' ? workoutUsesWeight(item) : item.usesWeight === true;
   }
   if (studyTypeInput && category === 'study') studyTypeInput.value = item.type || 'logico';
   if (dateInput) dateInput.value = item.date || '';
@@ -660,6 +665,7 @@ function openActivityEditor(category, item) {
 
   if (typeof fillActivityPlanningForm === 'function') fillActivityPlanningForm(item);
   if (typeof setActivityFormSubmitLabel === 'function') setActivityFormSubmitLabel(true);
+  if (typeof updateActivityForm === 'function') updateActivityForm();
   nameInput?.focus();
 }
 
@@ -1262,6 +1268,10 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
             typeof getWorkoutGoalDirection === 'function'
               ? getWorkoutGoalDirection(originalWorkout)
               : 'maximize',
+          usesWeight:
+            typeof workoutUsesWeight === 'function'
+              ? workoutUsesWeight(originalWorkout)
+              : originalWorkout.usesWeight === true,
           date: item.date,
           completedDate: item.date,
           failedDate: item.date,
@@ -1393,11 +1403,27 @@ function normalizeWorkoutGoalDirection(metric, goalDirection) {
   return 'maximize';
 }
 
+function normalizeWorkoutUsesWeight(source, fallbackMetric = '') {
+  const resolvedMetric = normalizeWorkoutMetric(
+    fallbackMetric ||
+      (source && typeof source === 'object' && !Array.isArray(source)
+        ? source.metric || source.type || source.value || source.selection || 'reps'
+        : source)
+  );
+  if (resolvedMetric !== 'reps') return false;
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return false;
+  return source.usesWeight === true;
+}
+
 function normalizeWorkoutModel(source, fallbackGoalDirection = 'maximize') {
   if (source && typeof source === 'object' && !Array.isArray(source)) {
     const metric = source.metric || source.type || source.value || source.selection || 'reps';
     const goalDirection = source.goalDirection || fallbackGoalDirection;
-    return normalizeWorkoutModel(metric, goalDirection);
+    const normalizedModel = normalizeWorkoutModel(metric, goalDirection);
+    return {
+      ...normalizedModel,
+      usesWeight: normalizeWorkoutUsesWeight(source, normalizedModel.metric),
+    };
   }
 
   const normalizedSource = String(source || '').trim();
@@ -1410,6 +1436,7 @@ function normalizeWorkoutModel(source, fallbackGoalDirection = 'maximize') {
         metric,
         rawGoalDirection || fallbackGoalDirection
       ),
+      usesWeight: false,
     };
   }
 
@@ -1419,15 +1446,19 @@ function normalizeWorkoutModel(source, fallbackGoalDirection = 'maximize') {
   return {
     metric,
     goalDirection: normalizeWorkoutGoalDirection(metric, inferredGoalDirection),
+    usesWeight: false,
   };
 }
 
 function getWorkoutTypeConfig(source, fallbackGoalDirection = 'maximize') {
-  const { metric, goalDirection } = normalizeWorkoutModel(source, fallbackGoalDirection);
+  const { metric, goalDirection, usesWeight } = normalizeWorkoutModel(
+    source,
+    fallbackGoalDirection
+  );
   let label = 'Treino';
 
   if (metric === 'reps') {
-    label = 'Repetição';
+    label = usesWeight ? 'Repetição com carga' : 'Repetição';
   } else if (metric === 'distance') {
     label = 'Distância';
   } else if (metric === 'duration') {
@@ -1438,6 +1469,7 @@ function getWorkoutTypeConfig(source, fallbackGoalDirection = 'maximize') {
     label,
     metric,
     goalDirection,
+    usesWeight,
     selectionValue: `${metric}|${goalDirection}`,
   };
 }
@@ -1467,10 +1499,16 @@ function applyWorkoutModel(target, source, fallbackGoalDirection = 'maximize') {
   const config = getWorkoutTypeConfig(source, fallbackGoalDirection);
   target.metric = config.metric;
   target.goalDirection = config.goalDirection;
+  target.usesWeight = config.usesWeight === true;
   if (Object.prototype.hasOwnProperty.call(target, 'type')) {
     delete target.type;
   }
   return target;
+}
+
+function workoutUsesWeight(source, fallbackGoalDirection = 'maximize') {
+  const config = getWorkoutTypeConfig(source, fallbackGoalDirection);
+  return config.metric === 'reps' && config.usesWeight === true;
 }
 
 function isRepetitionWorkoutType(source, fallbackGoalDirection = 'maximize') {
@@ -1506,6 +1544,7 @@ Object.assign(globalThis, {
   getWorkoutGoalDirection,
   getWorkoutSelectionValue,
   applyWorkoutModel,
+  workoutUsesWeight,
   isRepetitionWorkoutType,
   isDistanceWorkoutType,
   isTimedWorkoutType,
@@ -1548,6 +1587,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getWorkoutGoalDirection,
     getWorkoutSelectionValue,
     applyWorkoutModel,
+    workoutUsesWeight,
     isRepetitionWorkoutType,
     isDistanceWorkoutType,
     isTimedWorkoutType,
