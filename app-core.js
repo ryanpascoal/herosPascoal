@@ -663,6 +663,8 @@ function generateDailyActivities() {
     Array.isArray(days) &&
     days.some((day) => normalizeWeekdayValue(day) === normalizeWeekdayValue(yesterdayDayOfWeek));
   const sameId = (a, b) => String(a) === String(b);
+  const getAvailableFromDateKey = (item) =>
+    String(item?.availableDate || item?.dateAdded || '').trim() || '';
   const buildWorkoutEntry = (workout, dateKey) => ({
     id: createUniqueId(appData.dailyWorkouts),
     workoutId: workout.id,
@@ -716,6 +718,10 @@ function generateDailyActivities() {
 
     const shouldBackfillYesterday =
       hadScheduledDayYesterday(workout.days) &&
+      (() => {
+        const availableFrom = getAvailableFromDateKey(workout);
+        return !availableFrom || availableFrom <= yesterdayStr;
+      })() &&
       !(typeof isRestDay === 'function' && isRestDay(yesterdayStr)) &&
       !appData.completedWorkouts.some(
         (entry) =>
@@ -747,6 +753,10 @@ function generateDailyActivities() {
 
     const shouldBackfillYesterday =
       hadScheduledDayYesterday(study.days) &&
+      (() => {
+        const availableFrom = getAvailableFromDateKey(study);
+        return !availableFrom || availableFrom <= yesterdayStr;
+      })() &&
       !(typeof isRestDay === 'function' && isRestDay(yesterdayStr)) &&
       !appData.completedStudies.some(
         (entry) =>
