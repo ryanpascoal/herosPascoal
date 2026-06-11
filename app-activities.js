@@ -491,6 +491,19 @@ function isFutureTimelineDate(dateKey) {
   return Boolean(todayKey) && safeDateKey > todayKey;
 }
 
+function getRecurringWeekDays(item) {
+  const sourceDays = Array.isArray(item?.days) ? item.days : [];
+  return Array.from(
+    new Set(
+      sourceDays
+        .map((day) =>
+          typeof normalizeWeekdayValue === 'function' ? normalizeWeekdayValue(day) : Number(day)
+        )
+        .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+    )
+  );
+}
+
 function hasScheduledHistoryEntryForDate(item, completedList, dateKey) {
   if (!item || !Array.isArray(completedList) || !dateKey) return false;
   const itemId = String(item.originalId || item.id || '').trim();
@@ -573,7 +586,7 @@ function collectFutureTrackerItemsForDate(config) {
 
   (sourceList || []).forEach((item) => {
     if (!item || item.completed || item.failed) return;
-    if (!getRoutineDays(item).includes(targetDayOfWeek)) return;
+    if (!getRecurringWeekDays(item).includes(targetDayOfWeek)) return;
     if (hasDailyTrackerResolutionForDate(item, completedList, pendingList, idKey, targetDateKey))
       return;
     items.push({ category, item, plannedDateKey: targetDateKey });
