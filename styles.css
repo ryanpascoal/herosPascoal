@@ -1289,6 +1289,110 @@ body {
   gap: 4px;
 }
 
+.notes-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.notes-form-card,
+.notes-panel {
+  min-width: 0;
+}
+
+.notes-form-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.notes-list {
+  max-height: 560px;
+}
+
+.notes-list-head {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.notes-list-head p {
+  color: var(--gray-color);
+  font-size: 0.9rem;
+}
+
+.note-card {
+  align-items: stretch;
+  gap: 14px;
+  padding: 14px;
+  border-left-width: 4px;
+}
+
+.note-card.is-favorite {
+  border-left-color: #f59e0b;
+}
+
+.note-info {
+  display: grid;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.note-head {
+  display: grid;
+  gap: 5px;
+}
+
+.note-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--gray-color);
+  font-size: 0.8rem;
+}
+
+.note-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+  color: var(--light-color);
+}
+
+.note-actions {
+  align-items: flex-start;
+}
+
+.note-favorite-btn.is-active {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.36);
+  color: #fbbf24;
+}
+
+@media (max-width: 900px) {
+  .notes-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .notes-form-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .note-card {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .note-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
 .action-btn {
   padding: 4px 8px;
   border: none;
@@ -7554,7 +7658,7 @@ body.light-theme .activity-due-date {
 
   .nav-list {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 2px;
     padding: 0;
   }
@@ -7983,7 +8087,7 @@ body.light-theme .activity-due-date {
 
 @media (max-width: 420px) {
   .nav-list {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .app-title {

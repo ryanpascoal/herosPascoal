@@ -923,6 +923,11 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     Number(summary.nutritionFailureCount || 0) +
     Number(summary.hydrationFailureCount || 0);
   const workOffActive = typeof isWorkOffDay === 'function' && isWorkOffDay(targetDateStr);
+  const yesterdayDate = parseLocalDateString(todayStr);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = getLocalDateString(yesterdayDate);
+  const shouldResetCurrentStreaks =
+    targetDateStr === todayStr || targetDateStr === yesterdayStr;
 
   if (isRestDay(targetDateStr)) {
     return;
@@ -1209,17 +1214,17 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
 
   // Apply streak and XP penalties based on the types that failed
   if (failedTypes.length > 0) {
-    // Reset streaks
-    appData.hero.streak.general = 0;
+    if (shouldResetCurrentStreaks) {
+      // Replays antigos não devem derrubar o streak atual do herói.
+      appData.hero.streak.general = 0;
 
-    // Reset physical streak if workout failed
-    if (failedTypes.includes('workout')) {
-      appData.hero.streak.physical = 0;
-    }
+      if (failedTypes.includes('workout')) {
+        appData.hero.streak.physical = 0;
+      }
 
-    // Reset mental streak if study failed
-    if (failedTypes.includes('study')) {
-      appData.hero.streak.mental = 0;
+      if (failedTypes.includes('study')) {
+        appData.hero.streak.mental = 0;
+      }
     }
 
     // Remove XP from Disciplina attribute

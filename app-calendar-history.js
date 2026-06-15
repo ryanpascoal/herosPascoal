@@ -350,6 +350,8 @@ function switchTab(tabName) {
     if (financeTabs && !financeTabs.querySelector('.sub-tab.active')) {
       switchSubTab('gestao-resumo', financeTabs);
     }
+  } else if (tabName === 'notas') {
+    if (typeof renderNotes === 'function') renderNotes();
   } else if (tabName === 'alimentacao') {
     updateNutritionView();
   } else if (tabName === 'perfil') {

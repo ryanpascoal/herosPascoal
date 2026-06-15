@@ -42,6 +42,7 @@
     populateObjectiveOptions();
   }
   initNutritionForms();
+  setNotesFormEditingState();
 
   // Inicializar gráficos
   if (typeof Chart !== 'undefined') {
@@ -96,6 +97,214 @@ function initSelectAllDays(containerSelector) {
   }
 
   syncSelectAllState();
+}
+
+function getSortedNotes(notes = appData.notes) {
+  return [...(Array.isArray(notes) ? notes : [])].sort((left, right) => {
+    const favoriteDelta = Number(Boolean(right?.favorite)) - Number(Boolean(left?.favorite));
+    if (favoriteDelta !== 0) return favoriteDelta;
+
+    const leftCreatedAt = String(left?.createdAt || '').trim();
+    const rightCreatedAt = String(right?.createdAt || '').trim();
+    const createdAtDelta = leftCreatedAt.localeCompare(rightCreatedAt);
+    if (createdAtDelta !== 0) return createdAtDelta;
+
+    return Number(left?.id || 0) - Number(right?.id || 0);
+  });
+}
+
+function formatNoteTimestamp(timestamp) {
+  const parsed = new Date(String(timestamp || '').trim());
+  if (!Number.isFinite(parsed.getTime())) return '';
+  return parsed.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function setNotesFormEditingState(note = null) {
+  const titleEl = document.getElementById('notes-form-title');
+  const editIdEl = document.getElementById('note-edit-id');
+  const contentEl = document.getElementById('note-content');
+  const submitBtn = document.getElementById('note-submit-btn');
+  const cancelBtn = document.getElementById('note-cancel-btn');
+
+  if (!titleEl || !editIdEl || !contentEl || !submitBtn || !cancelBtn) return;
+
+  if (note) {
+    titleEl.textContent = 'Editar nota';
+    editIdEl.value = String(note.id ?? '');
+    contentEl.value = String(note.content || '');
+    submitBtn.textContent = 'Atualizar nota';
+    cancelBtn.style.display = 'inline-flex';
+    contentEl.focus();
+    contentEl.setSelectionRange(contentEl.value.length, contentEl.value.length);
+    return;
+  }
+
+  titleEl.textContent = 'Nova nota';
+  editIdEl.value = '';
+  contentEl.value = '';
+  submitBtn.textContent = 'Salvar nota';
+  cancelBtn.style.display = 'none';
+}
+
+function renderNotes() {
+  const container = document.getElementById('notes-list');
+  if (!container) return;
+
+  const notes = getSortedNotes();
+  if (notes.length === 0) {
+    container.innerHTML =
+      '<p class="empty-message">Nenhuma nota ainda. Crie a primeira para começar.</p>';
+    return;
+  }
+
+  container.innerHTML = notes
+    .map((note) => {
+      const safeContent = escapeHtml(String(note.content || '')).replace(/\n/g, '<br>');
+      const createdLabel = formatNoteTimestamp(note.createdAt);
+      const updatedLabel =
+        note.updatedAt && note.updatedAt !== note.createdAt
+          ? formatNoteTimestamp(note.updatedAt)
+          : '';
+      return `
+        <article class="item-card note-card${note.favorite ? ' is-favorite' : ''}" data-id="${note.id}">
+          <div class="item-info note-info">
+            <div class="note-head">
+              <div class="item-name-row">
+                <span class="item-emoji">${note.favorite ? '⭐' : '📝'}</span>
+                <span class="item-name">Nota</span>
+              </div>
+              <div class="note-meta">
+                <span>Criada em ${createdLabel || 'data inválida'}</span>
+                ${updatedLabel ? `<span>Editada em ${updatedLabel}</span>` : ''}
+              </div>
+            </div>
+            <div class="note-content">${safeContent}</div>
+          </div>
+          <div class="item-actions note-actions">
+            <button
+              type="button"
+              class="action-btn note-favorite-btn${note.favorite ? ' is-active' : ''}"
+              data-id="${note.id}"
+              title="${note.favorite ? 'Remover dos favoritos' : 'Favoritar nota'}"
+              aria-label="${note.favorite ? 'Remover dos favoritos' : 'Favoritar nota'}"
+            >
+              <i class="fas fa-star"></i>
+            </button>
+            <button
+              type="button"
+              class="action-btn edit-btn note-edit-btn"
+              data-id="${note.id}"
+              title="Editar nota"
+              aria-label="Editar nota"
+            >
+              <i class="fas fa-edit"></i>
+            </button>
+            <button
+              type="button"
+              class="action-btn delete-btn note-delete-btn"
+              data-id="${note.id}"
+              title="Excluir nota"
+              aria-label="Excluir nota"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+function handleNoteSubmit(event) {
+  event.preventDefault();
+
+  if (!Array.isArray(appData.notes)) appData.notes = [];
+
+  const contentEl = document.getElementById('note-content');
+  const editIdEl = document.getElementById('note-edit-id');
+  if (!contentEl || !editIdEl) return;
+
+  const content = String(contentEl.value || '').trim();
+  if (!content) {
+    showFeedback('Escreva algo antes de salvar a nota.', 'warn');
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const editingId = Number.parseInt(editIdEl.value || '', 10);
+  const note = Number.isFinite(editingId)
+    ? appData.notes.find((entry) => Number(entry?.id) === editingId)
+    : null;
+
+  if (note) {
+    note.content = content;
+    note.updatedAt = now;
+    setNotesFormEditingState();
+    updateUI({ mode: 'notes' });
+    showFeedback('Nota atualizada.', 'success');
+    return;
+  }
+
+  appData.notes.push({
+    id: createUniqueId(appData.notes),
+    content,
+    favorite: false,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  setNotesFormEditingState();
+  updateUI({ mode: 'notes' });
+  showFeedback('Nota salva.', 'success');
+}
+
+function editNote(noteId) {
+  const note = Array.isArray(appData.notes)
+    ? appData.notes.find((entry) => Number(entry?.id) === Number(noteId))
+    : null;
+  if (!note) return;
+  setNotesFormEditingState(note);
+}
+
+async function deleteNote(noteId) {
+  if (!Array.isArray(appData.notes)) return;
+  const noteIndex = appData.notes.findIndex((entry) => Number(entry?.id) === Number(noteId));
+  if (noteIndex === -1) return;
+
+  const confirmed = await askConfirmation('Deseja excluir esta nota?', {
+    title: 'Excluir nota',
+    confirmText: 'Excluir',
+  });
+  if (!confirmed) return;
+
+  const [removedNote] = appData.notes.splice(noteIndex, 1);
+  const currentEditId = Number.parseInt(document.getElementById('note-edit-id')?.value || '', 10);
+  if (removedNote && Number.isFinite(currentEditId) && currentEditId === Number(removedNote.id)) {
+    setNotesFormEditingState();
+  }
+
+  updateUI({ mode: 'notes' });
+  showFeedback('Nota excluída.', 'info');
+}
+
+function toggleNoteFavorite(noteId) {
+  if (!Array.isArray(appData.notes)) return;
+  const note = appData.notes.find((entry) => Number(entry?.id) === Number(noteId));
+  if (!note) return;
+
+  note.favorite = note.favorite !== true;
+  note.updatedAt = new Date().toISOString();
+  updateUI({ mode: 'notes' });
+  showFeedback(
+    note.favorite ? 'Nota adicionada aos favoritos.' : 'Nota removida dos favoritos.',
+    'info'
+  );
 }
 
 // Inicializar eventos
@@ -254,6 +463,7 @@ function initEvents() {
     'hydration-remove-btn': removeHydrationGlass,
     'nutrition-consolidate-day-btn': () => globalThis.consolidateNutritionDay?.(),
     'nutrition-reopen-day-btn': () => globalThis.reopenNutritionDay?.(),
+    'note-cancel-btn': () => setNotesFormEditingState(),
     'save-stats-goals-btn': saveStatisticsGoals,
     'reset-foods-btn': resetNutritionFoods,
     'reset-btn': resetProgress,
@@ -269,6 +479,7 @@ function initEvents() {
     'finance-form': handleFinanceSubmit,
     'finance-budget-form': handleFinanceBudgetSubmit,
     'finance-recurring-form': handleFinanceRecurringSubmit,
+    'notes-form': handleNoteSubmit,
     'nutrition-food-form': handleNutritionFoodSubmit,
     'nutrition-entry-form': handleNutritionEntrySubmit,
     'nutrition-goals-form': handleNutritionGoalsSubmit,
@@ -492,6 +703,27 @@ function initEvents() {
       return;
     }
 
+    const noteFavoriteBtn = e.target.closest('.note-favorite-btn');
+    if (noteFavoriteBtn) {
+      const noteId = parseInt(noteFavoriteBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(noteId)) toggleNoteFavorite(noteId);
+      return;
+    }
+
+    const noteEditBtn = e.target.closest('.note-edit-btn');
+    if (noteEditBtn) {
+      const noteId = parseInt(noteEditBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(noteId)) editNote(noteId);
+      return;
+    }
+
+    const noteDeleteBtn = e.target.closest('.note-delete-btn');
+    if (noteDeleteBtn) {
+      const noteId = parseInt(noteDeleteBtn.getAttribute('data-id'), 10);
+      if (Number.isFinite(noteId)) deleteNote(noteId);
+      return;
+    }
+
     const applyCheckbox = e.target.closest('.apply-study-checkbox');
     if (applyCheckbox) {
       const studyDayId = parseInt(applyCheckbox.getAttribute('data-id'));
@@ -509,10 +741,12 @@ function updateUI(options = {}) {
   const mode = options.mode || 'full';
   const isFull = mode === 'full';
   const isActivity = mode === 'activity';
+  const isNotes = mode === 'notes';
   const isShop = mode === 'shop';
   const isFinance = mode === 'finance';
 
   const shouldUpdateActivity = isFull || isActivity;
+  const shouldUpdateNotes = isFull || isNotes;
   const shouldUpdateShop = isFull || isShop;
   const shouldUpdateFinance = isFull || isFinance;
   const shouldUpdateNutrition =
@@ -572,6 +806,10 @@ function updateUI(options = {}) {
 
     // Atualizar estatísticas
     updateStatistics();
+  }
+
+  if (shouldUpdateNotes) {
+    renderNotes();
   }
 
   if (shouldUpdateShop) {
@@ -1377,17 +1615,16 @@ function updateShopItemsList() {
   });
 }
 
-// Função para falhar uma missão
-function failMission(missionId, reason = '', options = {}) {
-  const missionIndex = appData.missions.findIndex((m) => m.id === missionId);
-  if (missionIndex === -1) return;
+function failManagedActivity(category, activityId, reason = '', options = {}) {
+  const isWorkCategory = category === 'work';
+  const activeList = isWorkCategory ? appData.works : appData.missions;
+  const activityIndex = activeList.findIndex((item) => item.id === activityId);
+  if (activityIndex === -1) return null;
 
-  const mission = appData.missions[missionIndex];
+  const activity = activeList[activityIndex];
+  if (activity.failed) return null;
 
-  // Verificar se já está falida para evitar penalidades duplicadas
-  if (mission.failed) return;
-
-  const isRoutine = isRoutineType(mission.type);
+  const isRoutine = isRoutineType(activity.type);
   const todayStr = getLocalDateString();
   const penaltyDate = options.missedDate || todayStr;
   const failedAt =
@@ -1395,47 +1632,38 @@ function failMission(missionId, reason = '', options = {}) {
       ? buildHistoryActionTimestamp(penaltyDate)
       : new Date().toISOString();
 
-  // Marcar como falhada (sem remover itens de rotina da lista)
   if (!isRoutine) {
-    mission.failed = true;
-    mission.failedDate = todayStr;
-    mission.failedAt = failedAt;
+    activity.failed = true;
+    activity.failedDate = todayStr;
+    activity.failedAt = failedAt;
   }
 
-  // Registrar falha para o pipeline unificado de penalidades (applyPenalties)
-  const missionLineageKey = mission.originalId || mission.id;
-  const alreadyFailedForDate = appData.completedMissions.some(
-    (m) =>
-      m.failed &&
-      String(m.originalId || m.id) === String(missionLineageKey) &&
-      m.failedDate === penaltyDate
-  );
-  if (alreadyFailedForDate) return;
-
-  // Mover para missões concluídas (com status de falha)
-  appData.completedMissions.push({
-    ...mission,
-    completedDate: penaltyDate,
-    failedAt,
-    failedDate: penaltyDate,
-    failed: true,
-    penaltyApplied: false,
-    reason: reason,
-    missedDate: options.missedDate || null,
+  const record = recordManagedActivityFailure(category, activity, {
+    missedDate: penaltyDate,
+    reason,
+    recordFields: {
+      missedDate: options.missedDate || null,
+    },
   });
-  updateProductiveDay(0, 0, 0, 0, 0, {
-    date: penaltyDate,
-    missionsMissed: 1,
-  });
+  if (!record) return null;
 
-  // Remover da lista de missões ativas
   if (!isRoutine) {
-    appData.missions.splice(missionIndex, 1);
+    activeList.splice(activityIndex, 1);
   }
 
-  // Atualizar UI
+  return {
+    activity,
+    penaltyDate,
+  };
+}
+
+// Função para falhar uma missão
+function failMission(missionId, reason = '', options = {}) {
+  const result = failManagedActivity('mission', missionId, reason, options);
+  if (!result) return;
+
+  const { activity: mission, penaltyDate } = result;
   updateUI();
-  applyPenalties(penaltyDate, { onlyTypes: ['mission'] });
 
   addHeroLog(
     'mission',
@@ -1549,58 +1777,14 @@ async function skipMission(missionId) {
 }
 
 function failWork(workId, reason = '', options = {}) {
-  const workIndex = appData.works.findIndex((w) => w.id === workId);
-  if (workIndex === -1) return;
+  const result = failManagedActivity('work', workId, reason, options);
+  if (!result) return;
 
-  const work = appData.works[workIndex];
-
-  // Verificar se já está falido para evitar penalidades duplicadas
-  if (work.failed) return;
-
-  const isRoutine = isRoutineType(work.type);
-  const todayStr = getLocalDateString();
-  const penaltyDate = options.missedDate || todayStr;
-  const failedAt =
-    typeof buildHistoryActionTimestamp === 'function'
-      ? buildHistoryActionTimestamp(penaltyDate)
-      : new Date().toISOString();
-  if (!isRoutine) {
-    work.failed = true;
-    work.failedDate = todayStr;
-    work.failedAt = failedAt;
-  }
-  const workLineageKey = work.originalId || work.id;
-  const alreadyFailedForDate = appData.completedWorks.some(
-    (w) =>
-      w.failed &&
-      String(w.originalId || w.id) === String(workLineageKey) &&
-      w.failedDate === penaltyDate
-  );
-  if (alreadyFailedForDate) return;
-  appData.completedWorks.push({
-    ...work,
-    completedDate: penaltyDate,
-    failedAt,
-    failedDate: penaltyDate,
-    failed: true,
-    penaltyApplied: false,
-    reason,
-    missedDate: options.missedDate || null,
-  });
-  updateProductiveDay(0, 0, 0, 0, 0, {
-    date: penaltyDate,
-    worksMissed: 1,
-  });
-
-  if (!isRoutine) {
-    appData.works.splice(workIndex, 1);
-  }
-
+  const { activity: work, penaltyDate } = result;
   updateUI({ mode: 'activity' });
-  applyPenalties(penaltyDate, { onlyTypes: ['work'] });
 
   addHeroLog(
-    'mission',
+    'work',
     `Trabalho falhado: ${work.name}`,
     `Falha registrada para ${penaltyDate}. Penalidades aplicadas no pipeline diário.`,
     {
@@ -1655,7 +1839,7 @@ async function skipWork(workId) {
   }
 
   addHeroLog(
-    'mission',
+    'work',
     `Trabalho pulado: ${work.name}`,
     '1 item de pulo consumido. Sem penalidade.',
     {
@@ -1794,6 +1978,12 @@ Object.assign(globalThis, {
   initUI,
   bindById,
   bindManyById,
+  getSortedNotes,
+  renderNotes,
+  handleNoteSubmit,
+  editNote,
+  deleteNote,
+  toggleNoteFavorite,
   initEvents,
   updateUI,
   updateAttributes,
@@ -1830,6 +2020,7 @@ Object.assign(globalThis, {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    getSortedNotes,
     getWorkoutStats,
     hasGeneralFailure,
     hasNutritionHydrationFailure,

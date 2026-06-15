@@ -741,6 +741,53 @@ function discardResolvedPendingFailureReview(review) {
   return false;
 }
 
+function getManagedActivityMissedStatKey(category) {
+  if (category === 'work') return 'worksMissed';
+  if (category === 'mission') return 'missionsMissed';
+  return '';
+}
+
+function recordManagedActivityFailure(category, item, options = {}) {
+  if (!item || (category !== 'mission' && category !== 'work')) return false;
+
+  const missedDate = String(options.missedDate || getLocalDateString()).trim();
+  if (!missedDate || hasResolvedActivityForDate(category, item, missedDate)) {
+    return false;
+  }
+
+  const historyList = getActivityHistoryListByCategory(category);
+  const reason =
+    options.reason || (category === 'work' ? 'Não concluído no dia' : 'Não concluída no dia');
+  const failedAt = buildHistoryActionTimestamp(missedDate);
+  const missedStatKey = getManagedActivityMissedStatKey(category);
+  const record = {
+    ...item,
+    completedDate: missedDate,
+    failedAt,
+    failedDate: missedDate,
+    failed: true,
+    penaltyApplied: false,
+    reason,
+    missedDate,
+    ...(options.recordFields || {}),
+  };
+
+  historyList.push(record);
+
+  if (missedStatKey && typeof updateProductiveDay === 'function') {
+    updateProductiveDay(0, 0, 0, 0, 0, {
+      date: missedDate,
+      [missedStatKey]: 1,
+    });
+  }
+
+  if (options.applyPenalty !== false) {
+    applyPenalties(missedDate, { onlyTypes: [category] });
+  }
+
+  return record;
+}
+
 function recordCompletedMissionFromReview(mission, completedDate, review = null) {
   if (!mission || !completedDate) return false;
   if (hasResolvedActivityForDate('mission', mission, completedDate)) {
@@ -869,7 +916,7 @@ function recordCompletedWorkFromReview(work, completedDate, review = null) {
   });
 
   addHeroLog(
-    'mission',
+    'work',
     `Trabalho concluído: ${work.name}`,
     `+${xpGained} XP, +${coinsGained} moeda(s). Confirmado no dia seguinte.`,
     {
@@ -896,24 +943,15 @@ function recordFailedMissionFromReview(mission, missedDate, review = null) {
     return discardResolvedPendingFailureReview(review);
   }
   if (review) removePendingFailureReview(review.id);
-
-  const failedAt = buildHistoryActionTimestamp(missedDate);
-  appData.completedMissions.push({
-    ...mission,
-    completedDate: missedDate,
-    failedAt,
-    failedDate: missedDate,
-    failed: true,
-    penaltyApplied: false,
-    reason: review?.reason || 'Não concluída no dia',
+  const record = recordManagedActivityFailure('mission', mission, {
     missedDate,
-    reviewedNextDay: true,
+    reason: review?.reason || 'Não concluída no dia',
+    recordFields: {
+      missedDate,
+      reviewedNextDay: true,
+    },
   });
-  updateProductiveDay(0, 0, 0, 0, 0, {
-    date: missedDate,
-    missionsMissed: 1,
-  });
-  applyPenalties(missedDate, { onlyTypes: ['mission'] });
+  if (!record) return false;
 
   addHeroLog(
     'mission',
@@ -940,27 +978,18 @@ function recordFailedWorkFromReview(work, missedDate, review = null) {
     return discardResolvedPendingFailureReview(review);
   }
   if (review) removePendingFailureReview(review.id);
-
-  const failedAt = buildHistoryActionTimestamp(missedDate);
-  appData.completedWorks.push({
-    ...work,
-    completedDate: missedDate,
-    failedAt,
-    failedDate: missedDate,
-    failed: true,
-    penaltyApplied: false,
-    reason: review?.reason || 'Não concluído no dia',
+  const record = recordManagedActivityFailure('work', work, {
     missedDate,
-    reviewedNextDay: true,
+    reason: review?.reason || 'Não concluído no dia',
+    recordFields: {
+      missedDate,
+      reviewedNextDay: true,
+    },
   });
-  updateProductiveDay(0, 0, 0, 0, 0, {
-    date: missedDate,
-    worksMissed: 1,
-  });
-  applyPenalties(missedDate, { onlyTypes: ['work'] });
+  if (!record) return false;
 
   addHeroLog(
-    'mission',
+    'work',
     `Trabalho falhado: ${work.name}`,
     `Falha confirmada no dia seguinte para ${missedDate}. Penalidades aplicadas no pipeline diário.`,
     {
@@ -1307,6 +1336,9 @@ function resolvePendingFailureReview(review, wasCompleted) {
 }
 
 async function processPendingFailureReviews() {
+  if (Array.isArray(appData.pendingFailureReviews) && appData.pendingFailureReviews.length > 0) {
+    appData.pendingFailureReviews = [];
+  }
   return true;
 }
 
@@ -2293,7 +2325,7 @@ function completeWork(workId, feedbackText = '') {
   });
 
   addHeroLog(
-    'mission',
+    'work',
     `Trabalho concluído: ${work.name}`,
     `+${xpGained} XP, +${coinsGained} moeda(s)`,
     {
@@ -2321,6 +2353,7 @@ function completeWork(workId, feedbackText = '') {
 function recreateDailyMissionsForToday() {
   const today = getGameNow();
   const todayStr = getLocalDateString();
+  const todayDayOfWeek = today.getDay();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
@@ -2352,6 +2385,8 @@ function recreateDailyMissionsForToday() {
   });
 
   yesterdayRoutineMissionsByLineage.forEach((originalMission, lineageKey) => {
+    if (!getRoutineDays(originalMission).includes(todayDayOfWeek)) return;
+
     const alreadyExists = appData.missions.some(
       (mission) =>
         isRoutineType(mission.type) &&
@@ -2401,22 +2436,13 @@ function cleanupOldDailyMissions() {
       const shouldExpirePending = !alreadyResolved && failedDate < yesterdayStr;
       if (!alreadyResolved && !shouldExpirePending) return;
       if (!alreadyResolved) {
-        const failedAt = buildHistoryActionTimestamp(failedDate);
-        appData.completedMissions.push({
-          ...mission,
-          completedDate: failedDate,
-          failedAt,
-          failedDate: failedDate,
-          failed: true,
-          penaltyApplied: false,
-          reason: 'Não concluída no dia',
+        recordManagedActivityFailure('mission', mission, {
           missedDate: failedDate,
+          reason: 'Não concluída no dia',
+          recordFields: {
+            missedDate: failedDate,
+          },
         });
-        updateProductiveDay(0, 0, 0, 0, 0, {
-          date: failedDate,
-          missionsMissed: 1,
-        });
-        applyPenalties(failedDate, { onlyTypes: ['mission'] });
       }
       console.log(`Removendo rotina antiga: ${mission.name} (adicionada em ${mission.dateAdded})`);
       missionsToRemove.push(index);
@@ -2436,9 +2462,11 @@ function cleanupOldDailyMissions() {
 function recreateDailyWorksForToday() {
   const today = getGameNow();
   const todayStr = getLocalDateString();
+  const todayDayOfWeek = today.getDay();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
+  const workOffActiveToday = typeof isWorkOffDay === 'function' && isWorkOffDay(todayStr);
 
   const yesterdayRoutineWorksByLineage = new Map();
   appData.completedWorks.forEach((work) => {
@@ -2467,6 +2495,8 @@ function recreateDailyWorksForToday() {
   });
 
   yesterdayRoutineWorksByLineage.forEach((originalWork, lineageKey) => {
+    if (workOffActiveToday || !getRoutineDays(originalWork).includes(todayDayOfWeek)) return;
+
     const alreadyExists = appData.works.some(
       (work) =>
         isRoutineType(work.type) &&
@@ -2525,21 +2555,13 @@ function cleanupOldDailyWorks() {
             missedDate: failedDate,
           });
         } else {
-          appData.completedWorks.push({
-            ...work,
-            completedDate: failedDate,
-            failedAt: resolvedAt,
-            failedDate: failedDate,
-            failed: true,
-            penaltyApplied: false,
-            reason: 'Não concluído no dia',
+          recordManagedActivityFailure('work', work, {
             missedDate: failedDate,
+            reason: 'Não concluído no dia',
+            recordFields: {
+              missedDate: failedDate,
+            },
           });
-          updateProductiveDay(0, 0, 0, 0, 0, {
-            date: failedDate,
-            worksMissed: 1,
-          });
-          applyPenalties(failedDate, { onlyTypes: ['work'] });
         }
       }
       worksToRemove.push(index);
@@ -2911,6 +2933,7 @@ Object.assign(globalThis, {
   completeWork,
   prepareStartupFailureReviews,
   processPendingFailureReviews,
+  recordManagedActivityFailure,
   recreateDailyMissionsForToday,
   cleanupOldDailyMissions,
   recreateDailyWorksForToday,
@@ -2953,6 +2976,7 @@ if (typeof module !== 'undefined' && module.exports) {
     buildHistoryActionTimestamp,
     prepareStartupFailureReviews,
     processPendingFailureReviews,
+    recordManagedActivityFailure,
     cleanupOldDailyMissions,
     cleanupOldDailyWorks,
     cleanupOldDailyWorkouts,

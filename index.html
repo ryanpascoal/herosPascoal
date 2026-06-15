@@ -72,6 +72,10 @@
             <i class="fas fa-layer-group"></i>
             <span>Atividades</span>
           </li>
+          <li class="nav-item" data-tab="notas">
+            <i class="fas fa-note-sticky"></i>
+            <span>Notas</span>
+          </li>
           <li class="nav-item" data-tab="perfil">
             <i class="fas fa-user"></i>
             <span>Perfil</span>
@@ -408,6 +412,54 @@
               <div class="existing-items">
                 <h3>Atividades Cadastradas</h3>
                 <div class="items-list" id="activities-list"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="notas" class="tab-content">
+          <div class="page-header">
+            <h2><i class="fas fa-note-sticky"></i> Notas</h2>
+            <div class="time-display">Anotações simples para não esquecer.</div>
+          </div>
+
+          <div class="notes-layout">
+            <div class="form-container notes-form-card">
+              <h3 id="notes-form-title">Nova nota</h3>
+              <form id="notes-form">
+                <input type="hidden" id="note-edit-id" />
+
+                <div class="form-group">
+                  <label for="note-content">Anotação</label>
+                  <textarea
+                    id="note-content"
+                    rows="5"
+                    placeholder="Escreva algo importante para lembrar depois..."
+                    required
+                  ></textarea>
+                </div>
+
+                <div class="notes-form-actions">
+                  <button type="submit" class="submit-btn" id="note-submit-btn">Salvar nota</button>
+                  <button
+                    type="button"
+                    class="action-btn secondary"
+                    id="note-cancel-btn"
+                    style="display: none"
+                  >
+                    Cancelar edição
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div class="existing-items notes-panel">
+              <div class="notes-list-head">
+                <h3>Minhas notas</h3>
+                <p>Favoritas aparecem primeiro. Dentro de cada grupo, a ordem segue a criação.</p>
+              </div>
+              <div class="items-list notes-list" id="notes-list">
+                <p class="empty-message">Nenhuma nota ainda. Crie a primeira para começar.</p>
               </div>
             </div>
           </div>

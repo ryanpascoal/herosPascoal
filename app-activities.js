@@ -105,6 +105,26 @@ function isOneOffScheduledFailureDue(item, todayStr = getLocalDateString()) {
   return isDatePastGraceWindow(dueDateKey, todayStr);
 }
 
+function collectManagedOneOffItemsDueForFailure(sourceList, todayStr) {
+  const overdueToFail = [];
+
+  (sourceList || []).forEach((item) => {
+    if (!item || item.completed || item.failed || isRoutineType(item.type)) return;
+    if (!isOneOffScheduledFailureDue(item, todayStr)) return;
+
+    overdueToFail.push({
+      id: item.id,
+      reason:
+        item.type === 'epica'
+          ? 'Prazo expirado sem registro dentro da janela de atraso (Épica)'
+          : 'Prazo expirado sem registro dentro da janela de atraso (eventual)',
+      missedDate: getOneOffScheduledFailureDateKey(item),
+    });
+  });
+
+  return overdueToFail;
+}
+
 function isScheduledItemVisibleToday(item, todayStr, dayOfWeek, completedList, options = {}) {
   if (!item || item.failed) return false;
 
@@ -744,8 +764,10 @@ function doesHeroLogMatchHistoryEntry(log, category, item, eventDateKey) {
   if (logDateKey !== eventDateKey) return false;
 
   const allowedTypes =
-    category === 'mission' || category === 'work'
+    category === 'mission'
       ? ['mission']
+      : category === 'work'
+        ? ['work', 'mission']
       : category === 'workout'
         ? ['workout']
         : category === 'study'
@@ -769,6 +791,7 @@ function getStandaloneTimelineLogCategory(log) {
   if (specializedCategory) return specializedCategory;
   const safeType = String(log?.type || 'system').trim();
   if (
+    safeType === 'work' ||
     safeType === 'level' ||
     safeType === 'item' ||
     safeType === 'penalty' ||
@@ -792,6 +815,8 @@ function getStandaloneTimelineLogLabel(log) {
   if (specializedCategory === 'nutrition') return 'Alimentação';
   if (specializedCategory === 'hydration') return 'Hidratação';
   switch (log?.type) {
+    case 'work':
+      return 'Trabalho';
     case 'level':
       return 'Nível';
     case 'item':
@@ -810,6 +835,8 @@ function getStandaloneTimelineLogIcon(log) {
   if (specializedCategory === 'nutrition') return '🍽️';
   if (specializedCategory === 'hydration') return '💧';
   switch (log?.type) {
+    case 'work':
+      return '💼';
     case 'mission':
       return '🎯';
     case 'workout':
@@ -881,11 +908,73 @@ function isAggregatePenaltyTimelineLog(log) {
   return title === 'Atividades não concluídas' && content.startsWith('Registros com falha: ');
 }
 
-function getMergedPenaltyNarrative(log) {
+function getAggregatePenaltyTimelineDetails(log) {
+  const content = String(log?.content || '').trim();
+  if (!content) return [];
+
+  const aggregateMatch = content.match(/^Registros com falha:\s*(.+?)\.\s*(.+)$/);
+  const detailsLabel = String(aggregateMatch?.[1] || '').trim();
+  if (!detailsLabel) return [];
+
+  return detailsLabel
+    .split(/\s*,\s*/)
+    .map((detail) => String(detail || '').trim())
+    .filter(Boolean);
+}
+
+function getAggregatePenaltyTimelineNarrative(log) {
   const content = String(log?.content || '').trim();
   if (!content) return '';
-  const aggregatePrefixMatch = content.match(/^Registros com falha: .*?\. (.+)$/);
-  return (aggregatePrefixMatch?.[1] || content).trim();
+  const aggregateMatch = content.match(/^Registros com falha:\s*(.+?)\.\s*(.+)$/);
+  return String(aggregateMatch?.[2] || '').trim();
+}
+
+function inferPenaltyDetailCategory(detail) {
+  const normalizedDetail = normalizeTimelineText(detail);
+  if (normalizedDetail.includes('refeicao') || normalizedDetail.includes('alimentacao')) {
+    return 'nutrition';
+  }
+  if (normalizedDetail.includes('hidratacao')) return 'hydration';
+  if (normalizedDetail.includes('trabalho')) return 'work';
+  if (normalizedDetail.includes('treino')) return 'workout';
+  if (normalizedDetail.includes('estudo')) return 'study';
+  if (normalizedDetail.includes('missao') || normalizedDetail.includes('tarefa')) return 'mission';
+  return 'penalty';
+}
+
+function isNutritionHydrationPenaltyCategory(category) {
+  return category === 'nutrition' || category === 'hydration';
+}
+
+function buildAggregatePenaltyTimelineEntries(log) {
+  if (!isAggregatePenaltyTimelineLog(log)) return [];
+
+  const details = getAggregatePenaltyTimelineDetails(log);
+  const narrative = getAggregatePenaltyTimelineNarrative(log);
+  const eventDateKey = getTimelineLogDateKey(log);
+  const eventTimestamp = String(log?.date || '').trim();
+  const sortTimestamp = getTimelineSortTimestamp(eventDateKey, eventTimestamp);
+
+  return details.map((detail, index) => {
+    const category = inferPenaltyDetailCategory(detail);
+    const metaCategory = category === 'nutrition' || category === 'hydration' ? category : '';
+    const splitLog = {
+      ...log,
+      id: `${String(log?.id || 'penalty')}:${index}`,
+      title: detail,
+      content: narrative,
+      meta: metaCategory ? { ...(log?.meta || {}), category: metaCategory } : log?.meta,
+    };
+    return {
+      timelineKind: 'log',
+      category: getStandaloneTimelineLogCategory(splitLog),
+      log: splitLog,
+      eventDateKey,
+      eventTimestamp,
+      sortTimestamp,
+      title: detail,
+    };
+  });
 }
 
 function getNutritionTimelineMealOrder() {
@@ -1065,16 +1154,35 @@ function getUnifiedTimelineEvents() {
     failedActivityEventsByDate.get(dateKey).push(entry);
   });
 
+  const expandedPenaltyLogEvents = [];
   heroLogs.forEach((log) => {
     if (consumedLogIds.has(log?.id) || !isAggregatePenaltyTimelineLog(log)) return;
     const eventDateKey = getTimelineLogDateKey(log);
     const failedEntries = failedActivityEventsByDate.get(eventDateKey) || [];
-    if (failedEntries.length === 0) return;
-    const targetEntry = failedEntries[0];
-    if (!Array.isArray(targetEntry.mergedPenaltyLogs)) {
-      targetEntry.mergedPenaltyLogs = [];
+    const splitEntries = buildAggregatePenaltyTimelineEntries(log);
+    if (splitEntries.length > 0) {
+      const nutritionHydrationEntries = splitEntries.filter((entry) =>
+        isNutritionHydrationPenaltyCategory(entry.category)
+      );
+      const activityPenaltyEntries = splitEntries.filter(
+        (entry) => !isNutritionHydrationPenaltyCategory(entry.category)
+      );
+
+      if (nutritionHydrationEntries.length > 0) {
+        expandedPenaltyLogEvents.push(...nutritionHydrationEntries);
+      }
+      if (activityPenaltyEntries.length > 0 && failedEntries.length === 0) {
+        expandedPenaltyLogEvents.push(...activityPenaltyEntries);
+      }
+      consumedLogIds.add(log.id);
+      return;
     }
-    targetEntry.mergedPenaltyLogs.push(log);
+
+    if (failedEntries.length > 0) {
+      consumedLogIds.add(log.id);
+      return;
+    }
+
     consumedLogIds.add(log.id);
   });
 
@@ -1098,7 +1206,13 @@ function getUnifiedTimelineEvents() {
 
   const nutritionEvents = getNutritionTimelineEvents();
 
-  return [...plannedEvents, ...activityEvents, ...nutritionEvents, ...logEvents].sort(
+  return [
+    ...plannedEvents,
+    ...activityEvents,
+    ...nutritionEvents,
+    ...expandedPenaltyLogEvents,
+    ...logEvents,
+  ].sort(
     (left, right) => {
       const timeDelta = Number(right.sortTimestamp || 0) - Number(left.sortTimestamp || 0);
       if (timeDelta !== 0) return timeDelta;
@@ -1281,12 +1395,6 @@ function renderTimelineEventCard(entry) {
   const card = document.createElement('div');
   card.className = `mission-card history-card compact-history ${statusMeta.tone}`;
   const timelineTime = formatTimelineTime(entry.eventTimestamp);
-  const mergedPenaltyNarrative = Array.isArray(entry.mergedPenaltyLogs)
-    ? entry.mergedPenaltyLogs
-        .map((log) => getMergedPenaltyNarrative(log))
-        .filter(Boolean)
-        .join(' ')
-    : '';
   const workoutDetailLines =
     category === 'workout'
       ? getWorkoutHistoryDetailLines(item)
@@ -1310,7 +1418,6 @@ function renderTimelineEventCard(entry) {
       ${workoutDetailLines}
       ${category === 'book' && item.author ? `<p>Autor: ${escapeHtml(item.author)}</p>` : ''}
       ${item.reason ? `<p class="mission-reason">Motivo: ${escapeHtml(item.reason)}</p>` : ''}
-      ${mergedPenaltyNarrative ? `<p class="timeline-narrative">Penalidade do dia: ${escapeHtml(mergedPenaltyNarrative)}</p>` : ''}
       ${matchedLog?.content ? `<p class="timeline-narrative">Registro do herói: ${escapeHtml(matchedLog.content)}</p>` : ''}
       ${item.feedback ? `<p class="mission-feedback">Feedback: ${escapeHtml(item.feedback)}</p>` : ''}
     </div>
@@ -1680,59 +1787,9 @@ function wasItemLoggedForDate(item, completedList, dateStr) {
     );
   });
 }
-function checkOverdueWorks(options = {}) {
-  const skipWeekly = options.skipWeekly === true;
-
-  const today = getGameNow();
-  const todayStr = getLocalDateString();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = getLocalDateString(yesterday);
-  const overdueToFail = [];
-
-  appData.works.forEach((work) => {
-    if (work.completed || work.failed) return;
-
-    if (isOneOffScheduledFailureDue(work, todayStr)) {
-      overdueToFail.push({
-        id: work.id,
-        reason:
-          work.type === 'epica'
-            ? 'Prazo expirado sem registro dentro da janela de atraso (Épica)'
-            : 'Prazo expirado sem registro dentro da janela de atraso (eventual)',
-        missedDate: getOneOffScheduledFailureDateKey(work),
-      });
-    }
-
-    if (!skipWeekly && isRoutineType(work.type)) {
-      const workLineageKey = work.originalId || work.id;
-      const yesterdayDayOfWeek = yesterday.getDay();
-      const availableFrom = work.availableDate || work.dateAdded || todayStr;
-      const shouldCheckYesterday =
-        getRoutineDays(work).includes(yesterdayDayOfWeek) && availableFrom <= yesterdayStr;
-      const workOffActive = typeof isWorkOffDay === 'function' && isWorkOffDay(yesterdayStr);
-      if (shouldCheckYesterday && !workOffActive) {
-        const alreadyLoggedYesterday = wasItemLoggedForDate(
-          work,
-          appData.completedWorks,
-          yesterdayStr
-        );
-        const alreadyFailedForMissedDate = appData.completedWorks.some(
-          (w) =>
-            String(w.originalId || w.id) === String(workLineageKey) &&
-            w.failed === true &&
-            w.missedDate === yesterdayStr
-        );
-        if (!alreadyLoggedYesterday && !alreadyFailedForMissedDate) {
-          overdueToFail.push({
-            id: work.id,
-            reason: 'Rotina não concluída no dia programado',
-            missedDate: yesterdayStr,
-          });
-        }
-      }
-    }
-  });
+function checkOverdueWorks() {
+  const todayStr = getLocalDateString(getGameNow());
+  const overdueToFail = collectManagedOneOffItemsDueForFailure(appData.works, todayStr);
 
   if (overdueToFail.length > 0) {
     console.log(
@@ -1747,58 +1804,9 @@ function checkOverdueWorks(options = {}) {
   recreateDailyWorksForToday();
 }
 // Verificar missões atrasadas diariamente (função ajustada)
-function checkOverdueMissions(options = {}) {
-  const skipWeekly = options.skipWeekly === true;
-
-  const today = getGameNow();
-  const todayStr = getLocalDateString();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = getLocalDateString(yesterday);
-  const overdueToFail = [];
-
-  appData.missions.forEach((mission) => {
-    if (mission.completed || mission.failed) return;
-
-    if (isOneOffScheduledFailureDue(mission, todayStr)) {
-      overdueToFail.push({
-        id: mission.id,
-        reason:
-          mission.type === 'epica'
-            ? 'Prazo expirado sem registro dentro da janela de atraso (Épica)'
-            : 'Prazo expirado sem registro dentro da janela de atraso (eventual)',
-        missedDate: getOneOffScheduledFailureDateKey(mission),
-      });
-    }
-
-    if (!skipWeekly && isRoutineType(mission.type)) {
-      const missionLineageKey = mission.originalId || mission.id;
-      const yesterdayDayOfWeek = yesterday.getDay();
-      const availableFrom = mission.availableDate || mission.dateAdded || todayStr;
-      const shouldCheckYesterday =
-        getRoutineDays(mission).includes(yesterdayDayOfWeek) && availableFrom <= yesterdayStr;
-      if (shouldCheckYesterday) {
-        const alreadyLoggedYesterday = wasItemLoggedForDate(
-          mission,
-          appData.completedMissions,
-          yesterdayStr
-        );
-        const alreadyFailedForMissedDate = appData.completedMissions.some(
-          (m) =>
-            String(m.originalId || m.id) === String(missionLineageKey) &&
-            m.failed === true &&
-            m.missedDate === yesterdayStr
-        );
-        if (!alreadyLoggedYesterday && !alreadyFailedForMissedDate) {
-          overdueToFail.push({
-            id: mission.id,
-            reason: 'Rotina não concluída no dia programado',
-            missedDate: yesterdayStr,
-          });
-        }
-      }
-    }
-  });
+function checkOverdueMissions() {
+  const todayStr = getLocalDateString(getGameNow());
+  const overdueToFail = collectManagedOneOffItemsDueForFailure(appData.missions, todayStr);
 
   if (overdueToFail.length > 0) {
     console.log(
