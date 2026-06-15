@@ -835,6 +835,7 @@ function createWorkoutPayload(
     metric: workoutModel.metric,
     goalDirection: workoutModel.goalDirection,
     usesWeight: workoutModel.usesWeight === true,
+    peopleIds: [],
     days: days.length > 0 ? days : [1, 2, 3, 4, 5],
     dateAdded: getLocalDateString(),
     xp: 0,
@@ -861,6 +862,7 @@ function createStudyPayload(name, emoji, type, days) {
     name,
     emoji: emoji || '??',
     type,
+    peopleIds: [],
     days: days.length > 0 ? days : [1, 2, 3, 4, 5],
     dateAdded: getLocalDateString(),
     xp: 0,
@@ -881,6 +883,7 @@ function createBookPayload(name, emoji, status, author = '') {
     type: 'book',
     status: status === 'lendo' ? 'lendo' : 'quero-ler',
     completed: false,
+    peopleIds: [],
     dateAdded: getLocalDateString(),
   };
 }

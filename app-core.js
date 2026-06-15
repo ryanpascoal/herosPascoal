@@ -686,6 +686,7 @@ function generateDailyActivities() {
     distance: null,
     time: null,
     feedback: '',
+    peopleIds: Array.isArray(workout.peopleIds) ? [...workout.peopleIds] : [],
   });
   const buildStudyEntry = (study, dateKey) => ({
     id: createUniqueId(appData.dailyStudies),
@@ -702,6 +703,7 @@ function generateDailyActivities() {
     impact: study.impact || 'medium',
     effort: study.effort || 'medium',
     energy: study.energy || 'medium',
+    peopleIds: Array.isArray(study.peopleIds) ? [...study.peopleIds] : [],
   });
 
   // Gerar treinos do dia

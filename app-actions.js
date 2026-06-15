@@ -584,6 +584,55 @@ function applyRewardPackage(options = {}) {
   }
 }
 
+function sanitizeActivityPeopleIds(value) {
+  const validPeopleIds = new Set((appData.people || []).map((person) => Number(person?.id)));
+  return Array.from(
+    new Set(
+      (Array.isArray(value) ? value : [])
+        .map((personId) => Number(personId))
+        .filter((personId) => Number.isFinite(personId) && validPeopleIds.has(personId))
+    )
+  );
+}
+
+function readSelectedActivityPeopleIds() {
+  return sanitizeActivityPeopleIds(
+    Array.from(document.querySelectorAll('#activity-people input[type="checkbox"]:checked')).map(
+      (checkbox) => checkbox.value
+    )
+  );
+}
+
+function assignActivityPeople(item, peopleIds) {
+  if (!item || typeof item !== 'object') return item;
+  item.peopleIds = sanitizeActivityPeopleIds(peopleIds);
+  return item;
+}
+
+function addPersonXP(personId, amount, options = {}) {
+  const person = (appData.people || []).find((entry) => Number(entry?.id) === Number(personId));
+  if (!person) return null;
+
+  const nextState = addTrackerXP(person, amount, 'linear');
+  if (options.countInteraction !== false) {
+    person.interactions = Number(person.interactions || 0) + 1;
+    person.lastInteractionDate = String(options.dateKey || getLocalDateString()).trim();
+  }
+
+  return nextState;
+}
+
+function applyAssociatedPeopleRewards(item, options = {}) {
+  const peopleIds = sanitizeActivityPeopleIds(item?.peopleIds);
+  if (peopleIds.length === 0) return 0;
+
+  const amount = Number.isFinite(Number(options.amount)) ? Number(options.amount) : 1;
+  peopleIds.forEach((personId) => {
+    addPersonXP(personId, amount, options);
+  });
+  return peopleIds.length;
+}
+
 function buildAttributeRewards(
   attributeIds = [],
   amountPerAttribute = 1,
@@ -805,6 +854,7 @@ function recordCompletedMissionFromReview(mission, completedDate, review = null)
     completedAt,
     confirmedNextDay: true,
     confirmedNextDayAt: new Date().toISOString(),
+    peopleIds: sanitizeActivityPeopleIds(mission.peopleIds),
   };
   delete record.failedDate;
   delete record.failedAt;
@@ -832,6 +882,7 @@ function recordCompletedMissionFromReview(mission, completedDate, review = null)
     coins: coinsGained,
     attributeRewards,
   });
+  applyAssociatedPeopleRewards(mission, { amount: 1, dateKey: completedDate });
 
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.missionsDone = (appData.statistics.missionsDone || 0) + 1;
@@ -879,6 +930,7 @@ function recordCompletedWorkFromReview(work, completedDate, review = null) {
     completedAt,
     confirmedNextDay: true,
     confirmedNextDayAt: new Date().toISOString(),
+    peopleIds: sanitizeActivityPeopleIds(work.peopleIds),
   };
   delete record.failedDate;
   delete record.failedAt;
@@ -907,6 +959,7 @@ function recordCompletedWorkFromReview(work, completedDate, review = null) {
     attributeRewards,
     classRewards: work.classId ? [{ id: work.classId, amount: xpGained }] : [],
   });
+  applyAssociatedPeopleRewards(work, { amount: 1, dateKey: completedDate });
 
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.worksDone = (appData.statistics.worksDone || 0) + 1;
@@ -1061,6 +1114,7 @@ function recordCompletedWorkoutFromReview(workoutDay, completedDate, review = nu
       energy: workoutDay.energy || workout?.energy || 'medium',
       confirmedNextDay: true,
       confirmedNextDayAt: new Date().toISOString(),
+      peopleIds: sanitizeActivityPeopleIds(workoutDay.peopleIds),
     });
   }
 
@@ -1097,6 +1151,10 @@ function recordCompletedWorkoutFromReview(workoutDay, completedDate, review = nu
     coins: 1,
     attributeRewards,
     trackerRewards: workout ? [{ entity: workout, amount: 10, mode: 'cyclic' }] : [],
+  });
+  applyAssociatedPeopleRewards(workoutDay, {
+    amount: 1,
+    dateKey: completedDate,
   });
 
   if (!appData.statistics) appData.statistics = {};
@@ -1164,6 +1222,7 @@ function recordCompletedStudyFromReview(studyDay, completedDate, review = null) 
       energy: studyDay.energy || study?.energy || 'medium',
       confirmedNextDay: true,
       confirmedNextDayAt: new Date().toISOString(),
+      peopleIds: sanitizeActivityPeopleIds(studyDay.peopleIds),
     });
   }
 
@@ -1195,6 +1254,10 @@ function recordCompletedStudyFromReview(studyDay, completedDate, review = null) 
     coins: 1,
     attributeRewards,
     trackerRewards: study ? [{ entity: study, amount: 5, mode: 'cyclic' }] : [],
+  });
+  applyAssociatedPeopleRewards(studyDay, {
+    amount: 1,
+    dateKey: completedDate,
   });
 
   if (!appData.statistics) appData.statistics = {};
@@ -1257,6 +1320,7 @@ function recordFailedWorkoutFromReview(workoutDay, missedDate, review = null) {
     reason: review?.reason || 'Atividade não completada',
     feedback: workoutDay.feedback || '',
     objectiveId: workoutDay.objectiveId || null,
+    peopleIds: sanitizeActivityPeopleIds(workoutDay.peopleIds),
   });
   applyPenalties(missedDate, { onlyTypes: ['workout'] });
 
@@ -1292,6 +1356,7 @@ function recordFailedStudyFromReview(studyDay, missedDate, review = null) {
     reason: review?.reason || 'Atividade não completada',
     feedback: studyDay.feedback || '',
     objectiveId: studyDay.objectiveId || null,
+    peopleIds: sanitizeActivityPeopleIds(studyDay.peopleIds),
   });
   applyPenalties(missedDate, { onlyTypes: ['study'] });
 
@@ -1457,6 +1522,7 @@ function handleWorkoutCompletion() {
       impact: workout.impact || 'medium',
       effort: workout.effort || 'medium',
       energy: workout.energy || 'medium',
+      peopleIds: sanitizeActivityPeopleIds(workout.peopleIds),
     });
   }
 
@@ -1482,6 +1548,7 @@ function handleWorkoutCompletion() {
     attributeRewards,
     trackerRewards: [{ entity: workout, amount: 10, mode: 'cyclic' }],
   });
+  applyAssociatedPeopleRewards(workout, { amount: 1, dateKey: completedDateKey });
 
   // Atualizar streak
 
@@ -1579,6 +1646,7 @@ function completeStudy(studyDayId, feedbackText = '') {
       impact: study.impact || 'medium',
       effort: study.effort || 'medium',
       energy: study.energy || 'medium',
+      peopleIds: sanitizeActivityPeopleIds(study.peopleIds),
     });
   }
 
@@ -1618,6 +1686,7 @@ function completeStudy(studyDayId, feedbackText = '') {
     attributeRewards,
     trackerRewards: [{ entity: study, amount: 5, mode: 'cyclic' }],
   });
+  applyAssociatedPeopleRewards(study, { amount: 1, dateKey: completedDateKey });
 
   // Atualizar estatísticas do estudo
   if (!study.stats) study.stats = {};
@@ -1693,6 +1762,7 @@ function completeBook(bookId, feedbackText = '') {
     heroXp: 20,
     attributeRewards: [{ id: 12, amount: 20 }],
   });
+  applyAssociatedPeopleRewards(book, { amount: 1, dateKey: completedDateKey });
 
   // Atualizar estatísticas
   if (!appData.statistics) appData.statistics = {};
@@ -1948,6 +2018,7 @@ function handleActivitySubmit(e) {
           effort: 'medium',
           energy: 'medium',
         };
+  const selectedPeopleIds = readSelectedActivityPeopleIds();
 
   if (!name) {
     showFeedback('Informe um nome válido para a atividade.', 'warn');
@@ -2011,6 +2082,7 @@ function handleActivitySubmit(e) {
     if (resolvedScheduleState.dueDateLocked) {
       targetMission.dueDateLocked = true;
     }
+    assignActivityPeople(targetMission, selectedPeopleIds);
     if (typeof applyPlanningFields === 'function') {
       applyPlanningFields(targetMission, planningFields);
     }
@@ -2051,6 +2123,7 @@ function handleActivitySubmit(e) {
     if (resolvedScheduleState.dueDateLocked) {
       targetWork.dueDateLocked = true;
     }
+    assignActivityPeople(targetWork, selectedPeopleIds);
     if (typeof applyPlanningFields === 'function') {
       applyPlanningFields(targetWork, planningFields);
     }
@@ -2084,6 +2157,7 @@ function handleActivitySubmit(e) {
     }
     workout.days = selectedDays.length > 0 ? selectedDays : [1, 2, 3, 4, 5];
     workout.dateAdded = workout.dateAdded || getLocalDateString();
+    assignActivityPeople(workout, selectedPeopleIds);
     if (typeof applyPlanningFields === 'function') {
       applyPlanningFields(workout, planningFields);
     }
@@ -2099,6 +2173,7 @@ function handleActivitySubmit(e) {
     study.type = studyType;
     study.days = selectedDays.length > 0 ? selectedDays : [1, 2, 3, 4, 5];
     study.dateAdded = study.dateAdded || getLocalDateString();
+    assignActivityPeople(study, selectedPeopleIds);
     if (typeof applyPlanningFields === 'function') {
       applyPlanningFields(study, planningFields);
     }
@@ -2115,12 +2190,14 @@ function handleActivitySubmit(e) {
         if (!book.completed) {
           book.status = status === 'lendo' ? 'lendo' : 'quero-ler';
         }
+        assignActivityPeople(book, selectedPeopleIds);
         if (typeof applyPlanningFields === 'function') {
           applyPlanningFields(book, planningFields);
         }
       }
     } else {
       const book = createBookPayload(name, emoji, status, author);
+      assignActivityPeople(book, selectedPeopleIds);
       if (typeof applyPlanningFields === 'function') {
         applyPlanningFields(book, planningFields);
       }
@@ -2187,6 +2264,7 @@ function completeMission(missionId, feedbackText = '') {
     completed: true,
     completedDate: completedDateKey,
     completedAt,
+    peopleIds: sanitizeActivityPeopleIds(mission.peopleIds),
   });
 
   // 2. SEGUNDO: Remover da lista de missões ativas (IMEDIATAMENTE)
@@ -2212,6 +2290,7 @@ function completeMission(missionId, feedbackText = '') {
     coins: coinsGained,
     attributeRewards,
   });
+  applyAssociatedPeopleRewards(mission, { amount: 1, dateKey: completedDateKey });
 
   // Atualizar estatísticas
   if (!appData.statistics) appData.statistics = {};
@@ -2295,6 +2374,7 @@ function completeWork(workId, feedbackText = '') {
     completed: true,
     completedDate: completedDateKey,
     completedAt,
+    peopleIds: sanitizeActivityPeopleIds(work.peopleIds),
   });
   if (!isRoutine) {
     appData.works.splice(workIndex, 1);
@@ -2317,6 +2397,7 @@ function completeWork(workId, feedbackText = '') {
     attributeRewards,
     classRewards: work.classId ? [{ id: work.classId, amount: xpGained }] : [],
   });
+  applyAssociatedPeopleRewards(work, { amount: 1, dateKey: completedDateKey });
   if (!appData.statistics) appData.statistics = {};
   appData.statistics.worksDone = (appData.statistics.worksDone || 0) + 1;
   updateProductiveDay(0, 0, 0, xpGained, 1, {
@@ -2403,6 +2484,7 @@ function recreateDailyMissionsForToday() {
         type: 'rotina',
         attributes: [...originalMission.attributes],
         days: getRoutineDays(originalMission),
+        peopleIds: sanitizeActivityPeopleIds(originalMission.peopleIds),
         completed: false,
         dateAdded: todayStr,
       };
@@ -2514,6 +2596,7 @@ function recreateDailyWorksForToday() {
         attributes: [...originalWork.attributes],
         days: getRoutineDays(originalWork),
         classId: originalWork.classId || null,
+        peopleIds: sanitizeActivityPeopleIds(originalWork.peopleIds),
         completed: false,
         dateAdded: todayStr,
       });
@@ -2608,6 +2691,7 @@ function cleanupOldDailyWorkouts() {
         reason: 'Treino não concluído dentro da janela de atraso',
         feedback: entry.feedback || '',
         objectiveId: entry.objectiveId || null,
+        peopleIds: sanitizeActivityPeopleIds(entry.peopleIds),
       });
       applyPenalties(entryDate, { onlyTypes: ['workout'] });
     }
@@ -2646,6 +2730,7 @@ function cleanupOldDailyStudies() {
         reason: 'Estudo não concluído dentro da janela de atraso',
         feedback: entry.feedback || '',
         objectiveId: entry.objectiveId || null,
+        peopleIds: sanitizeActivityPeopleIds(entry.peopleIds),
       });
       applyPenalties(entryDate, { onlyTypes: ['study'] });
     }
@@ -2948,6 +3033,11 @@ Object.assign(globalThis, {
   addXP,
   addAttributeXP,
   addClassXP,
+  sanitizeActivityPeopleIds,
+  readSelectedActivityPeopleIds,
+  assignActivityPeople,
+  addPersonXP,
+  applyAssociatedPeopleRewards,
   getBestWorkoutSetValue,
   getWorkoutBestRepsRecord,
   getWorkoutBestDayRepsRecord,
@@ -2974,6 +3064,10 @@ if (typeof module !== 'undefined' && module.exports) {
     getWorkoutBestSpeedRecord,
     getWorkoutSpeedValue,
     buildHistoryActionTimestamp,
+    sanitizeActivityPeopleIds,
+    assignActivityPeople,
+    addPersonXP,
+    applyAssociatedPeopleRewards,
     prepareStartupFailureReviews,
     processPendingFailureReviews,
     recordManagedActivityFailure,

@@ -35,6 +35,7 @@ const appData = {
     { id: 14, name: 'Riqueza', emoji: '💎', xp: 0, maxXp: 100, level: 0 },
   ],
   classes: [],
+  people: [],
   workouts: [],
   studies: [],
   works: [],

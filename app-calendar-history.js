@@ -317,6 +317,12 @@ function initClassSelectors() {
   updateWorkClassOptions();
 }
 
+function initPeopleSelectors() {
+  if (typeof populateActivityPeopleSelector === 'function') {
+    populateActivityPeopleSelector();
+  }
+}
+
 function isTabActive(tabId) {
   return document.getElementById(tabId)?.classList.contains('active') === true;
 }
@@ -829,6 +835,7 @@ Object.assign(globalThis, {
   updateStudyHistory,
   initAttributesSelectors,
   initClassSelectors,
+  initPeopleSelectors,
   isTabActive,
   switchTab,
   switchSubTab,

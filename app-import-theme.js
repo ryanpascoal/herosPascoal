@@ -615,6 +615,9 @@ function openActivityEditor(category, item) {
   if (dueLockInput) dueLockInput.checked = item.dueDateLocked === true;
 
   if (typeof updateActivityForm === 'function') updateActivityForm();
+  if (typeof populateActivityPeopleSelector === 'function') {
+    populateActivityPeopleSelector(item.peopleIds || []);
+  }
 
   if (workoutTypeInput && category === 'workout') {
     workoutTypeInput.value =
@@ -662,10 +665,17 @@ function openActivityEditor(category, item) {
     const attrId = parseInt(checkbox.value, 10);
     checkbox.checked = Array.isArray(item.attributes) && item.attributes.includes(attrId);
   });
+  document.querySelectorAll('#activity-people input[type="checkbox"]').forEach((checkbox) => {
+    const personId = parseInt(checkbox.value, 10);
+    checkbox.checked = Array.isArray(item.peopleIds) && item.peopleIds.includes(personId);
+  });
 
   if (typeof fillActivityPlanningForm === 'function') fillActivityPlanningForm(item);
   if (typeof setActivityFormSubmitLabel === 'function') setActivityFormSubmitLabel(true);
   if (typeof updateActivityForm === 'function') updateActivityForm();
+  if (typeof populateActivityPeopleSelector === 'function') {
+    populateActivityPeopleSelector(item.peopleIds || []);
+  }
   nameInput?.focus();
 }
 

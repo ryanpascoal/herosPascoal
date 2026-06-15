@@ -1369,6 +1369,42 @@ body {
   color: #fbbf24;
 }
 
+.people-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.people-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.person-card {
+  align-items: stretch;
+  gap: 14px;
+}
+
+.person-info {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.person-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--gray-color);
+  font-size: 0.82rem;
+}
+
+.selector-empty-message {
+  grid-column: 1 / -1;
+  color: var(--gray-color);
+  font-size: 0.9rem;
+}
+
 @media (max-width: 900px) {
   .notes-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -1390,6 +1426,11 @@ body {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .person-card {
+    flex-direction: column;
+    gap: 12px;
   }
 }
 
