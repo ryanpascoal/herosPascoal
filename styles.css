@@ -1374,6 +1374,43 @@ body {
   gap: 16px;
 }
 
+.people-list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.people-list-head p {
+  color: var(--gray-color);
+  font-size: 0.9rem;
+}
+
+.people-pagination {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.people-pagination-summary {
+  color: var(--gray-color);
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.people-pagination-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.people-pagination-btn {
+  min-width: 94px;
+}
+
 .people-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1399,6 +1436,14 @@ body {
   font-size: 0.82rem;
 }
 
+.person-xp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
 .selector-empty-message {
   grid-column: 1 / -1;
   color: var(--gray-color);
@@ -1408,6 +1453,13 @@ body {
 @media (max-width: 900px) {
   .notes-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .people-list-head,
+  .people-pagination,
+  .people-pagination-actions {
+    justify-content: flex-start;
+    justify-items: start;
   }
 }
 
@@ -1431,6 +1483,15 @@ body {
   .person-card {
     flex-direction: column;
     gap: 12px;
+  }
+
+  .people-pagination-actions {
+    width: 100%;
+  }
+
+  .people-pagination-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
   }
 }
 
@@ -5126,6 +5187,24 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   animation: fadeIn 0.3s;
 }
 
+#atividades-gerenciar {
+  display: grid;
+  gap: 16px;
+}
+
+#atividades-gerenciar .inner-sub-nav {
+  flex-wrap: wrap;
+}
+
+#atividades-gerenciar .inner-sub-content {
+  min-height: 0;
+}
+
+#atividades-gerenciar .inner-tab.active {
+  display: grid;
+  gap: 14px;
+}
+
 .stat-card[class*='cat-'] {
   border-top-width: 3px;
 }
@@ -6429,6 +6508,25 @@ body.light-theme {
 
 #perfil .streak-card:nth-child(4) {
   border-left-color: #f59e0b !important;
+}
+
+#perfil .profile-main-panels {
+  display: grid;
+  gap: 16px;
+}
+
+#perfil .profile-main-panels > .inner-sub-nav {
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+#perfil .profile-main-panels > .inner-sub-content {
+  min-height: 0;
+}
+
+#perfil .profile-main-panels > .inner-sub-content > .inner-tab.active {
+  display: grid;
+  gap: 16px;
 }
 
 #perfil .profile-tabs .sub-content,

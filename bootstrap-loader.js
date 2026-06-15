@@ -25,6 +25,41 @@
     'https://cdn.jsdelivr.net/npm/chart.js',
   ];
 
+  function getErrorLikeMessage(value) {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value.message === 'string') return value.message;
+    if (typeof value.reason?.message === 'string') return value.reason.message;
+    return String(value);
+  }
+
+  function isIgnorableExternalDeviceAttributesError(value) {
+    return getErrorLikeMessage(value).includes('deviceAttributes');
+  }
+
+  function installExternalNoiseFilters() {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (!isIgnorableExternalDeviceAttributesError(event.reason)) return;
+      console.warn(
+        'Ruído externo ignorado: extensão/recurso do navegador falhou ao ler "deviceAttributes".',
+        event.reason
+      );
+      event.preventDefault();
+    });
+
+    window.addEventListener('error', (event) => {
+      const matchesMessage =
+        isIgnorableExternalDeviceAttributesError(event.error) ||
+        isIgnorableExternalDeviceAttributesError(event.message);
+      if (!matchesMessage) return;
+      console.warn(
+        'Ruído externo ignorado: extensão/recurso do navegador falhou ao ler "deviceAttributes".',
+        event.error || event.message
+      );
+      event.preventDefault();
+    });
+  }
+
   function loadScriptSequentially(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -70,6 +105,8 @@
   }
 
   function boot() {
+    installExternalNoiseFilters();
+
     if (window.location && window.location.protocol === 'file:') {
       loadLegacyForFileProtocol().catch((error) => {
         console.error('Falha no bootstrap legado (file://):', error);

@@ -62,6 +62,26 @@ function bindManyById(eventName, handlersById) {
   Object.entries(handlersById).forEach(([id, handler]) => bindById(id, eventName, handler));
 }
 
+function switchInnerSubTab(innerTabName, parentElement) {
+  if (!parentElement) return;
+
+  parentElement.querySelectorAll('.inner-sub-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.getAttribute('data-inner-tab') === innerTabName);
+  });
+
+  parentElement.querySelectorAll('.inner-tab').forEach((panel) => {
+    panel.classList.remove('active');
+    panel.style.display = 'none';
+  });
+
+  const targetPanel =
+    parentElement.querySelector(`#${innerTabName}`) || document.getElementById(innerTabName);
+  if (!targetPanel) return;
+
+  targetPanel.classList.add('active');
+  targetPanel.style.removeProperty('display');
+}
+
 function initSelectAllDays(containerSelector) {
   const container = document.querySelector(containerSelector);
   if (!container) return;
@@ -128,6 +148,9 @@ function formatNoteTimestamp(timestamp) {
   });
 }
 
+const PEOPLE_PAGE_SIZE = 12;
+let currentPeoplePage = 1;
+
 function setNotesFormEditingState(note = null) {
   const titleEl = document.getElementById('notes-form-title');
   const editIdEl = document.getElementById('note-edit-id');
@@ -175,6 +198,19 @@ function formatPersonDate(dateStr) {
   const parsed = parseLocalDateString(dateStr);
   if (!Number.isFinite(parsed.getTime())) return '';
   return parsed.toLocaleDateString('pt-BR');
+}
+
+function clampPeoplePage(totalItems) {
+  const totalPages = Math.max(1, Math.ceil(Number(totalItems || 0) / PEOPLE_PAGE_SIZE));
+  currentPeoplePage = Math.min(Math.max(1, currentPeoplePage), totalPages);
+  return totalPages;
+}
+
+function changePeoplePage(step) {
+  const totalPeople = Array.isArray(appData.people) ? appData.people.length : 0;
+  const totalPages = clampPeoplePage(totalPeople);
+  currentPeoplePage = Math.min(totalPages, Math.max(1, currentPeoplePage + Number(step || 0)));
+  updatePeopleList();
 }
 
 function populateActivityPeopleSelector(selectedIds = null) {
@@ -258,21 +294,30 @@ function setPersonFormEditingState(person = null) {
 
 function updatePeopleList() {
   const container = document.getElementById('people-list');
+  const paginationEl = document.getElementById('people-pagination');
+  const paginationSummaryEl = document.getElementById('people-pagination-summary');
+  const prevBtn = document.getElementById('people-page-prev');
+  const nextBtn = document.getElementById('people-page-next');
   if (!container) return;
 
   if (!Array.isArray(appData.people)) appData.people = [];
   const people = getSortedPeople();
+  const totalPages = clampPeoplePage(people.length);
 
   if (people.length === 0) {
     container.innerHTML = '<p class="empty-message">Nenhuma pessoa cadastrada.</p>';
+    if (paginationEl) paginationEl.style.display = 'none';
     return;
   }
 
   container.innerHTML = '';
+  const startIndex = (currentPeoplePage - 1) * PEOPLE_PAGE_SIZE;
+  const paginatedPeople = people.slice(startIndex, startIndex + PEOPLE_PAGE_SIZE);
 
-  people.forEach((person) => {
+  paginatedPeople.forEach((person) => {
     const totalXp = Number(person.xp || 0);
     const currentXp = totalXp % 100;
+    const percentage = Math.min(100, Math.max(0, (currentXp / 100) * 100));
     const personCard = document.createElement('div');
     personCard.className = 'item-card person-card';
     personCard.innerHTML = `
@@ -284,9 +329,16 @@ function updatePeopleList() {
             <span class="item-type">${escapeHtml(person.relationType || 'Relação')}</span>
           </div>
           <div class="person-meta">
-            <span>Nível ${Number(person.level || 0)}</span>
-            <span>${currentXp}/100 XP</span>
             <span>${Number(person.interactions || 0)} interações</span>
+          </div>
+          <div class="display-xp-bar">
+            <div class="person-xp-head">
+              <div class="display-level">Nível ${Number(person.level || 0)}</div>
+              <div class="display-xp-text">${currentXp}/100 XP</div>
+            </div>
+            <div class="display-xp-progress">
+              <div class="display-xp-fill" style="width: ${percentage}%"></div>
+            </div>
           </div>
           ${
             person.relationStart || person.contact
@@ -309,6 +361,19 @@ function updatePeopleList() {
     `;
     container.appendChild(personCard);
   });
+
+  if (paginationEl) {
+    paginationEl.style.display = totalPages > 1 ? 'grid' : 'none';
+  }
+  if (paginationSummaryEl) {
+    const firstItem = startIndex + 1;
+    const lastItem = Math.min(startIndex + PEOPLE_PAGE_SIZE, people.length);
+    paginationSummaryEl.textContent =
+      `Mostrando ${firstItem}-${lastItem} de ${people.length}` +
+      ` • Página ${currentPeoplePage} de ${totalPages}`;
+  }
+  if (prevBtn) prevBtn.disabled = currentPeoplePage <= 1;
+  if (nextBtn) nextBtn.disabled = currentPeoplePage >= totalPages;
 
   container.querySelectorAll('.person-edit-btn').forEach((btn) => {
     btn.addEventListener('click', function () {
@@ -365,6 +430,13 @@ function handlePersonSubmit(event) {
     });
   }
 
+  const savedPerson = existingPerson || appData.people[appData.people.length - 1];
+  const sortedPeople = getSortedPeople();
+  const savedIndex = sortedPeople.findIndex((person) => Number(person?.id) === Number(savedPerson?.id));
+  if (savedIndex >= 0) {
+    currentPeoplePage = Math.floor(savedIndex / PEOPLE_PAGE_SIZE) + 1;
+  }
+
   setPersonFormEditingState();
   updateUI({ mode: 'activity' });
   showFeedback(
@@ -379,9 +451,13 @@ function editPerson(personId) {
     : null;
   if (!person) return;
 
+  const profileMainPanels = document.querySelector('.profile-main-panels');
   const profileTabs = document.querySelector('.profile-tabs');
-  if (profileTabs) {
+  if (profileMainPanels || profileTabs) {
     switchTab('perfil');
+    switchInnerSubTab('perfil-geral', profileMainPanels);
+  }
+  if (profileTabs) {
     switchSubTab('pessoas', profileTabs);
   }
 
@@ -721,23 +797,12 @@ function initEvents() {
     });
   });
 
-  // Abas internas (inner-sub) para Alimentação
+  // Abas internas (inner-sub) reutilizadas em painéis como Alimentação, Perfil e Gerenciar
   document.querySelectorAll('.inner-sub-btn').forEach((btn) => {
     btn.addEventListener('click', function () {
       const innerTab = this.getAttribute('data-inner-tab');
       const parent = this.closest('.inner-sub-nav').parentElement;
-
-      // Atualizar botões ativos
-      parent.querySelectorAll('.inner-sub-btn').forEach((b) => b.classList.remove('active'));
-      this.classList.add('active');
-
-      // Atualizar painéis visíveis
-      parent.querySelectorAll('.inner-tab').forEach((panel) => {
-        panel.classList.remove('active');
-        panel.style.display = 'none';
-      });
-      parent.querySelector(`#${innerTab}`)?.classList.add('active');
-      parent.querySelector(`#${innerTab}`)?.style.setProperty('display', 'block');
+      switchInnerSubTab(innerTab, parent);
     });
   });
 
@@ -749,6 +814,8 @@ function initEvents() {
     'nutrition-reopen-day-btn': () => globalThis.reopenNutritionDay?.(),
     'note-cancel-btn': () => setNotesFormEditingState(),
     'person-cancel-btn': () => setPersonFormEditingState(),
+    'people-page-prev': () => changePeoplePage(-1),
+    'people-page-next': () => changePeoplePage(1),
     'save-stats-goals-btn': saveStatisticsGoals,
     'reset-foods-btn': resetNutritionFoods,
     'reset-btn': resetProgress,

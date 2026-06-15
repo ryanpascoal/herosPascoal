@@ -32,8 +32,20 @@
             <span id="auth-sync-status" class="cloud-status warn">Aguardando autenticação</span>
           </div>
           <div class="auth-screen-form">
-            <input id="cloud-email" type="email" placeholder="Email" />
-            <input id="cloud-password" type="password" placeholder="Senha" />
+            <input
+              id="cloud-email"
+              name="email"
+              type="email"
+              placeholder="Email"
+              autocomplete="username"
+            />
+            <input
+              id="cloud-password"
+              name="password"
+              type="password"
+              placeholder="Senha"
+              autocomplete="current-password"
+            />
             <button class="submit-btn" id="cloud-login-btn" type="button">
               <i class="fas fa-sign-in-alt"></i> Entrar
             </button>
@@ -192,231 +204,276 @@
             </div>
 
             <div id="atividades-gerenciar" class="sub-tab">
-              <div class="form-container">
-                <h3>Cadastrar Nova Atividade</h3>
-                <form id="activity-form">
-                  <div class="form-group">
-                    <label for="activity-category">Categoria</label>
-                    <select id="activity-category" required>
-                      <option value="mission">Tarefa</option>
-                      <option value="work">Trabalho</option>
-                      <option value="workout">Treino</option>
-                      <option value="study">Estudo</option>
-                      <option value="book">Livro</option>
-                    </select>
-                  </div>
+              <div class="inner-sub-nav">
+                <button class="inner-sub-btn active" data-inner-tab="gerenciar-atividade">
+                  Nova atividade
+                </button>
+                <button class="inner-sub-btn" data-inner-tab="gerenciar-classes">Classes</button>
+                <button class="inner-sub-btn" data-inner-tab="gerenciar-objetivos">
+                  Objetivos
+                </button>
+                <button class="inner-sub-btn" data-inner-tab="gerenciar-lista">Lista</button>
+              </div>
 
-                  <input type="hidden" id="activity-edit-id" />
+              <div class="inner-sub-content">
+                <div id="gerenciar-atividade" class="inner-tab active">
+                  <div class="form-container">
+                    <h3>Cadastrar Nova Atividade</h3>
+                    <form id="activity-form">
+                      <div class="form-group">
+                        <label for="activity-category">Categoria</label>
+                        <select id="activity-category" required>
+                          <option value="mission">Tarefa</option>
+                          <option value="work">Trabalho</option>
+                          <option value="workout">Treino</option>
+                          <option value="study">Estudo</option>
+                          <option value="book">Livro</option>
+                        </select>
+                      </div>
 
-                  <div class="form-group">
-                    <label for="activity-name">Nome</label>
-                    <input
-                      type="text"
-                      id="activity-name"
-                      placeholder="Ex: Ir à academia"
-                      required
-                    />
-                  </div>
+                      <input type="hidden" id="activity-edit-id" />
 
-                  <div class="form-group">
-                    <label for="activity-emoji">Emoji (opcional)</label>
-                    <input type="text" id="activity-emoji" placeholder="🎯" />
-                  </div>
+                      <div class="form-group">
+                        <label for="activity-name">Nome</label>
+                        <input
+                          type="text"
+                          id="activity-name"
+                          placeholder="Ex: Ir à academia"
+                          required
+                        />
+                      </div>
 
-                  <div class="form-group" id="activity-schedule-container">
-                    <label for="activity-schedule-type">Agendamento</label>
-                    <select id="activity-schedule-type" required>
-                      <option value="rotina">Rotina</option>
-                      <option value="eventual">Eventual</option>
-                      <option value="epica">Épica</option>
-                    </select>
-                  </div>
+                      <div class="form-group">
+                        <label for="activity-emoji">Emoji (opcional)</label>
+                        <input type="text" id="activity-emoji" placeholder="🎯" />
+                      </div>
 
-                  <div
-                    class="form-group"
-                    id="activity-workout-type-container"
-                    style="display: none"
-                  >
-                    <label for="activity-workout-type">Tipo de Treino</label>
-                    <select id="activity-workout-type">
-                      <option value="reps|maximize">Repetição</option>
-                      <option value="distance|maximize">Distância</option>
-                      <option value="duration|maximize">Duração</option>
-                      <option value="duration|minimize">Contra o tempo</option>
-                    </select>
-                  </div>
+                      <div class="form-group" id="activity-schedule-container">
+                        <label for="activity-schedule-type">Agendamento</label>
+                        <select id="activity-schedule-type" required>
+                          <option value="rotina">Rotina</option>
+                          <option value="eventual">Eventual</option>
+                          <option value="epica">Épica</option>
+                        </select>
+                      </div>
 
-                  <div
-                    class="form-group"
-                    id="activity-workout-weight-container"
-                    style="display: none"
-                  >
-                    <label class="day-checkbox" for="activity-workout-uses-weight">
-                      <input type="checkbox" id="activity-workout-uses-weight" />
-                      Registrar carga (kg)
-                    </label>
-                  </div>
-
-                  <div class="form-group" id="activity-study-type-container" style="display: none">
-                    <label for="activity-study-type">Tipo de Estudo</label>
-                    <select id="activity-study-type">
-                      <option value="logico">Lógico</option>
-                      <option value="criativo">Criativo</option>
-                    </select>
-                  </div>
-
-                  <div class="form-group" id="activity-book-author-container" style="display: none">
-                    <label for="activity-book-author">Autor (opcional)</label>
-                    <input type="text" id="activity-book-author" placeholder="Ex: C. S. Lewis" />
-                  </div>
-
-                  <div class="form-group" id="activity-book-status-container" style="display: none">
-                    <label for="activity-book-status">Status</label>
-                    <select id="activity-book-status">
-                      <option value="quero-ler">Quero ler</option>
-                      <option value="lendo">Lendo</option>
-                    </select>
-                  </div>
-
-                  <div class="planning-meta-grid">
-                    <div class="form-group">
-                      <label for="activity-objective">Objetivo</label>
-                      <select id="activity-objective">
-                        <option value="">Nenhum</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group">
-                      <label for="activity-priority">Prioridade</label>
-                      <select id="activity-priority">
-                        <option value="critical">Crítica</option>
-                        <option value="high">Alta</option>
-                        <option value="medium" selected>Média</option>
-                        <option value="low">Baixa</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div class="form-group" id="activity-people-container">
-                    <label>Pessoas Associadas</label>
-                    <div class="attributes-selector" id="activity-people"></div>
-                  </div>
-
-                  <div class="form-group" id="activity-days-container">
-                    <label>Dias da Semana</label>
-                    <div class="days-selector">
-                      <label class="day-checkbox"
-                        ><input type="checkbox" data-select-all="true" /> Todos</label
+                      <div
+                        class="form-group"
+                        id="activity-workout-type-container"
+                        style="display: none"
                       >
-                      <label class="day-checkbox"><input type="checkbox" value="0" /> Dom</label>
-                      <label class="day-checkbox"><input type="checkbox" value="1" /> Seg</label>
-                      <label class="day-checkbox"><input type="checkbox" value="2" /> Ter</label>
-                      <label class="day-checkbox"><input type="checkbox" value="3" /> Qua</label>
-                      <label class="day-checkbox"><input type="checkbox" value="4" /> Qui</label>
-                      <label class="day-checkbox"><input type="checkbox" value="5" /> Sex</label>
-                      <label class="day-checkbox"><input type="checkbox" value="6" /> Sáb</label>
-                    </div>
+                        <label for="activity-workout-type">Tipo de Treino</label>
+                        <select id="activity-workout-type">
+                          <option value="reps|maximize">Repetição</option>
+                          <option value="distance|maximize">Distância</option>
+                          <option value="duration|maximize">Duração</option>
+                          <option value="duration|minimize">Contra o tempo</option>
+                        </select>
+                      </div>
+
+                      <div
+                        class="form-group"
+                        id="activity-workout-weight-container"
+                        style="display: none"
+                      >
+                        <label class="day-checkbox" for="activity-workout-uses-weight">
+                          <input type="checkbox" id="activity-workout-uses-weight" />
+                          Registrar carga (kg)
+                        </label>
+                      </div>
+
+                      <div
+                        class="form-group"
+                        id="activity-study-type-container"
+                        style="display: none"
+                      >
+                        <label for="activity-study-type">Tipo de Estudo</label>
+                        <select id="activity-study-type">
+                          <option value="logico">Lógico</option>
+                          <option value="criativo">Criativo</option>
+                        </select>
+                      </div>
+
+                      <div
+                        class="form-group"
+                        id="activity-book-author-container"
+                        style="display: none"
+                      >
+                        <label for="activity-book-author">Autor (opcional)</label>
+                        <input
+                          type="text"
+                          id="activity-book-author"
+                          placeholder="Ex: C. S. Lewis"
+                        />
+                      </div>
+
+                      <div
+                        class="form-group"
+                        id="activity-book-status-container"
+                        style="display: none"
+                      >
+                        <label for="activity-book-status">Status</label>
+                        <select id="activity-book-status">
+                          <option value="quero-ler">Quero ler</option>
+                          <option value="lendo">Lendo</option>
+                        </select>
+                      </div>
+
+                      <div class="planning-meta-grid">
+                        <div class="form-group">
+                          <label for="activity-objective">Objetivo</label>
+                          <select id="activity-objective">
+                            <option value="">Nenhum</option>
+                          </select>
+                        </div>
+
+                        <div class="form-group">
+                          <label for="activity-priority">Prioridade</label>
+                          <select id="activity-priority">
+                            <option value="critical">Crítica</option>
+                            <option value="high">Alta</option>
+                            <option value="medium" selected>Média</option>
+                            <option value="low">Baixa</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div class="form-group" id="activity-people-container">
+                        <label>Pessoas Associadas</label>
+                        <div class="attributes-selector" id="activity-people"></div>
+                      </div>
+
+                      <div class="form-group" id="activity-days-container">
+                        <label>Dias da Semana</label>
+                        <div class="days-selector">
+                          <label class="day-checkbox"
+                            ><input type="checkbox" data-select-all="true" /> Todos</label
+                          >
+                          <label class="day-checkbox"><input type="checkbox" value="0" /> Dom</label>
+                          <label class="day-checkbox"><input type="checkbox" value="1" /> Seg</label>
+                          <label class="day-checkbox"><input type="checkbox" value="2" /> Ter</label>
+                          <label class="day-checkbox"><input type="checkbox" value="3" /> Qua</label>
+                          <label class="day-checkbox"><input type="checkbox" value="4" /> Qui</label>
+                          <label class="day-checkbox"><input type="checkbox" value="5" /> Sex</label>
+                          <label class="day-checkbox"><input type="checkbox" value="6" /> Sáb</label>
+                        </div>
+                      </div>
+
+                      <div class="form-group" id="activity-date-container" style="display: none">
+                        <label for="activity-date">Prazo</label>
+                        <input type="date" id="activity-date" />
+                      </div>
+
+                      <div
+                        class="form-group"
+                        id="activity-deadline-container"
+                        style="display: none"
+                      >
+                        <label for="activity-deadline">Prazo</label>
+                        <input type="date" id="activity-deadline" />
+                      </div>
+
+                      <div
+                        class="form-group"
+                        id="activity-due-lock-container"
+                        style="display: none"
+                      >
+                        <label for="activity-due-lock">
+                          <input type="checkbox" id="activity-due-lock" />
+                          Trancar prazo desta atividade
+                        </label>
+                        <small id="activity-due-lock-hint">
+                          Marque para impedir alterações futuras no prazo desta atividade.
+                        </small>
+                      </div>
+
+                      <div class="form-group" id="activity-attributes-container">
+                        <label>Atributos Associados</label>
+                        <div class="attributes-selector" id="activity-attributes"></div>
+                      </div>
+
+                      <div class="form-group" id="activity-class-container" style="display: none">
+                        <label for="activity-class">Classe Associada (opcional)</label>
+                        <select id="activity-class">
+                          <option value="">Nenhuma</option>
+                        </select>
+                      </div>
+
+                      <div
+                        class="form-group checkbox-group"
+                        id="activity-urgent-container"
+                        style="display: none"
+                      >
+                        <label class="checkbox-label">
+                          <input type="checkbox" id="activity-urgent" />
+                          <span>🚀 Trabalho Urgente</span>
+                        </label>
+                      </div>
+
+                      <button type="submit" class="submit-btn">Cadastrar Atividade</button>
+                    </form>
                   </div>
+                </div>
 
-                  <div class="form-group" id="activity-date-container" style="display: none">
-                    <label for="activity-date">Prazo</label>
-                    <input type="date" id="activity-date" />
+                <div id="gerenciar-classes" class="inner-tab">
+                  <div class="form-container">
+                    <h3>Cadastrar Nova Classe</h3>
+                    <form id="class-form">
+                      <div class="form-group">
+                        <label for="class-name">Nome da Classe</label>
+                        <input
+                          type="text"
+                          id="class-name"
+                          placeholder="Ex: Coordenador Administrativo"
+                          required
+                        />
+                      </div>
+
+                      <div class="form-group">
+                        <label for="class-emoji">Emoji (opcional)</label>
+                        <input type="text" id="class-emoji" placeholder="💼" />
+                      </div>
+
+                      <button type="submit" class="submit-btn">Cadastrar Classe</button>
+                    </form>
                   </div>
+                </div>
 
-                  <div class="form-group" id="activity-deadline-container" style="display: none">
-                    <label for="activity-deadline">Prazo</label>
-                    <input type="date" id="activity-deadline" />
+                <div id="gerenciar-objetivos" class="inner-tab">
+                  <div class="form-container">
+                    <h3>Objetivos</h3>
+                    <form id="objective-form">
+                      <input type="hidden" id="objective-edit-id" />
+                      <div class="planning-meta-grid">
+                        <div class="form-group">
+                          <label for="objective-name">Nome</label>
+                          <input
+                            type="text"
+                            id="objective-name"
+                            placeholder="Ex: Saúde de alto nível"
+                            required
+                          />
+                        </div>
+
+                        <div class="form-group">
+                          <label for="objective-target-date">Prazo</label>
+                          <input type="date" id="objective-target-date" />
+                        </div>
+                      </div>
+
+                      <button type="submit" class="submit-btn">Salvar Objetivo</button>
+                    </form>
+                    <div class="items-list planning-items-list" id="objectives-list"></div>
+                    <div class="items-list planning-items-list" id="completed-objectives-list"></div>
                   </div>
+                </div>
 
-                  <div class="form-group" id="activity-due-lock-container" style="display: none">
-                    <label for="activity-due-lock">
-                      <input type="checkbox" id="activity-due-lock" />
-                      Trancar prazo desta atividade
-                    </label>
-                    <small id="activity-due-lock-hint">
-                      Marque para impedir alterações futuras no prazo desta atividade.
-                    </small>
+                <div id="gerenciar-lista" class="inner-tab">
+                  <div class="existing-items">
+                    <h3>Atividades Cadastradas</h3>
+                    <div class="items-list" id="activities-list"></div>
                   </div>
-
-                  <div class="form-group" id="activity-attributes-container">
-                    <label>Atributos Associados</label>
-                    <div class="attributes-selector" id="activity-attributes"></div>
-                  </div>
-
-                  <div class="form-group" id="activity-class-container" style="display: none">
-                    <label for="activity-class">Classe Associada (opcional)</label>
-                    <select id="activity-class">
-                      <option value="">Nenhuma</option>
-                    </select>
-                  </div>
-
-                  <div
-                    class="form-group checkbox-group"
-                    id="activity-urgent-container"
-                    style="display: none"
-                  >
-                    <label class="checkbox-label">
-                      <input type="checkbox" id="activity-urgent" />
-                      <span>🚀 Trabalho Urgente</span>
-                    </label>
-                  </div>
-
-                  <button type="submit" class="submit-btn">Cadastrar Atividade</button>
-                </form>
-              </div>
-
-              <div class="form-container">
-                <h3>Cadastrar Nova Classe</h3>
-                <form id="class-form">
-                  <div class="form-group">
-                    <label for="class-name">Nome da Classe</label>
-                    <input
-                      type="text"
-                      id="class-name"
-                      placeholder="Ex: Coordenador Administrativo"
-                      required
-                    />
-                  </div>
-
-                  <div class="form-group">
-                    <label for="class-emoji">Emoji (opcional)</label>
-                    <input type="text" id="class-emoji" placeholder="💼" />
-                  </div>
-
-                  <button type="submit" class="submit-btn">Cadastrar Classe</button>
-                </form>
-              </div>
-
-              <div class="form-container">
-                <h3>Objetivos</h3>
-                <form id="objective-form">
-                  <input type="hidden" id="objective-edit-id" />
-                  <div class="planning-meta-grid">
-                    <div class="form-group">
-                      <label for="objective-name">Nome</label>
-                      <input
-                        type="text"
-                        id="objective-name"
-                        placeholder="Ex: Saúde de alto nível"
-                        required
-                      />
-                    </div>
-
-                    <div class="form-group">
-                      <label for="objective-target-date">Prazo</label>
-                      <input type="date" id="objective-target-date" />
-                    </div>
-                  </div>
-
-                  <button type="submit" class="submit-btn">Salvar Objetivo</button>
-                </form>
-                <div class="items-list planning-items-list" id="objectives-list"></div>
-                <div class="items-list planning-items-list" id="completed-objectives-list"></div>
-              </div>
-
-              <div class="existing-items">
-                <h3>Atividades Cadastradas</h3>
-                <div class="items-list" id="activities-list"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -472,252 +529,306 @@
 
         <!-- Aba Perfil - Seção de informações do herói -->
         <section id="perfil" class="tab-content">
-          <div class="profile-header">
-            <div class="profile-pic-container">
-              <img src="perfil.png" alt="Perfil" class="profile-pic" />
-              <button class="edit-profile-btn" type="button" title="Editar nome">
-                <i class="fas fa-pen"></i>
+          <div class="profile-main-panels">
+            <div class="inner-sub-nav">
+              <button class="inner-sub-btn active" data-inner-tab="perfil-geral">Perfil</button>
+              <button class="inner-sub-btn" data-inner-tab="perfil-loja-painel">Loja</button>
+              <button class="inner-sub-btn" data-inner-tab="perfil-configuracoes-painel">
+                Configurações
               </button>
             </div>
-            <div class="profile-info">
-              <h2 class="hero-name">Ryan Pascoal</h2>
-              <div class="level-xp-integrated">
-                <div class="level-xp-header">
-                  <span class="level-label">Nível <span id="level">1</span></span>
-                  <span class="xp-text"
-                    ><span id="current-xp">30</span>/<span id="max-xp">100</span> XP</span
-                  >
-                </div>
-                <div class="xp-bar-integrated">
-                  <div class="xp-fill-integrated" id="xp-fill" style="width: 30%"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="streaks-container">
-            <h3><i class="fas fa-fire"></i> Streaks</h3>
-            <p class="streaks-note">Conta apenas dias já fechados sem falhas.</p>
-            <div class="streaks-grid">
-              <div class="streak-card">
-                <div class="streak-header">
-                  <i class="fas fa-fire streak-icon general"></i>
-                  <span class="streak-title">Geral</span>
-                </div>
-                <div class="streak-count" id="streak-general">0 dias</div>
-                <div class="streak-record" id="streak-general-record">Recorde: 0 dias</div>
-              </div>
-              <div class="streak-card">
-                <div class="streak-header">
-                  <i class="fas fa-dumbbell streak-icon physical"></i>
-                  <span class="streak-title">Físico</span>
-                </div>
-                <div class="streak-count" id="streak-physical">0 dias</div>
-                <div class="streak-record" id="streak-physical-record">Recorde: 0 dias</div>
-              </div>
-              <div class="streak-card">
-                <div class="streak-header">
-                  <i class="fas fa-brain streak-icon mental"></i>
-                  <span class="streak-title">Mental</span>
-                </div>
-                <div class="streak-count" id="streak-mental">0 dias</div>
-                <div class="streak-record" id="streak-mental-record">Recorde: 0 dias</div>
-              </div>
-              <div class="streak-card">
-                <div class="streak-header">
-                  <i class="fas fa-utensils streak-icon nutrition"></i>
-                  <span class="streak-title">Nutrição</span>
-                </div>
-                <div class="streak-count" id="streak-nutrition">0 dias</div>
-                <div class="streak-record" id="streak-nutrition-record">Recorde: 0 dias</div>
-              </div>
-            </div>
-          </div>
-          <div class="profile-tabs">
-            <div class="sub-nav">
-              <button class="sub-nav-btn active" data-subtab="atributos" data-parent="perfil">
-                Atributos
-              </button>
-              <button class="sub-nav-btn" data-subtab="treinos" data-parent="perfil">
-                Treinos
-              </button>
-              <button class="sub-nav-btn" data-subtab="estudos" data-parent="perfil">
-                Estudos
-              </button>
-              <button class="sub-nav-btn" data-subtab="classes" data-parent="perfil">
-                Classes
-              </button>
-              <button class="sub-nav-btn" data-subtab="pessoas" data-parent="perfil">
-                Pessoas
-              </button>
-            </div>
-            <div class="sub-content">
-              <div id="perfil-atributos" class="sub-tab active">
-                <div class="attributes-grid" id="attributes-container"></div>
-              </div>
-              <div id="perfil-treinos" class="sub-tab">
-                <div class="workouts-display">
-                  <h3>Meus Treinos</h3>
-                  <div class="workouts-grid" id="workouts-display"></div>
-                </div>
-              </div>
-              <div id="perfil-estudos" class="sub-tab">
-                <div class="studies-display">
-                  <h3>Meus Estudos</h3>
-                  <div class="studies-grid" id="studies-display"></div>
-                </div>
-              </div>
-              <div id="perfil-classes" class="sub-tab">
-                <div class="existing-items">
-                  <h3>Classes Cadastradas</h3>
-                  <div class="items-list" id="classes-list"></div>
-                </div>
-              </div>
-              <div id="perfil-pessoas" class="sub-tab">
-                <div class="people-panel">
-                  <div class="form-container">
-                    <h3 id="person-form-title">Cadastrar Pessoa</h3>
-                    <form id="person-form">
-                      <input type="hidden" id="person-edit-id" />
 
-                      <div class="people-form-grid">
-                        <div class="form-group">
-                          <label for="person-name">Nome</label>
-                          <input
-                            type="text"
-                            id="person-name"
-                            placeholder="Ex: João"
-                            required
-                          />
-                        </div>
-
-                        <div class="form-group">
-                          <label for="person-relation-type">Tipo de relação</label>
-                          <input
-                            type="text"
-                            id="person-relation-type"
-                            placeholder="Ex: Amigo, Pai, Fornecedor"
-                            required
-                          />
-                        </div>
-
-                        <div class="form-group">
-                          <label for="person-relation-start">Início da relação</label>
-                          <input type="date" id="person-relation-start" />
-                        </div>
-
-                        <div class="form-group">
-                          <label for="person-contact">Contato</label>
-                          <input
-                            type="text"
-                            id="person-contact"
-                            placeholder="Telefone, @, email..."
-                          />
-                        </div>
-                      </div>
-
-                      <div class="notes-form-actions">
-                        <button type="submit" class="submit-btn" id="person-submit-btn">
-                          Salvar Pessoa
-                        </button>
-                        <button
-                          type="button"
-                          class="action-btn secondary"
-                          id="person-cancel-btn"
-                          style="display: none"
+            <div class="inner-sub-content">
+              <div id="perfil-geral" class="inner-tab active">
+                <div class="profile-header">
+                  <div class="profile-pic-container">
+                    <img src="perfil.png" alt="Perfil" class="profile-pic" />
+                    <button class="edit-profile-btn" type="button" title="Editar nome">
+                      <i class="fas fa-pen"></i>
+                    </button>
+                  </div>
+                  <div class="profile-info">
+                    <h2 class="hero-name">Ryan Pascoal</h2>
+                    <div class="level-xp-integrated">
+                      <div class="level-xp-header">
+                        <span class="level-label">Nível <span id="level">1</span></span>
+                        <span class="xp-text"
+                          ><span id="current-xp">30</span>/<span id="max-xp">100</span> XP</span
                         >
-                          Cancelar edição
-                        </button>
                       </div>
-                    </form>
+                      <div class="xp-bar-integrated">
+                        <div class="xp-fill-integrated" id="xp-fill" style="width: 30%"></div>
+                      </div>
+                    </div>
                   </div>
+                </div>
+                <div class="streaks-container">
+                  <h3><i class="fas fa-fire"></i> Streaks</h3>
+                  <p class="streaks-note">Conta apenas dias já fechados sem falhas.</p>
+                  <div class="streaks-grid">
+                    <div class="streak-card">
+                      <div class="streak-header">
+                        <i class="fas fa-fire streak-icon general"></i>
+                        <span class="streak-title">Geral</span>
+                      </div>
+                      <div class="streak-count" id="streak-general">0 dias</div>
+                      <div class="streak-record" id="streak-general-record">Recorde: 0 dias</div>
+                    </div>
+                    <div class="streak-card">
+                      <div class="streak-header">
+                        <i class="fas fa-dumbbell streak-icon physical"></i>
+                        <span class="streak-title">Físico</span>
+                      </div>
+                      <div class="streak-count" id="streak-physical">0 dias</div>
+                      <div class="streak-record" id="streak-physical-record">Recorde: 0 dias</div>
+                    </div>
+                    <div class="streak-card">
+                      <div class="streak-header">
+                        <i class="fas fa-brain streak-icon mental"></i>
+                        <span class="streak-title">Mental</span>
+                      </div>
+                      <div class="streak-count" id="streak-mental">0 dias</div>
+                      <div class="streak-record" id="streak-mental-record">Recorde: 0 dias</div>
+                    </div>
+                    <div class="streak-card">
+                      <div class="streak-header">
+                        <i class="fas fa-utensils streak-icon nutrition"></i>
+                        <span class="streak-title">Nutrição</span>
+                      </div>
+                      <div class="streak-count" id="streak-nutrition">0 dias</div>
+                      <div class="streak-record" id="streak-nutrition-record">Recorde: 0 dias</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="profile-tabs">
+                  <div class="sub-nav">
+                    <button class="sub-nav-btn active" data-subtab="atributos" data-parent="perfil">
+                      Atributos
+                    </button>
+                    <button class="sub-nav-btn" data-subtab="treinos" data-parent="perfil">
+                      Treinos
+                    </button>
+                    <button class="sub-nav-btn" data-subtab="estudos" data-parent="perfil">
+                      Estudos
+                    </button>
+                    <button class="sub-nav-btn" data-subtab="classes" data-parent="perfil">
+                      Classes
+                    </button>
+                    <button class="sub-nav-btn" data-subtab="pessoas" data-parent="perfil">
+                      Pessoas
+                    </button>
+                  </div>
+                  <div class="sub-content">
+                    <div id="perfil-atributos" class="sub-tab active">
+                      <div class="attributes-grid" id="attributes-container"></div>
+                    </div>
+                    <div id="perfil-treinos" class="sub-tab">
+                      <div class="workouts-display">
+                        <h3>Meus Treinos</h3>
+                        <div class="workouts-grid" id="workouts-display"></div>
+                      </div>
+                    </div>
+                    <div id="perfil-estudos" class="sub-tab">
+                      <div class="studies-display">
+                        <h3>Meus Estudos</h3>
+                        <div class="studies-grid" id="studies-display"></div>
+                      </div>
+                    </div>
+                    <div id="perfil-classes" class="sub-tab">
+                      <div class="existing-items">
+                        <h3>Classes Cadastradas</h3>
+                        <div class="items-list" id="classes-list"></div>
+                      </div>
+                    </div>
+                    <div id="perfil-pessoas" class="sub-tab">
+                      <div class="people-panel">
+                        <div class="existing-items">
+                          <div class="people-list-head">
+                            <div>
+                              <h3>Relações Registradas</h3>
+                              <p>Ordenadas por nível, XP e interação para facilitar a leitura.</p>
+                            </div>
+                            <div
+                              class="people-pagination"
+                              id="people-pagination"
+                              style="display: none"
+                            >
+                              <span class="people-pagination-summary" id="people-pagination-summary"
+                                >Página 1 de 1</span
+                              >
+                              <div class="people-pagination-actions">
+                                <button
+                                  type="button"
+                                  class="action-btn secondary people-pagination-btn"
+                                  id="people-page-prev"
+                                >
+                                  Anterior
+                                </button>
+                                <button
+                                  type="button"
+                                  class="action-btn secondary people-pagination-btn"
+                                  id="people-page-next"
+                                >
+                                  Próxima
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="items-list" id="people-list"></div>
+                        </div>
 
-                  <div class="existing-items">
-                    <h3>Relações Registradas</h3>
-                    <div class="items-list" id="people-list"></div>
+                        <div class="form-container">
+                          <h3 id="person-form-title">Cadastrar Pessoa</h3>
+                          <form id="person-form">
+                            <input type="hidden" id="person-edit-id" />
+
+                            <div class="people-form-grid">
+                              <div class="form-group">
+                                <label for="person-name">Nome</label>
+                                <input
+                                  type="text"
+                                  id="person-name"
+                                  placeholder="Ex: João"
+                                  required
+                                />
+                              </div>
+
+                              <div class="form-group">
+                                <label for="person-relation-type">Tipo de relação</label>
+                                <input
+                                  type="text"
+                                  id="person-relation-type"
+                                  placeholder="Ex: Amigo, Pai, Fornecedor"
+                                  required
+                                />
+                              </div>
+
+                              <div class="form-group">
+                                <label for="person-relation-start">Início da relação</label>
+                                <input type="date" id="person-relation-start" />
+                              </div>
+
+                              <div class="form-group">
+                                <label for="person-contact">Contato</label>
+                                <input
+                                  type="text"
+                                  id="person-contact"
+                                  placeholder="Telefone, @, email..."
+                                />
+                              </div>
+                            </div>
+
+                            <div class="notes-form-actions">
+                              <button type="submit" class="submit-btn" id="person-submit-btn">
+                                Salvar Pessoa
+                              </button>
+                              <button
+                                type="button"
+                                class="action-btn secondary"
+                                id="person-cancel-btn"
+                                style="display: none"
+                              >
+                                Cancelar edição
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-          <div class="shop-inventory">
-            <div class="sub-nav">
-              <button class="sub-nav-btn active" data-subtab="loja">Loja</button>
-              <button class="sub-nav-btn" data-subtab="inventario">Inventário</button>
-              <button class="sub-nav-btn" data-subtab="gerenciar-loja">Gerenciar Loja</button>
-            </div>
-            <div class="sub-content">
-              <div id="loja" class="sub-tab active">
-                <div class="items-grid" id="shop-items"></div>
-              </div>
-              <div id="inventario" class="sub-tab">
-                <div class="inventory-grid" id="inventory-items"></div>
-              </div>
-              <div id="gerenciar-loja" class="sub-tab">
-                <div class="form-container">
-                  <h3>Cadastrar Novo Item</h3>
-                  <form id="shop-item-form">
-                    <div class="form-group">
-                      <label for="item-name">Nome do Item</label>
-                      <input
-                        type="text"
-                        id="item-name"
-                        placeholder="Ex: Espada Lendária"
-                        required
-                      />
+
+              <div id="perfil-loja-painel" class="inner-tab">
+                <div class="shop-inventory">
+                  <div class="sub-nav">
+                    <button class="sub-nav-btn active" data-subtab="loja">Loja</button>
+                    <button class="sub-nav-btn" data-subtab="inventario">Inventário</button>
+                    <button class="sub-nav-btn" data-subtab="gerenciar-loja">Gerenciar Loja</button>
+                  </div>
+                  <div class="sub-content">
+                    <div id="loja" class="sub-tab active">
+                      <div class="items-grid" id="shop-items"></div>
                     </div>
-                    <div class="form-group">
-                      <label for="item-emoji">Emoji (opcional)</label>
-                      <input type="text" id="item-emoji" placeholder="⚔️" />
+                    <div id="inventario" class="sub-tab">
+                      <div class="inventory-grid" id="inventory-items"></div>
                     </div>
-                    <div class="form-group">
-                      <label for="item-price">Preço (moedas)</label>
-                      <input type="number" id="item-price" min="1" required />
+                    <div id="gerenciar-loja" class="sub-tab">
+                      <div class="form-container">
+                        <h3>Cadastrar Novo Item</h3>
+                        <form id="shop-item-form">
+                          <div class="form-group">
+                            <label for="item-name">Nome do Item</label>
+                            <input
+                              type="text"
+                              id="item-name"
+                              placeholder="Ex: Espada Lendária"
+                              required
+                            />
+                          </div>
+                          <div class="form-group">
+                            <label for="item-emoji">Emoji (opcional)</label>
+                            <input type="text" id="item-emoji" placeholder="⚔️" />
+                          </div>
+                          <div class="form-group">
+                            <label for="item-price">Preço (moedas)</label>
+                            <input type="number" id="item-price" min="1" required />
+                          </div>
+                          <div class="form-group">
+                            <label for="item-level">Nível Mínimo</label>
+                            <input type="number" id="item-level" min="0" value="0" />
+                          </div>
+                          <button type="submit" class="submit-btn">Cadastrar Item</button>
+                        </form>
+                      </div>
+                      <div class="existing-items">
+                        <h3>Itens Cadastrados</h3>
+                        <div class="items-list" id="shop-items-list"></div>
+                      </div>
                     </div>
-                    <div class="form-group">
-                      <label for="item-level">Nível Mínimo</label>
-                      <input type="number" id="item-level" min="0" value="0" />
-                    </div>
-                    <button type="submit" class="submit-btn">Cadastrar Item</button>
-                  </form>
+                  </div>
                 </div>
-                <div class="existing-items">
-                  <h3>Itens Cadastrados</h3>
-                  <div class="items-list" id="shop-items-list"></div>
+              </div>
+
+              <div id="perfil-configuracoes-painel" class="inner-tab">
+                <div class="settings-section">
+                  <h3><i class="fas fa-cog"></i> Configurações</h3>
+                  <br />
+                  <div class="settings-options">
+                    <button class="settings-btn" id="reset-btn">
+                      <i class="fas fa-redo"></i> Resetar Progresso
+                    </button>
+                    <button class="settings-btn" id="export-btn">
+                      <i class="fas fa-download"></i> Exportar Dados
+                    </button>
+                    <button class="settings-btn" id="import-btn">
+                      <i class="fas fa-upload"></i> Importar Dados
+                    </button>
+                    <button class="settings-btn" id="theme-toggle-btn" type="button">
+                      Alternar Tema
+                    </button>
+                  </div>
+                  <div class="cloud-sync-card">
+                    <h4><i class="fas fa-cloud"></i> Sincronização na Nuvem</h4>
+                    <div class="cloud-sync-grid">
+                      <button class="settings-btn" id="cloud-profile-logout-btn" type="button">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                      </button>
+                      <button class="settings-btn" id="cloud-profile-sync-now-btn" type="button">
+                        <i class="fas fa-sync-alt"></i> Sincronizar Agora
+                      </button>
+                    </div>
+                    <div class="cloud-sync-meta">
+                      <span class="cloud-sync-note">
+                        O acesso é feito pela tela de login inicial.
+                      </span>
+                      <span id="cloud-user-label" class="cloud-user-label">Não autenticado</span>
+                      <span id="cloud-sync-status" class="cloud-status warn">
+                        Login obrigatório
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-          <div class="settings-section">
-            <h3><i class="fas fa-cog"></i> Configurações</h3>
-            <br />
-            <div class="settings-options">
-              <button class="settings-btn" id="reset-btn">
-                <i class="fas fa-redo"></i> Resetar Progresso
-              </button>
-              <button class="settings-btn" id="export-btn">
-                <i class="fas fa-download"></i> Exportar Dados
-              </button>
-              <button class="settings-btn" id="import-btn">
-                <i class="fas fa-upload"></i> Importar Dados
-              </button>
-              <button class="settings-btn" id="theme-toggle-btn" type="button">
-                Alternar Tema
-              </button>
-            </div>
-            <div class="cloud-sync-card">
-              <h4><i class="fas fa-cloud"></i> Sincronização na Nuvem</h4>
-              <div class="cloud-sync-grid">
-                <button class="settings-btn" id="cloud-profile-logout-btn" type="button">
-                  <i class="fas fa-sign-out-alt"></i> Sair
-                </button>
-                <button class="settings-btn" id="cloud-profile-sync-now-btn" type="button">
-                  <i class="fas fa-sync-alt"></i> Sincronizar Agora
-                </button>
-              </div>
-              <div class="cloud-sync-meta">
-                <span class="cloud-sync-note">O acesso é feito pela tela de login inicial.</span>
-                <span id="cloud-user-label" class="cloud-user-label">Não autenticado</span>
-                <span id="cloud-sync-status" class="cloud-status warn">Login obrigatório</span>
               </div>
             </div>
           </div>
