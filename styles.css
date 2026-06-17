@@ -6812,6 +6812,21 @@ body.light-theme .sub-nav-btn.active {
   color: #0f766e;
 }
 
+body.light-theme .inner-sub-btn {
+  color: #526277;
+}
+
+body.light-theme .inner-sub-btn.active {
+  background: rgba(2, 132, 199, 0.07);
+  border-bottom-color: rgba(2, 132, 199, 0.4);
+  color: #0f766e;
+}
+
+body.light-theme .inner-sub-btn:hover:not(.active) {
+  background: rgba(15, 23, 42, 0.035);
+  color: #162235;
+}
+
 body.light-theme #perfil .level-xp-integrated,
 body.light-theme #perfil .streaks-container,
 body.light-theme #perfil .workouts-display,
@@ -8359,7 +8374,7 @@ body.light-theme .activity-due-date {
   }
 }
 
-/* Daily mobile cards: keep content and actions in separate columns. */
+/* Daily mobile cards: text can grow vertically, but actions stay pinned to the right. */
 @media (max-width: 560px) {
   #atividades #daily-activities {
     display: flex;
@@ -8370,11 +8385,10 @@ body.light-theme .activity-due-date {
 
   #atividades #daily-activities .compact-activity-card {
     display: grid;
-    grid-template-columns: 5px minmax(0, 1fr);
+    grid-template-columns: 5px minmax(0, 1fr) clamp(92px, 28vw, 128px);
     grid-template-areas:
-      'bar main'
-      'bar meta'
-      'bar actions';
+      'bar main actions'
+      'bar meta actions';
     grid-auto-flow: row;
     align-items: start;
     column-gap: 9px;
@@ -8455,28 +8469,28 @@ body.light-theme .activity-due-date {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     grid-auto-rows: minmax(36px, auto);
-    align-content: center;
-    align-self: stretch;
-    justify-content: stretch;
+    align-content: start;
+    align-self: start;
+    justify-items: stretch;
     gap: 6px;
     width: 100%;
-    min-width: 0;
-    max-width: none;
+    min-width: 92px;
+    max-width: 128px;
     margin: 0;
     overflow: visible;
     box-sizing: border-box;
   }
 
   #atividades #daily-activities .activity-actions.has-skip {
-    grid-template-columns: minmax(64px, 1fr) 34px;
+    grid-template-columns: minmax(0, 1fr) 34px;
   }
 
   #atividades #daily-activities .activity-actions.has-study-toggle {
-    grid-template-columns: 18px minmax(54px, 1fr);
+    grid-template-columns: 18px minmax(0, 1fr);
   }
 
   #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
-    grid-template-columns: 18px minmax(54px, 1fr) 34px;
+    grid-template-columns: 18px minmax(0, 1fr) 34px;
   }
 
   #atividades #daily-activities .activity-actions .apply-study-checkbox {
@@ -8535,7 +8549,7 @@ body.light-theme .activity-due-date {
 
 @media (max-width: 420px) {
   #atividades #daily-activities .compact-activity-card {
-    grid-template-columns: 4px minmax(0, 1fr);
+    grid-template-columns: 4px minmax(0, 1fr) clamp(84px, 29vw, 118px);
     column-gap: 7px;
     padding: 9px 8px;
   }
@@ -8550,21 +8564,20 @@ body.light-theme .activity-due-date {
   }
 
   #atividades #daily-activities .activity-actions {
-    min-width: 0;
-    max-width: none;
-    grid-auto-rows: minmax(34px, auto);
+    min-width: 84px;
+    max-width: 118px;
   }
 
   #atividades #daily-activities .activity-actions.has-skip {
-    grid-template-columns: minmax(54px, 1fr) 32px;
+    grid-template-columns: minmax(0, 1fr) 32px;
   }
 
   #atividades #daily-activities .activity-actions.has-study-toggle {
-    grid-template-columns: 18px minmax(48px, 1fr);
+    grid-template-columns: 18px minmax(0, 1fr);
   }
 
   #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
-    grid-template-columns: 18px minmax(48px, 1fr) 32px;
+    grid-template-columns: 18px minmax(0, 1fr) 32px;
   }
 
   #atividades #daily-activities .activity-actions .complete-btn,
@@ -8590,11 +8603,10 @@ body.light-theme .activity-due-date {
   }
 
   #atividades #daily-activities .compact-activity-card {
-    grid-template-columns: 4px minmax(0, 1fr);
+    grid-template-columns: 4px minmax(0, 1fr) clamp(78px, 28vw, 96px);
     grid-template-areas:
-      'bar main'
-      'bar meta'
-      'bar actions';
+      'bar main actions'
+      'bar meta actions';
     align-items: start;
     column-gap: 7px;
     row-gap: 6px;
@@ -8639,23 +8651,23 @@ body.light-theme .activity-due-date {
   #atividades #daily-activities .activity-actions {
     grid-auto-rows: minmax(32px, auto);
     align-content: start;
-    align-self: stretch;
+    align-self: start;
     gap: 5px;
-    min-width: 0;
-    max-width: none;
+    min-width: 78px;
+    max-width: 96px;
     overflow: visible;
   }
 
   #atividades #daily-activities .activity-actions.has-skip {
-    grid-template-columns: minmax(42px, 1fr) 30px;
+    grid-template-columns: minmax(0, 1fr) 30px;
   }
 
   #atividades #daily-activities .activity-actions.has-study-toggle {
-    grid-template-columns: 16px minmax(34px, 1fr);
+    grid-template-columns: 16px minmax(0, 1fr);
   }
 
   #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
-    grid-template-columns: 16px minmax(30px, 1fr) 30px;
+    grid-template-columns: 16px minmax(0, 1fr) 30px;
   }
 
   #atividades #daily-activities .activity-actions .apply-study-checkbox {
@@ -8674,8 +8686,13 @@ body.light-theme .activity-due-date {
   }
 
   #atividades #daily-activities .activity-actions .skip-btn {
+    grid-column: 2;
     width: 30px;
     min-width: 30px;
+  }
+
+  #atividades #daily-activities .activity-actions.has-study-toggle .skip-btn {
+    grid-column: 3;
   }
 }
 
@@ -8891,11 +8908,23 @@ body.light-theme th {
 }
 
 body.light-theme tr:hover,
-body.light-theme :is(.nav-item:hover:not(.active), .sub-nav-btn:hover, .checkbox-label:hover) {
+body.light-theme
+  :is(
+    .nav-item:hover:not(.active),
+    .sub-nav-btn:hover,
+    .inner-sub-btn:hover,
+    .checkbox-label:hover
+  ) {
   background: #f8fafc !important;
 }
 
-body.light-theme :is(.nav-item.active, .sub-nav-btn.active, .checkbox-label:has(input:checked)) {
+body.light-theme
+  :is(
+    .nav-item.active,
+    .sub-nav-btn.active,
+    .inner-sub-btn.active,
+    .checkbox-label:has(input:checked)
+  ) {
   background: #f0fdfa !important;
   border-color: #99f6e4 !important;
   color: #0f766e !important;
@@ -8970,7 +8999,7 @@ body.light-theme :is(.delete-btn, .submit-btn.danger, .finance-delete-btn) {
   color: #be123c !important;
 }
 
-body.light-theme :is(button, .nav-item, .sub-nav-btn):focus-visible {
+body.light-theme :is(button, .nav-item, .sub-nav-btn, .inner-sub-btn):focus-visible {
   outline: 2px solid rgba(15, 118, 110, 0.28);
   outline-offset: 2px;
 }

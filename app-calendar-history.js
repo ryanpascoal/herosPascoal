@@ -327,12 +327,36 @@ function isTabActive(tabId) {
   return document.getElementById(tabId)?.classList.contains('active') === true;
 }
 
+function hidePanel(panel) {
+  if (!panel) return;
+  panel.classList.remove('active');
+  panel.style.display = 'none';
+}
+
+function showPanel(panel) {
+  if (!panel) return;
+  panel.classList.add('active');
+  panel.style.removeProperty('display');
+}
+
+function getDirectPanels(container, className) {
+  return Array.from(container?.children || []).filter((child) =>
+    child?.classList?.contains(className)
+  );
+}
+
+function restoreActiveNestedPanels(container) {
+  if (!container?.querySelectorAll) return;
+  container.querySelectorAll('.sub-tab.active, .inner-tab.active').forEach((panel) => {
+    panel.style.removeProperty('display');
+  });
+}
+
 // Trocar entre abas principais
 function switchTab(tabName) {
   // Remover a classe active de todas as abas
   document.querySelectorAll('.tab-content').forEach((tab) => {
-    tab.classList.remove('active');
-    tab.style.display = 'none';
+    hidePanel(tab);
   });
 
   document.querySelectorAll('.nav-item').forEach((item) => {
@@ -342,8 +366,8 @@ function switchTab(tabName) {
   // Adicionar a classe active à aba selecionada
   const activeTab = document.getElementById(tabName);
   if (activeTab) {
-    activeTab.classList.add('active');
-    activeTab.style.display = 'block';
+    showPanel(activeTab);
+    restoreActiveNestedPanels(activeTab);
   }
 
   document.querySelector(`.nav-item[data-tab="${tabName}"]`)?.classList.add('active');
@@ -376,48 +400,50 @@ function switchTab(tabName) {
 
 // Trocar entre abas secundárias
 function switchSubTab(subTabName, parentElement) {
+  if (!subTabName || !parentElement) return;
+
   // Se o parentElement já é um sub-content, usá-lo diretamente
   // Caso contrário, procurar o sub-content dentro dele
-  let subContent = parentElement.classList.contains('sub-content') 
-    ? parentElement 
+  let subContent = parentElement.classList.contains('sub-content')
+    ? parentElement
     : parentElement.querySelector('.sub-content');
-  
+
   if (!subContent) {
     subContent = parentElement;
   }
-  
+
   if (!subContent) {
     console.error('switchSubTab: subContent não encontrado', parentElement);
     return;
   }
 
-  // Remove active de TODOS os sub-tabs e inner-tabs dentro de subContent
-  subContent.querySelectorAll('.sub-tab, .inner-tab').forEach((tab) => {
-    tab.classList.remove('active');
-    tab.style.display = 'none';
+  // Oculta apenas as sub-abas diretas deste grupo para preservar o estado das abas internas.
+  getDirectPanels(subContent, 'sub-tab').forEach((tab) => {
+    hidePanel(tab);
   });
 
   // Encontra o elemento de destino pelo ID (dentro de subContent primero)
   let targetTab = subContent.querySelector(`#${subTabName}`);
-  
+
   // Se não encontrou, tenta no documento todo
   if (!targetTab) {
     targetTab = document.getElementById(subTabName);
   }
-  
+
   // Se ainda não encontrou, tenta com prefixo
   if (!targetTab) {
     const sectionParent = subContent.closest('section');
     const sectionId = sectionParent?.id;
     if (sectionId) {
-      targetTab = document.getElementById(`${sectionId}-${subTabName}`) || 
-                subContent.querySelector(`#${sectionId}-${subTabName}`);
+      targetTab =
+        document.getElementById(`${sectionId}-${subTabName}`) ||
+        subContent.querySelector(`#${sectionId}-${subTabName}`);
     }
   }
 
   if (targetTab) {
-    targetTab.classList.add('active');
-    targetTab.style.display = 'block';
+    showPanel(targetTab);
+    restoreActiveNestedPanels(targetTab);
   }
 
   // Atualiza os botões.active do sub-nav relacionado
@@ -848,4 +874,12 @@ Object.assign(globalThis, {
   closeModal,
   resetAllXpKeepLevels,
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    isTabActive,
+    switchTab,
+    switchSubTab,
+  };
+}
 
