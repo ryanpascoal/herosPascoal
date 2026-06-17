@@ -657,6 +657,7 @@ function generateDailyActivities() {
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
   const yesterdayDayOfWeek = yesterday.getDay();
+  const restDayToday = typeof isRestDay === 'function' && isRestDay(todayStr);
   const hasScheduledDay = (days) =>
     Array.isArray(days) && days.some((day) => normalizeWeekdayValue(day) === dayOfWeek);
   const hadScheduledDayYesterday = (days) =>
@@ -708,7 +709,7 @@ function generateDailyActivities() {
 
   // Gerar treinos do dia
   appData.workouts.forEach((workout) => {
-    if (hasScheduledDay(workout.days)) {
+    if (!restDayToday && hasScheduledDay(workout.days)) {
       const alreadyExists = appData.dailyWorkouts.some(
         (dw) => sameId(dw.workoutId, workout.id) && dw.date === todayStr
       );
@@ -743,7 +744,7 @@ function generateDailyActivities() {
 
   // Gerar estudos do dia
   appData.studies.forEach((study) => {
-    if (hasScheduledDay(study.days)) {
+    if (!restDayToday && hasScheduledDay(study.days)) {
       const alreadyExists = appData.dailyStudies.some(
         (ds) => sameId(ds.studyId, study.id) && ds.date === todayStr
       );

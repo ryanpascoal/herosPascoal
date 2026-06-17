@@ -1919,9 +1919,16 @@ function maybeRewardNutritionGoal(dateStr) {
   });
 
   const rewardCount = rewardedItems.length;
-  addXP(rewardCount);
+  addXP(rewardCount, {
+    logMeta: {
+      category: 'nutrition',
+      sourceId: 'nutrition-goal',
+      eventDateKey: dateStr,
+      status: 'completed',
+    },
+  });
   addAttributeXP(2, rewardCount);
-  appData.hero.coins += rewardCount;
+  addRewardCoins(rewardCount);
   if (typeof updateProductiveDay === 'function') {
     updateProductiveDay(0, 0, 0, rewardCount, 0, { date: dateStr });
   }
@@ -1960,6 +1967,19 @@ function getNutritionProgressionApi() {
     return globalThis.AppProgression;
   }
   return null;
+}
+
+function addRewardCoins(amount) {
+  const safeAmount = Number.isFinite(Number(amount)) ? Math.trunc(Number(amount)) : 0;
+  if (!safeAmount) return 0;
+  if (typeof addHeroCoins === 'function') {
+    return addHeroCoins(safeAmount);
+  }
+  if (!appData.hero || typeof appData.hero !== 'object') return 0;
+  const currentCoins = Number.isFinite(Number(appData.hero.coins)) ? Number(appData.hero.coins) : 0;
+  const nextCoins = Math.max(0, currentCoins + safeAmount);
+  appData.hero.coins = nextCoins;
+  return nextCoins - currentCoins;
 }
 
 function rollbackHeroXP(amount) {
@@ -2026,8 +2046,8 @@ function removeNutritionLogsForDate(dateStr) {
     const metaDateKey = String(log?.meta?.eventDateKey || '').trim();
     if (
       metaCategory === 'nutrition' &&
-      metaSourceId === 'nutrition-goal' &&
-      metaDateKey === dateStr
+      metaDateKey === dateStr &&
+      (metaSourceId === 'nutrition-goal' || metaSourceId === 'nutrition-meal')
     ) {
       return false;
     }
@@ -2092,9 +2112,7 @@ async function reopenNutritionDay(dateStr = getNutritionDiaryDate()) {
   rollbackHeroXP(totalHeroRewards);
   rollbackAttributeXP(6, rewardedMealKeys.length);
   rollbackAttributeXP(2, rewardedMacroGoalKeys.length);
-  if (appData.hero && Number.isFinite(Number(appData.hero.coins))) {
-    appData.hero.coins = Math.max(0, Number(appData.hero.coins) - totalHeroRewards);
-  }
+  addRewardCoins(-totalHeroRewards);
   if (typeof updateProductiveDay === 'function' && totalHeroRewards > 0) {
     updateProductiveDay(0, 0, 0, -totalHeroRewards, 0, { date: targetDateStr });
   }
@@ -2137,9 +2155,16 @@ function consolidateNutritionDay(dateStr = getNutritionDiaryDate()) {
     const rewardKey = `${targetDateStr}|${mealKey}`;
     if (appData.nutritionStats.rewardedMealKeys.includes(rewardKey)) return;
     appData.nutritionStats.rewardedMealKeys.push(rewardKey);
-    addXP(1);
+    addXP(1, {
+      logMeta: {
+        category: 'nutrition',
+        sourceId: 'nutrition-meal',
+        eventDateKey: targetDateStr,
+        status: 'completed',
+      },
+    });
     addAttributeXP(6, 1);
-    appData.hero.coins += 1;
+    addRewardCoins(1);
     if (typeof updateProductiveDay === 'function') {
       updateProductiveDay(0, 0, 0, 1, 0, { date: targetDateStr });
     }
@@ -2212,9 +2237,19 @@ function maybeRewardHydrationGoal(dateStr) {
   if (appData.hydration.rewardedGoalDates.includes(dateStr)) return false;
 
   appData.hydration.rewardedGoalDates.push(dateStr);
-  addXP(1);
+  addXP(1, {
+    logMeta: {
+      category: 'hydration',
+      sourceId: 'hydration-goal',
+      eventDateKey: dateStr,
+      status: 'completed',
+    },
+  });
   addAttributeXP(2, 1);
-  appData.hero.coins += 1;
+  addRewardCoins(1);
+  if (typeof updateProductiveDay === 'function') {
+    updateProductiveDay(0, 0, 0, 1, 0, { date: dateStr });
+  }
   addHeroLog('system', 'Meta de hidratação batida', `${dateStr}: bônus +1 XP e +1 moeda.`, {
     category: 'hydration',
     sourceId: 'hydration-goal',

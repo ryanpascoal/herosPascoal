@@ -2769,6 +2769,7 @@ Object.assign(globalThis, {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     compareManagedActivityEntries,
+    getUnifiedTodayActivities,
     parseLocalDateString,
     getEventDateKey,
     getScheduledItemDueDateKey,

@@ -2430,6 +2430,123 @@ function completeWork(workId, feedbackText = '') {
   return true;
 }
 
+function getRoutineOccurrenceLineageKey(item) {
+  return String(item?.originalId || item?.id || '').trim();
+}
+
+function getRoutineOccurrenceDateKey(item) {
+  return String(
+    item?.dateAdded ||
+      item?.completedDate ||
+      item?.failedDate ||
+      item?.skippedDate ||
+      item?.missedDate ||
+      ''
+  ).trim();
+}
+
+function buildLatestRoutineTemplateMap(category, activeList = [], completedList = []) {
+  const templates = new Map();
+  const pendingRoutineTemplates = ensurePendingFailureReviews()
+    .filter(
+      (review) =>
+        review?.category === category &&
+        review?.activity &&
+        typeof isRoutineType === 'function' &&
+        isRoutineType(review.activity.type)
+    )
+    .map((review) => review.activity);
+  const candidates = [
+    ...(Array.isArray(completedList) ? completedList : []),
+    ...(Array.isArray(activeList) ? activeList : []),
+    ...pendingRoutineTemplates,
+  ];
+
+  candidates.forEach((item) => {
+    if (!item || !isRoutineType(item.type)) return;
+    const lineageKey = getRoutineOccurrenceLineageKey(item);
+    const occurrenceDateKey = getRoutineOccurrenceDateKey(item);
+    if (!lineageKey || !occurrenceDateKey) return;
+
+    const currentTemplate = templates.get(lineageKey);
+    if (!currentTemplate || occurrenceDateKey > currentTemplate.occurrenceDateKey) {
+      templates.set(lineageKey, { item, occurrenceDateKey });
+    }
+  });
+
+  return templates;
+}
+
+function hasActiveRoutineOccurrenceForDate(activeList, lineageKey, targetDateKey) {
+  return (activeList || []).some(
+    (item) =>
+      item &&
+      isRoutineType(item.type) &&
+      getRoutineOccurrenceLineageKey(item) === lineageKey &&
+      String(item.dateAdded || '').trim() === targetDateKey
+  );
+}
+
+function buildRoutineOccurrenceFromTemplate(item, targetDateKey, nextId) {
+  const occurrence = {
+    ...item,
+    id: nextId,
+    originalId: item.originalId || item.id,
+    type: 'rotina',
+    dateAdded: targetDateKey,
+    completed: false,
+    failed: false,
+    skipped: false,
+    feedback: '',
+    peopleIds: sanitizeActivityPeopleIds(item.peopleIds),
+  };
+
+  if (Array.isArray(item.attributes)) occurrence.attributes = [...item.attributes];
+  occurrence.days = getRoutineDays(item);
+
+  delete occurrence.date;
+  delete occurrence.deadline;
+  delete occurrence.completedDate;
+  delete occurrence.completedAt;
+  delete occurrence.failedDate;
+  delete occurrence.failedAt;
+  delete occurrence.skippedDate;
+  delete occurrence.skippedAt;
+  delete occurrence.penaltyApplied;
+  delete occurrence.reason;
+  delete occurrence.missedDate;
+  delete occurrence.confirmedNextDay;
+  delete occurrence.confirmedNextDayAt;
+
+  return occurrence;
+}
+
+function materializeRoutineOccurrencesForDate(config) {
+  const {
+    category,
+    activeList,
+    completedList,
+    targetDateKey,
+    targetDayOfWeek,
+    skipDate = null,
+    buildNextId,
+  } = config;
+  if (!targetDateKey || typeof targetDayOfWeek !== 'number') return;
+
+  buildLatestRoutineTemplateMap(category, activeList, completedList).forEach(({ item }) => {
+    const lineageKey = getRoutineOccurrenceLineageKey(item);
+    const availableFrom = String(item.availableDate || item.dateAdded || '').trim();
+    if (!lineageKey) return;
+    if (availableFrom && availableFrom > targetDateKey) return;
+    if (typeof skipDate === 'function' && skipDate(targetDateKey) === true) return;
+    if (!getRoutineDays(item).includes(targetDayOfWeek)) return;
+    if (hasActiveRoutineOccurrenceForDate(activeList, lineageKey, targetDateKey)) return;
+    if (hasResolvedActivityForDate(category, item, targetDateKey)) return;
+
+    activeList.push(buildRoutineOccurrenceFromTemplate(item, targetDateKey, buildNextId()));
+  });
+}
+
 // Recriar rotinas para o dia atual
 function recreateDailyMissionsForToday() {
   const today = getGameNow();
@@ -2438,60 +2555,23 @@ function recreateDailyMissionsForToday() {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
+  const yesterdayDayOfWeek = yesterday.getDay();
 
-  const yesterdayRoutineMissionsByLineage = new Map();
-  appData.completedMissions.forEach((mission) => {
-    if (!isRoutineType(mission.type)) return;
-    const missionDate = mission.completedDate || mission.failedDate || mission.skippedDate;
-    if (missionDate !== yesterdayStr) return;
-    const lineageKey = String(mission.originalId || mission.id);
-    if (!yesterdayRoutineMissionsByLineage.has(lineageKey)) {
-      yesterdayRoutineMissionsByLineage.set(lineageKey, mission);
-    }
+  materializeRoutineOccurrencesForDate({
+    category: 'mission',
+    activeList: appData.missions,
+    completedList: appData.completedMissions,
+    targetDateKey: yesterdayStr,
+    targetDayOfWeek: yesterdayDayOfWeek,
+    buildNextId: () => createUniqueId(appData.missions, appData.completedMissions),
   });
-  appData.missions.forEach((mission) => {
-    if (!mission || !isRoutineType(mission.type)) return;
-    if (mission.dateAdded !== yesterdayStr || mission.completed || mission.failed) return;
-    const lineageKey = String(mission.originalId || mission.id);
-    if (!yesterdayRoutineMissionsByLineage.has(lineageKey)) {
-      yesterdayRoutineMissionsByLineage.set(lineageKey, mission);
-    }
-  });
-  getPendingRoutineReviewsForDate('mission', yesterdayStr).forEach((review) => {
-    const mission = review.activity;
-    const lineageKey = String(mission.originalId || mission.id);
-    if (!yesterdayRoutineMissionsByLineage.has(lineageKey)) {
-      yesterdayRoutineMissionsByLineage.set(lineageKey, mission);
-    }
-  });
-
-  yesterdayRoutineMissionsByLineage.forEach((originalMission, lineageKey) => {
-    if (!getRoutineDays(originalMission).includes(todayDayOfWeek)) return;
-
-    const alreadyExists = appData.missions.some(
-      (mission) =>
-        isRoutineType(mission.type) &&
-        String(mission.originalId || mission.id) === lineageKey &&
-        mission.dateAdded === todayStr
-    );
-
-    if (!alreadyExists) {
-      const newMission = {
-        id: createUniqueId(appData.missions, appData.completedMissions),
-        originalId: originalMission.originalId || originalMission.id,
-        name: originalMission.name,
-        emoji: originalMission.emoji || '🎯',
-        type: 'rotina',
-        attributes: [...originalMission.attributes],
-        days: getRoutineDays(originalMission),
-        peopleIds: sanitizeActivityPeopleIds(originalMission.peopleIds),
-        completed: false,
-        dateAdded: todayStr,
-      };
-
-      appData.missions.push(newMission);
-      console.log(`Rotina "${originalMission.name}" recriada para hoje (${todayStr})`);
-    }
+  materializeRoutineOccurrencesForDate({
+    category: 'mission',
+    activeList: appData.missions,
+    completedList: appData.completedMissions,
+    targetDateKey: todayStr,
+    targetDayOfWeek: todayDayOfWeek,
+    buildNextId: () => createUniqueId(appData.missions, appData.completedMissions),
   });
 }
 
@@ -2548,60 +2628,30 @@ function recreateDailyWorksForToday() {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
+  const yesterdayDayOfWeek = yesterday.getDay();
   const workOffActiveToday = typeof isWorkOffDay === 'function' && isWorkOffDay(todayStr);
+  const isWorkOffDate = (dateKey) => typeof isWorkOffDay === 'function' && isWorkOffDay(dateKey);
 
-  const yesterdayRoutineWorksByLineage = new Map();
-  appData.completedWorks.forEach((work) => {
-    if (!isRoutineType(work.type)) return;
-    const workDate = work.completedDate || work.failedDate || work.skippedDate;
-    if (workDate !== yesterdayStr) return;
-    const lineageKey = String(work.originalId || work.id);
-    if (!yesterdayRoutineWorksByLineage.has(lineageKey)) {
-      yesterdayRoutineWorksByLineage.set(lineageKey, work);
-    }
+  materializeRoutineOccurrencesForDate({
+    category: 'work',
+    activeList: appData.works,
+    completedList: appData.completedWorks,
+    targetDateKey: yesterdayStr,
+    targetDayOfWeek: yesterdayDayOfWeek,
+    skipDate: isWorkOffDate,
+    buildNextId: () => createUniqueId(appData.works, appData.completedWorks),
   });
-  appData.works.forEach((work) => {
-    if (!work || !isRoutineType(work.type)) return;
-    if (work.dateAdded !== yesterdayStr || work.completed || work.failed) return;
-    const lineageKey = String(work.originalId || work.id);
-    if (!yesterdayRoutineWorksByLineage.has(lineageKey)) {
-      yesterdayRoutineWorksByLineage.set(lineageKey, work);
-    }
-  });
-  getPendingRoutineReviewsForDate('work', yesterdayStr).forEach((review) => {
-    const work = review.activity;
-    const lineageKey = String(work.originalId || work.id);
-    if (!yesterdayRoutineWorksByLineage.has(lineageKey)) {
-      yesterdayRoutineWorksByLineage.set(lineageKey, work);
-    }
-  });
-
-  yesterdayRoutineWorksByLineage.forEach((originalWork, lineageKey) => {
-    if (workOffActiveToday || !getRoutineDays(originalWork).includes(todayDayOfWeek)) return;
-
-    const alreadyExists = appData.works.some(
-      (work) =>
-        isRoutineType(work.type) &&
-        String(work.originalId || work.id) === lineageKey &&
-        work.dateAdded === todayStr
-    );
-
-    if (!alreadyExists) {
-      appData.works.push({
-        id: createUniqueId(appData.works, appData.completedWorks),
-        originalId: originalWork.originalId || originalWork.id,
-        name: originalWork.name,
-        emoji: originalWork.emoji || '💼',
-        type: 'rotina',
-        attributes: [...originalWork.attributes],
-        days: getRoutineDays(originalWork),
-        classId: originalWork.classId || null,
-        peopleIds: sanitizeActivityPeopleIds(originalWork.peopleIds),
-        completed: false,
-        dateAdded: todayStr,
-      });
-    }
-  });
+  if (!workOffActiveToday) {
+    materializeRoutineOccurrencesForDate({
+      category: 'work',
+      activeList: appData.works,
+      completedList: appData.completedWorks,
+      targetDateKey: todayStr,
+      targetDayOfWeek: todayDayOfWeek,
+      skipDate: isWorkOffDate,
+      buildNextId: () => createUniqueId(appData.works, appData.completedWorks),
+    });
+  }
 }
 
 function cleanupOldDailyWorks() {
@@ -2628,6 +2678,12 @@ function cleanupOldDailyWorks() {
         const workOffActive = typeof isWorkOffDay === 'function' && isWorkOffDay(failedDate);
         const resolvedAt = buildHistoryActionTimestamp(failedDate);
         if (workOffActive) {
+          if (!appData.statistics) appData.statistics = {};
+          appData.statistics.worksIgnored = (appData.statistics.worksIgnored || 0) + 1;
+          updateProductiveDay(0, 0, 0, 0, 0, {
+            date: failedDate,
+            worksIgnored: 1,
+          });
           appData.completedWorks.push({
             ...work,
             skipped: true,
@@ -2927,7 +2983,7 @@ async function useItem(itemId) {
 }
 
 // Adicionar XP ao herói
-function addXP(amount) {
+function addXP(amount, options = {}) {
   const progressionApi = getProgressionApi();
   if (typeof progressionApi.advanceHeroProgress !== 'function') {
     appData.hero.xp += amount;
@@ -2939,13 +2995,23 @@ function addXP(amount) {
   appData.hero.level = nextState.level;
   appData.hero.maxXp = nextState.maxXp;
 
+  const levelLogMeta =
+    options && typeof options.logMeta === 'object' && options.logMeta !== null
+      ? { ...options.logMeta }
+      : null;
+
   nextState.levelUps.forEach((levelUp) => {
     showToast(`Parabéns! Você alcançou o nível ${levelUp.level}!`, 'success', 2800);
     celebrateAction({
       target: document.getElementById('level'),
       message: 'Novo nível alcançado!',
     });
-    addHeroLog('level', `Nível ${levelUp.level} alcançado`, `Novo XP necessário: ${levelUp.maxXp}`);
+    addHeroLog(
+      'level',
+      `Nível ${levelUp.level} alcançado`,
+      `Novo XP necessário: ${levelUp.maxXp}`,
+      levelLogMeta
+    );
   });
 }
 
@@ -3075,5 +3141,7 @@ if (typeof module !== 'undefined' && module.exports) {
     cleanupOldDailyWorks,
     cleanupOldDailyWorkouts,
     cleanupOldDailyStudies,
+    recreateDailyMissionsForToday,
+    recreateDailyWorksForToday,
   };
 }
