@@ -24,9 +24,6 @@ function runDeferredStartupResets() {
     typeof window.shouldRunCriticalResets === 'function' ? window.shouldRunCriticalResets() : true;
   if (!canRunCriticalResets) return false;
 
-  if (typeof prepareStartupFailureReviews === 'function') {
-    prepareStartupFailureReviews();
-  }
   runDailyResetHook();
   recreateDailyMissionsForToday();
   recreateDailyWorksForToday();
@@ -65,10 +62,7 @@ function startApp() {
   }
   runDeferredStartupResets();
 
-    // 2. Verificar e recriar missÃƒÆ’Ã‚Âµes diÃƒÆ’Ã‚Â¡rias para HOJE (coloque AQUI!)
-
-
-
+  // 2. Verificar e recriar missÃƒÆ’Ã‚Âµes diÃƒÆ’Ã‚Â¡rias para HOJE (coloque AQUI!)
 
   // 5. Resto da inicializaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o...
   updateStreaks();
@@ -87,11 +81,6 @@ function startApp() {
   setInterval(runDailyResetHook, 60000);
   setInterval(runWeeklyResetHook, 60000);
   setInterval(updateStreaks, 60000);
-  window.setTimeout(() => {
-    if (typeof processPendingFailureReviews === 'function') {
-      processPendingFailureReviews();
-    }
-  }, 0);
 }
 
 // Carregar dados - agora delega para a nuvem quando disponÃƒÆ’Ã‚Â­vel
@@ -137,7 +126,9 @@ function isPlainStateObject(value) {
 
 function mergeStateWithDefaults(defaultValue, sourceValue) {
   if (Array.isArray(defaultValue)) {
-    return Array.isArray(sourceValue) ? cloneStateValue(sourceValue) : cloneStateValue(defaultValue);
+    return Array.isArray(sourceValue)
+      ? cloneStateValue(sourceValue)
+      : cloneStateValue(defaultValue);
   }
 
   if (isPlainStateObject(defaultValue)) {
@@ -808,5 +799,3 @@ Object.assign(globalThis, {
   applyCoinPenalty,
   generateDailyActivities,
 });
-
-

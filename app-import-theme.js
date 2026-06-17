@@ -187,7 +187,10 @@ function handleNutritionEntrySubmit(event) {
   if (diaryInput) diaryInput.value = date;
   if (typeof queueSave === 'function') queueSave();
   updateNutritionView();
-  showFeedback('Refeição adicionada ao diário. Consolide o dia para contar no histórico.', 'success');
+  showFeedback(
+    'Refeição adicionada ao diário. Consolide o dia para contar no histórico.',
+    'success'
+  );
 }
 
 function handleNutritionGoalsSubmit(event) {
@@ -408,16 +411,6 @@ function importData() {
 }
 
 // Funções auxiliares
-function getWorkoutTypeNameLegacy(type) {
-  const types = {
-    repeticao: 'Repetição',
-    distancia: 'Distância',
-    'maior-tempo': 'Maior Tempo',
-    'menor-tempo': 'Menor Tempo',
-  };
-  return types[type] || type;
-}
-
 function getMissionTypeName(type) {
   const types = {
     rotina: 'Rotina',
@@ -691,8 +684,8 @@ function deleteWorkoutLegacy(id) {
     id,
     confirmText: 'Tem certeza que deseja excluir este treino?',
     successText: 'Treino excluído com sucesso!',
-    confirmText: 'Tem certeza que deseja excluir esta tarefa?',
-    successText: 'Tarefa excluída com sucesso!',
+    confirmText: 'Tem certeza que deseja excluir esta ação?',
+    successText: 'Ação excluída com sucesso!',
     updateMode: 'activity',
   });
 }
@@ -721,14 +714,6 @@ function removeStudyStateArtifacts(studyId) {
     appData.dailyStudies = appData.dailyStudies.filter(
       (entry) => String(entry?.studyId || '') !== studyKey
     );
-  }
-
-  if (Array.isArray(appData.pendingFailureReviews)) {
-    appData.pendingFailureReviews = appData.pendingFailureReviews.filter((review) => {
-      if (review?.category !== 'study') return true;
-      const lineageKey = String(review?.lineageKey || review?.activity?.studyId || '').trim();
-      return lineageKey !== studyKey;
-    });
   }
 }
 
@@ -777,10 +762,10 @@ function deleteMissionLegacy(id) {
   deleteNamedEmojiItem({
     list: appData.missions,
     id,
-    confirmText: 'Tem certeza que deseja excluir esta tarefa?',
-    successText: 'Tarefa excluída com sucesso!',
-    confirmText: 'Tem certeza que deseja excluir esta missão?',
-    successText: 'Missão excluída com sucesso!',
+    confirmText: 'Tem certeza que deseja excluir esta ação?',
+    successText: 'Ação excluída com sucesso!',
+    confirmText: 'Tem certeza que deseja excluir esta ação?',
+    successText: 'Ação excluída com sucesso!',
     updateMode: 'activity',
   });
 }
@@ -789,8 +774,8 @@ function deleteMission(id) {
   deleteNamedEmojiItem({
     list: appData.missions,
     id,
-    confirmText: 'Tem certeza que deseja excluir esta tarefa?',
-    successText: 'Tarefa excluída com sucesso!',
+    confirmText: 'Tem certeza que deseja excluir esta ação?',
+    successText: 'Ação excluída com sucesso!',
     updateMode: 'activity',
   });
 }
@@ -864,7 +849,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   const getFailedTypeLabel = (type) => {
     if (type === 'workout') return 'treino';
     if (type === 'study') return 'estudo';
-    if (type === 'mission') return 'missão';
+    if (type === 'mission') return 'ação';
     if (type === 'work') return 'trabalho';
     if (type === 'nutrition') return 'alimentação';
     if (type === 'hydration') return 'hidratação';
@@ -900,7 +885,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   };
   const formatFailureDetail = (category, item = null) => {
     const sourceItem = resolveFailureItem(category, item);
-    if (category === 'mission') return formatNamedFailure('Missão', sourceItem?.name, true);
+    if (category === 'mission') return formatNamedFailure('Ação', sourceItem?.name, true);
     if (category === 'work') return formatNamedFailure('Trabalho', sourceItem?.name);
     if (category === 'workout') return formatNamedFailure('Treino', sourceItem?.name);
     if (category === 'study') return formatNamedFailure('Estudo', sourceItem?.name);
@@ -913,11 +898,6 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     if (category === 'hydration') return 'Hidratação não concluída';
     return getFailedTypeLabel(category);
   };
-  const hasPendingFailureReviewForType = (type) =>
-    Array.isArray(appData.pendingFailureReviews) &&
-    appData.pendingFailureReviews.some(
-      (review) => review?.category === type && review?.missedDate === targetDateStr
-    );
   const todayStr = getLocalDateString();
   const getItemAvailableFromDateKey = (item) =>
     String(item?.availableDate || item?.dateAdded || todayStr || '').trim();
@@ -936,8 +916,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   const yesterdayDate = parseLocalDateString(todayStr);
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterdayDate);
-  const shouldResetCurrentStreaks =
-    targetDateStr === todayStr || targetDateStr === yesterdayStr;
+  const shouldResetCurrentStreaks = targetDateStr === todayStr || targetDateStr === yesterdayStr;
 
   if (isRestDay(targetDateStr)) {
     return;
@@ -1013,7 +992,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       existingFailedWorkouts.forEach((entry) => {
         entry.penaltyApplied = true;
       });
-    } else if (!hasPendingFailureReviewForType('workout')) {
+    } else {
       failedWorkouts = appData.dailyWorkouts.filter(
         (item) => item.date === targetDateStr && !item.completed && !item.skipped && !item.failed
       );
@@ -1021,7 +1000,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   }
   if (shouldCheckType('workout') && failedWorkouts.length > 0) {
     failedTypes.push('workout');
-  } else if (shouldCheckType('workout') && !hasPendingFailureReviewForType('workout')) {
+  } else if (shouldCheckType('workout')) {
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const scheduledWorkouts = appData.workouts.filter(
       (w) =>
@@ -1071,7 +1050,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       existingFailedStudies.forEach((entry) => {
         entry.penaltyApplied = true;
       });
-    } else if (!hasPendingFailureReviewForType('study')) {
+    } else {
       failedStudies = appData.dailyStudies.filter(
         (item) => item.date === targetDateStr && !item.completed && !item.skipped && !item.failed
       );
@@ -1079,7 +1058,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   }
   if (shouldCheckType('study') && failedStudies.length > 0) {
     failedTypes.push('study');
-  } else if (shouldCheckType('study') && !hasPendingFailureReviewForType('study')) {
+  } else if (shouldCheckType('study')) {
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const scheduledStudies = appData.studies.filter(
       (s) =>
@@ -1136,7 +1115,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     const missedRoutineMissions = logMissedRoutineItems(
       appData.missions || [],
       appData.completedMissions || [],
-      'missão',
+      'ação',
       'mission'
     );
     missionFailureCount += missedRoutineMissions.length;
@@ -1350,9 +1329,9 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       ...failedWorkouts.map((entry) => formatFailureDetail('workout', entry)),
       ...failedStudies.map((entry) => formatFailureDetail('study', entry)),
       ...(nutritionFailureCount > 0
-        ? (nutritionMissingMeals.length > 0
-            ? nutritionMissingMeals.map((mealLabel) => formatFailureDetail('nutrition', mealLabel))
-            : [formatFailureDetail('nutrition')])
+        ? nutritionMissingMeals.length > 0
+          ? nutritionMissingMeals.map((mealLabel) => formatFailureDetail('nutrition', mealLabel))
+          : [formatFailureDetail('nutrition')]
         : []),
       ...(hydrationFailureCount > 0 ? [formatFailureDetail('hydration')] : []),
     ].filter(Boolean);
@@ -1403,9 +1382,6 @@ function normalizeWorkoutMetric(metric) {
   ) {
     return normalizedMetric;
   }
-  if (normalizedMetric === 'repeticao') return 'reps';
-  if (normalizedMetric === 'distancia') return 'distance';
-  if (normalizedMetric === 'maior-tempo' || normalizedMetric === 'menor-tempo') return 'duration';
   return 'reps';
 }
 
@@ -1422,7 +1398,7 @@ function normalizeWorkoutUsesWeight(source, fallbackMetric = '') {
   const resolvedMetric = normalizeWorkoutMetric(
     fallbackMetric ||
       (source && typeof source === 'object' && !Array.isArray(source)
-        ? source.metric || source.type || source.value || source.selection || 'reps'
+        ? source.metric || source.selection || 'reps'
         : source)
   );
   if (resolvedMetric !== 'reps') return false;
@@ -1432,7 +1408,7 @@ function normalizeWorkoutUsesWeight(source, fallbackMetric = '') {
 
 function normalizeWorkoutModel(source, fallbackGoalDirection = 'maximize') {
   if (source && typeof source === 'object' && !Array.isArray(source)) {
-    const metric = source.metric || source.type || source.value || source.selection || 'reps';
+    const metric = source.metric || source.selection || 'reps';
     const goalDirection = source.goalDirection || fallbackGoalDirection;
     const normalizedModel = normalizeWorkoutModel(metric, goalDirection);
     return {
@@ -1456,11 +1432,9 @@ function normalizeWorkoutModel(source, fallbackGoalDirection = 'maximize') {
   }
 
   const metric = normalizeWorkoutMetric(normalizedSource || 'reps');
-  const inferredGoalDirection =
-    normalizedSource === 'menor-tempo' ? 'minimize' : fallbackGoalDirection;
   return {
     metric,
-    goalDirection: normalizeWorkoutGoalDirection(metric, inferredGoalDirection),
+    goalDirection: normalizeWorkoutGoalDirection(metric, fallbackGoalDirection),
     usesWeight: false,
   };
 }
@@ -1515,9 +1489,6 @@ function applyWorkoutModel(target, source, fallbackGoalDirection = 'maximize') {
   target.metric = config.metric;
   target.goalDirection = config.goalDirection;
   target.usesWeight = config.usesWeight === true;
-  if (Object.prototype.hasOwnProperty.call(target, 'type')) {
-    delete target.type;
-  }
   return target;
 }
 

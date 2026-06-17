@@ -1,7 +1,7 @@
 ﻿function getActivityCategoryMeta(category) {
   switch (category) {
     case 'mission':
-      return { label: 'Tarefa', emoji: '🎯', className: 'mission' };
+      return { label: 'Ação', emoji: '🎯', className: 'mission' };
     case 'work':
       return { label: 'Trabalho', emoji: '💼', className: 'work-kind' };
     case 'workout':
@@ -471,9 +471,9 @@ function formatTimelineTime(isoDate = '') {
 function getActivityTimelineTitle(category, item) {
   const itemName = item.name || 'Atividade';
   if (category === 'mission') {
-    if (item?.failed) return `Tarefa falhada: ${itemName}`;
-    if (item?.skipped) return `Tarefa pulada: ${itemName}`;
-    return `Tarefa concluída: ${itemName}`;
+    if (item?.failed) return `Ação falhada: ${itemName}`;
+    if (item?.skipped) return `Ação pulada: ${itemName}`;
+    return `Ação concluída: ${itemName}`;
   }
   if (category === 'work') {
     if (item?.failed) return `Trabalho falhado: ${itemName}`;
@@ -496,7 +496,7 @@ function getActivityTimelineTitle(category, item) {
 
 function getPlannedActivityTimelineTitle(category, item) {
   const itemName = item?.name || 'Atividade';
-  if (category === 'mission') return `Tarefa planejada: ${itemName}`;
+  if (category === 'mission') return `Ação planejada: ${itemName}`;
   if (category === 'work') return `Trabalho planejado: ${itemName}`;
   if (category === 'workout') return `Treino planejado: ${itemName}`;
   if (category === 'study') return `Estudo planejado: ${itemName}`;
@@ -675,43 +675,45 @@ function getUnifiedFutureTimelineActivities(targetDateKey) {
 }
 
 function getPlannedActivityTimelineEvents(targetDateKey) {
-  return getUnifiedFutureTimelineActivities(targetDateKey).map(({ category, item, plannedDateKey }) => ({
-    timelineKind: 'activity',
-    category,
-    item,
-    eventDateKey: plannedDateKey,
-    eventTimestamp: '',
-    sortTimestamp: getTimelineSortTimestamp(plannedDateKey, ''),
-    matchedLog: null,
-    statusMeta: getPlannedTimelineStatusMeta(),
-    typeLabel: getHistoryEntryTypeLabel(category, item),
-    title: getPlannedActivityTimelineTitle(category, item),
-    isPlanned: true,
-  }));
+  return getUnifiedFutureTimelineActivities(targetDateKey).map(
+    ({ category, item, plannedDateKey }) => ({
+      timelineKind: 'activity',
+      category,
+      item,
+      eventDateKey: plannedDateKey,
+      eventTimestamp: '',
+      sortTimestamp: getTimelineSortTimestamp(plannedDateKey, ''),
+      matchedLog: null,
+      statusMeta: getPlannedTimelineStatusMeta(),
+      typeLabel: getHistoryEntryTypeLabel(category, item),
+      title: getPlannedActivityTimelineTitle(category, item),
+      isPlanned: true,
+    })
+  );
 }
 
 function getExpectedHistoryLogPrefixes(category, item) {
   if (category === 'mission') {
-    if (item?.failed) return ['tarefa falhada'];
-    if (item?.skipped) return ['missao pulada', 'missão pulada'];
-    return ['missao concluida', 'missão concluída'];
+    if (item?.failed) return ['acao falhada'];
+    if (item?.skipped) return ['acao pulada'];
+    return ['acao concluida'];
   }
   if (category === 'work') {
     if (item?.failed) return ['trabalho falhado'];
     if (item?.skipped) return ['trabalho pulado'];
-    return ['trabalho concluido', 'trabalho concluído'];
+    return ['trabalho concluido'];
   }
   if (category === 'workout') {
     if (item?.skipped) return ['treino pulado'];
     if (item?.failed) return ['treino falhado'];
-    return ['treino concluido', 'treino concluído'];
+    return ['treino concluido'];
   }
   if (category === 'study') {
     if (item?.skipped) return ['estudo pulado'];
     if (item?.failed) return ['estudo falhado'];
-    return ['estudo concluido', 'estudo concluído'];
+    return ['estudo concluido'];
   }
-  if (category === 'book') return ['livro concluido', 'livro concluído'];
+  if (category === 'book') return ['livro concluido'];
   return [];
 }
 
@@ -767,14 +769,14 @@ function doesHeroLogMatchHistoryEntry(log, category, item, eventDateKey) {
     category === 'mission'
       ? ['mission']
       : category === 'work'
-        ? ['work', 'mission']
-      : category === 'workout'
-        ? ['workout']
-        : category === 'study'
-          ? ['study']
-          : category === 'book'
-            ? ['book']
-            : [];
+        ? ['work']
+        : category === 'workout'
+          ? ['workout']
+          : category === 'study'
+            ? ['study']
+            : category === 'book'
+              ? ['book']
+              : [];
   if (!allowedTypes.includes(String(log.type || ''))) return false;
 
   const normalizedTitle = normalizeTimelineText(log.title);
@@ -863,41 +865,6 @@ function getNutritionHydrationTimelineLogCategory(log) {
   if (metaCategory === 'nutrition' || metaCategory === 'hydration') {
     return metaCategory;
   }
-
-  const title = String(log?.title || '').trim();
-  const content = String(log?.content || '').trim();
-  const normalizedTitle = normalizeTimelineText(title);
-  const normalizedContent = normalizeTimelineText(content);
-
-  if (
-    normalizedTitle === normalizeTimelineText('Metas de alimentação batidas') ||
-    normalizedTitle.startsWith(normalizeTimelineText('Refeição registrada:'))
-  ) {
-    return 'nutrition';
-  }
-  if (normalizedTitle === normalizeTimelineText('Meta de hidratação batida')) {
-    return 'hydration';
-  }
-  if (log?.type === 'penalty') {
-    const mentionsNutrition =
-      normalizedTitle.includes('alimentacao') ||
-      normalizedTitle.includes('hidratacao') ||
-      normalizedContent.includes('refeicao') ||
-      normalizedContent.includes('hidratacao') ||
-      normalizedContent.includes('alimentacao');
-    const mentionsActivity =
-      normalizedContent.includes('missao') ||
-      normalizedContent.includes('tarefa') ||
-      normalizedContent.includes('trabalho') ||
-      normalizedContent.includes('treino') ||
-      normalizedContent.includes('estudo') ||
-      normalizedContent.includes('livro');
-    if (mentionsNutrition && !mentionsActivity) {
-      return normalizedContent.includes('hidratacao') && !normalizedContent.includes('refeicao')
-        ? 'hydration'
-        : 'nutrition';
-    }
-  }
   return '';
 }
 
@@ -938,7 +905,7 @@ function inferPenaltyDetailCategory(detail) {
   if (normalizedDetail.includes('trabalho')) return 'work';
   if (normalizedDetail.includes('treino')) return 'workout';
   if (normalizedDetail.includes('estudo')) return 'study';
-  if (normalizedDetail.includes('missao') || normalizedDetail.includes('tarefa')) return 'mission';
+  if (normalizedDetail.includes('acao')) return 'mission';
   return 'penalty';
 }
 
@@ -1009,8 +976,7 @@ function normalizeNutritionTimelineEntry(entry) {
     id: Number.isFinite(Number(source.id)) ? Number(source.id) : 0,
     date: String(source.date || '').trim(),
     meal: String(source.meal || 'lanche').trim() || 'lanche',
-    foodName:
-      String(source.foodName || source.name || 'Alimento sem nome').trim() || 'Alimento sem nome',
+    foodName: String(source.foodName || 'Alimento sem nome').trim() || 'Alimento sem nome',
     grams: Number(source.grams || 0),
     kcal: Number(source.kcal || 0),
     protein: Number(source.protein || 0),
@@ -1019,13 +985,16 @@ function normalizeNutritionTimelineEntry(entry) {
     fiber: Number(source.fiber || 0),
     notes: String(source.notes || '').trim(),
     createdAt: String(source.createdAt || '').trim(),
-    consolidated: source.consolidated !== false,
+    consolidated: source.consolidated === true,
     consolidatedAt: String(source.consolidatedAt || '').trim(),
   };
 }
 
 function getNutritionEntryTimelineTimestamp(entry) {
-  const candidates = [String(entry?.consolidatedAt || '').trim(), String(entry?.createdAt || '').trim()];
+  const candidates = [
+    String(entry?.consolidatedAt || '').trim(),
+    String(entry?.createdAt || '').trim(),
+  ];
   for (const isoValue of candidates) {
     if (!isoValue) continue;
     const parsed = new Date(isoValue);
@@ -1060,7 +1029,7 @@ function getNutritionTimelineEvents() {
 
   (Array.isArray(appData.nutritionEntries) ? appData.nutritionEntries : [])
     .map(normalizeNutritionTimelineEntry)
-    .filter((entry) => entry.date && entry.consolidated !== false)
+    .filter((entry) => entry.date && entry.consolidated === true)
     .forEach((entry) => {
       const key = `${entry.date}|${entry.meal}`;
       if (!buckets.has(key)) {
@@ -1212,21 +1181,19 @@ function getUnifiedTimelineEvents() {
     ...nutritionEvents,
     ...expandedPenaltyLogEvents,
     ...logEvents,
-  ].sort(
-    (left, right) => {
-      const timeDelta = Number(right.sortTimestamp || 0) - Number(left.sortTimestamp || 0);
-      if (timeDelta !== 0) return timeDelta;
-      const isoDelta = String(right.eventTimestamp || '').localeCompare(
-        String(left.eventTimestamp || '')
-      );
-      if (isoDelta !== 0) return isoDelta;
-      if (left.timelineKind === 'nutrition' && right.timelineKind === 'nutrition') {
-        return Number(right.mealOrder || 0) - Number(left.mealOrder || 0);
-      }
-      if (left.timelineKind !== right.timelineKind) return left.timelineKind === 'log' ? -1 : 1;
-      return String(right.eventDateKey || '').localeCompare(String(left.eventDateKey || ''));
+  ].sort((left, right) => {
+    const timeDelta = Number(right.sortTimestamp || 0) - Number(left.sortTimestamp || 0);
+    if (timeDelta !== 0) return timeDelta;
+    const isoDelta = String(right.eventTimestamp || '').localeCompare(
+      String(left.eventTimestamp || '')
+    );
+    if (isoDelta !== 0) return isoDelta;
+    if (left.timelineKind === 'nutrition' && right.timelineKind === 'nutrition') {
+      return Number(right.mealOrder || 0) - Number(left.mealOrder || 0);
     }
-  );
+    if (left.timelineKind !== right.timelineKind) return left.timelineKind === 'log' ? -1 : 1;
+    return String(right.eventDateKey || '').localeCompare(String(left.eventDateKey || ''));
+  });
 }
 
 function isNutritionHydrationTimelineEntry(entry) {
@@ -1477,7 +1444,13 @@ function renderUnifiedTodayActivities() {
         dueDateHtml = getDueBadgeHtml(dueDateKey, todayStr, item.type);
       }
     }
-    if (!dueDateHtml && isMissionOrWork && isRoutineType(item.type) && item.dateAdded && item.dateAdded < todayStr) {
+    if (
+      !dueDateHtml &&
+      isMissionOrWork &&
+      isRoutineType(item.type) &&
+      item.dateAdded &&
+      item.dateAdded < todayStr
+    ) {
       dueDateHtml = '<span class="due-badge due-overdue">Atrasado 1d</span>';
     }
     if (!dueDateHtml && (isWorkout || isStudy) && dailyEntry?.date && dailyEntry.date < todayStr) {
@@ -1954,8 +1927,7 @@ function buildWorkoutHistorySummary(workouts = [], completedWorkouts = []) {
         id: safeId,
         name: fallback.name || 'Treino',
         emoji: fallback.emoji || '💪',
-        metric:
-          typeof getWorkoutMetric === 'function' ? getWorkoutMetric(fallback) : 'reps',
+        metric: typeof getWorkoutMetric === 'function' ? getWorkoutMetric(fallback) : 'reps',
         goalDirection:
           typeof getWorkoutGoalDirection === 'function'
             ? getWorkoutGoalDirection(fallback)
@@ -2107,9 +2079,7 @@ function getWorkoutHistoryDetailLines(item = {}) {
     const series = item.series.map((value) => parseInt(value, 10) || 0);
     const totalReps = series.reduce((sum, value) => sum + value, 0);
     const usesWeight =
-      typeof workoutUsesWeight === 'function'
-        ? workoutUsesWeight(item)
-        : item?.usesWeight === true;
+      typeof workoutUsesWeight === 'function' ? workoutUsesWeight(item) : item?.usesWeight === true;
     if (usesWeight) {
       const weights = Array.isArray(item.weights)
         ? item.weights.map((value) => {
@@ -2242,8 +2212,8 @@ function updateAdvancedStatistics() {
   const weeklyPrevious = getPeriodTotals(7, 7);
   if (weeklyCompareEl) {
     weeklyCompareEl.innerHTML = `
-            <p>Tarefas: ${weeklyCurrent.missions} (${formatTrendHtml(weeklyCurrent.missions, weeklyPrevious.missions)})</p>
-            <p>Falhas/Ignoradas Tarefas: ${weeklyCurrent.missionsMissed} (${formatTrendHtml(weeklyCurrent.missionsMissed, weeklyPrevious.missionsMissed, true)})</p>
+            <p>Ações: ${weeklyCurrent.missions} (${formatTrendHtml(weeklyCurrent.missions, weeklyPrevious.missions)})</p>
+            <p>Falhas/Ignoradas Ações: ${weeklyCurrent.missionsMissed} (${formatTrendHtml(weeklyCurrent.missionsMissed, weeklyPrevious.missionsMissed, true)})</p>
             <p>Trabalhos: ${weeklyCurrent.works} (${formatTrendHtml(weeklyCurrent.works, weeklyPrevious.works)})</p>
             <p>Falhas/Ignorados Trabalhos: ${weeklyCurrent.worksMissed} (${formatTrendHtml(weeklyCurrent.worksMissed, weeklyPrevious.worksMissed, true)})</p>
             <p>Treinos: ${weeklyCurrent.workouts} (${formatTrendHtml(weeklyCurrent.workouts, weeklyPrevious.workouts)})</p>
@@ -2263,8 +2233,8 @@ function updateAdvancedStatistics() {
   const monthPrevious = getMonthTotals(getPreviousMonthKey(getLocalDateString().slice(0, 7)));
   if (monthlyCompareEl) {
     monthlyCompareEl.innerHTML = `
-            <p>Tarefas: ${monthCurrent.missions} (${formatTrendHtml(monthCurrent.missions, monthPrevious.missions)})</p>
-            <p>Falhas/Ignoradas Tarefas: ${monthCurrent.missionsMissed} (${formatTrendHtml(monthCurrent.missionsMissed, monthPrevious.missionsMissed, true)})</p>
+            <p>Ações: ${monthCurrent.missions} (${formatTrendHtml(monthCurrent.missions, monthPrevious.missions)})</p>
+            <p>Falhas/Ignoradas Ações: ${monthCurrent.missionsMissed} (${formatTrendHtml(monthCurrent.missionsMissed, monthPrevious.missionsMissed, true)})</p>
             <p>Trabalhos: ${monthCurrent.works} (${formatTrendHtml(monthCurrent.works, monthPrevious.works)})</p>
             <p>Falhas/Ignorados Trabalhos: ${monthCurrent.worksMissed} (${formatTrendHtml(monthCurrent.worksMissed, monthPrevious.worksMissed, true)})</p>
             <p>Treinos: ${monthCurrent.workouts} (${formatTrendHtml(monthCurrent.workouts, monthPrevious.workouts)})</p>
@@ -2290,11 +2260,11 @@ function updateAdvancedStatistics() {
   const monthStudiesPlanned = monthCurrent.studies + monthCurrent.studiesMissed;
   if (adherenceEl) {
     adherenceEl.innerHTML = `
-            <p>7 dias - Tarefas: ${formatRate(weeklyCurrent.missions, weekMissionsPlanned)}</p>
+            <p>7 dias - Ações: ${formatRate(weeklyCurrent.missions, weekMissionsPlanned)}</p>
             <p>7 dias - Trabalhos: ${formatRate(weeklyCurrent.works, weekWorksPlanned)}</p>
             <p>7 dias - Treinos: ${formatRate(weeklyCurrent.workouts, weekWorkoutsPlanned)}</p>
             <p>7 dias - Estudos: ${formatRate(weeklyCurrent.studies, weekStudiesPlanned)}</p>
-            <p>Mês - Tarefas: ${formatRate(monthCurrent.missions, monthMissionsPlanned)}</p>
+            <p>Mês - Ações: ${formatRate(monthCurrent.missions, monthMissionsPlanned)}</p>
             <p>Mês - Trabalhos: ${formatRate(monthCurrent.works, monthWorksPlanned)}</p>
             <p>Mês - Treinos: ${formatRate(monthCurrent.workouts, monthWorkoutsPlanned)}</p>
             <p>Mês - Estudos: ${formatRate(monthCurrent.studies, monthStudiesPlanned)}</p>
@@ -2310,7 +2280,7 @@ function updateAdvancedStatistics() {
   if (goalsStatusEl) {
     const goals = appData.statisticsGoals || { missions: 60, workouts: 20, studies: 20, works: 30 };
     goalsStatusEl.innerHTML = `
-            <p class="${getGoalStatusClass(weeklyCurrent.missions, goals.missions)}">Tarefas: ${weeklyCurrent.missions}/${goals.missions}</p>
+            <p class="${getGoalStatusClass(weeklyCurrent.missions, goals.missions)}">Ações: ${weeklyCurrent.missions}/${goals.missions}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.works, goals.works)}">Trabalhos: ${weeklyCurrent.works}/${goals.works}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.workouts, goals.workouts)}">Treinos: ${weeklyCurrent.workouts}/${goals.workouts}</p>
             <p class="${getGoalStatusClass(weeklyCurrent.studies, goals.studies)}">Estudos: ${weeklyCurrent.studies}/${goals.studies}</p>
@@ -2501,7 +2471,8 @@ function updateWorkoutDetailsTable() {
   buildWorkoutHistorySummary(appData.workouts, appData.completedWorkouts).forEach((workout) => {
     const row = document.createElement('tr');
     const safeWorkoutLabel = escapeHtml(`${workout.emoji || '💪'} ${workout.name || 'Treino'}`);
-    const isDistanceWorkout = typeof isDistanceWorkoutType === 'function' && isDistanceWorkoutType(workout);
+    const isDistanceWorkout =
+      typeof isDistanceWorkoutType === 'function' && isDistanceWorkoutType(workout);
     const isTimedWorkout = typeof isTimedWorkoutType === 'function' && isTimedWorkoutType(workout);
     const isRepetitionWorkout =
       typeof isRepetitionWorkoutType === 'function' && isRepetitionWorkoutType(workout);
@@ -2575,7 +2546,7 @@ function updateRecords() {
     if (recordSnapshot.maxMissionsDay.value) {
       records.push({
         emoji: '🎯',
-        label: 'Mais tarefas em um dia',
+        label: 'Mais ações em um dia',
         value: formatRecordValueWithDate({
           value: `${recordSnapshot.maxMissionsDay.value}`,
           date: recordSnapshot.maxMissionsDay.date,
@@ -2639,7 +2610,7 @@ function updateRecords() {
     if (stats.missionsDone) {
       records.push({
         emoji: '🎯',
-        label: 'Tarefas concluídas no total',
+        label: 'Ações concluídas no total',
         value: `${stats.missionsDone}`,
       });
     }

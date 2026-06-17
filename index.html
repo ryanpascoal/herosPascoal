@@ -136,7 +136,7 @@
                 </div>
                 <select id="activity-filter" class="activity-filter">
                   <option value="all">Todas</option>
-                  <option value="mission">Tarefas</option>
+                  <option value="mission">Ações</option>
                   <option value="work">Trabalhos</option>
                   <option value="workout">Treinos</option>
                   <option value="study">Estudos</option>
@@ -153,7 +153,7 @@
                   <select id="activity-history-filter" class="activity-filter">
                     <option value="all">Todas</option>
                     <option value="activity">Só atividades</option>
-                    <option value="mission">Tarefas</option>
+                    <option value="mission">Ações</option>
                     <option value="work">Trabalhos</option>
                     <option value="workout">Treinos</option>
                     <option value="study">Estudos</option>
@@ -223,7 +223,7 @@
                       <div class="form-group">
                         <label for="activity-category">Categoria</label>
                         <select id="activity-category" required>
-                          <option value="mission">Tarefa</option>
+                          <option value="mission">Ação</option>
                           <option value="work">Trabalho</option>
                           <option value="workout">Treino</option>
                           <option value="study">Estudo</option>
@@ -349,13 +349,27 @@
                           <label class="day-checkbox"
                             ><input type="checkbox" data-select-all="true" /> Todos</label
                           >
-                          <label class="day-checkbox"><input type="checkbox" value="0" /> Dom</label>
-                          <label class="day-checkbox"><input type="checkbox" value="1" /> Seg</label>
-                          <label class="day-checkbox"><input type="checkbox" value="2" /> Ter</label>
-                          <label class="day-checkbox"><input type="checkbox" value="3" /> Qua</label>
-                          <label class="day-checkbox"><input type="checkbox" value="4" /> Qui</label>
-                          <label class="day-checkbox"><input type="checkbox" value="5" /> Sex</label>
-                          <label class="day-checkbox"><input type="checkbox" value="6" /> Sáb</label>
+                          <label class="day-checkbox"
+                            ><input type="checkbox" value="0" /> Dom</label
+                          >
+                          <label class="day-checkbox"
+                            ><input type="checkbox" value="1" /> Seg</label
+                          >
+                          <label class="day-checkbox"
+                            ><input type="checkbox" value="2" /> Ter</label
+                          >
+                          <label class="day-checkbox"
+                            ><input type="checkbox" value="3" /> Qua</label
+                          >
+                          <label class="day-checkbox"
+                            ><input type="checkbox" value="4" /> Qui</label
+                          >
+                          <label class="day-checkbox"
+                            ><input type="checkbox" value="5" /> Sex</label
+                          >
+                          <label class="day-checkbox"
+                            ><input type="checkbox" value="6" /> Sáb</label
+                          >
                         </div>
                       </div>
 
@@ -464,7 +478,10 @@
                       <button type="submit" class="submit-btn">Salvar Objetivo</button>
                     </form>
                     <div class="items-list planning-items-list" id="objectives-list"></div>
-                    <div class="items-list planning-items-list" id="completed-objectives-list"></div>
+                    <div
+                      class="items-list planning-items-list"
+                      id="completed-objectives-list"
+                    ></div>
                   </div>
                 </div>
 
@@ -495,7 +512,7 @@
                   <label for="note-content">Anotação</label>
                   <textarea
                     id="note-content"
-                    rows="5"
+                    rows="8"
                     placeholder="Escreva algo importante para lembrar depois..."
                     required
                   ></textarea>
@@ -902,15 +919,15 @@
                     <div class="stat-value" id="stat-objectives-risk">0</div>
                   </div>
                   <div class="stat-card cat-mission">
-                    <h4><i class="fas fa-flag-checkered"></i> Tarefas Concluídas</h4>
+                    <h4><i class="fas fa-flag-checkered"></i> Ações Concluídas</h4>
                     <div class="stat-value" id="stat-missions-done">0</div>
                   </div>
                   <div class="stat-card cat-mission">
-                    <h4><i class="fas fa-flag"></i> Tarefas Falhadas</h4>
+                    <h4><i class="fas fa-flag"></i> Ações Falhadas</h4>
                     <div class="stat-value" id="stat-missions-failed">0</div>
                   </div>
                   <div class="stat-card">
-                    <h4><i class="fas fa-forward"></i> Tarefas Ignoradas</h4>
+                    <h4><i class="fas fa-forward"></i> Ações Ignoradas</h4>
                     <div class="stat-value" id="stat-missions-ignored">0</div>
                   </div>
                 </div>
@@ -931,7 +948,7 @@
                   <div class="stat-card stat-advanced-card">
                     <h4><i class="fas fa-bullseye"></i> Metas Semanais</h4>
                     <div class="goal-config">
-                      <label for="goal-missions">Tarefas</label>
+                      <label for="goal-missions">Ações</label>
                       <input type="number" id="goal-missions" min="1" step="1" />
                       <label for="goal-workouts">Treinos</label>
                       <input type="number" id="goal-workouts" min="1" step="1" />
@@ -991,7 +1008,7 @@
                     <thead>
                       <tr>
                         <th>Data</th>
-                        <th class="col-mission">Tarefas</th>
+                        <th class="col-mission">Ações</th>
                         <th class="col-work">Trabalhos</th>
                         <th class="col-workout">Treinos</th>
                         <th class="col-study">Estudos</th>
@@ -1592,7 +1609,11 @@
               <div class="nutrition-timeline-head">
                 <div class="form-group">
                   <label for="nutrition-history-date">Filtrar por dia</label>
-                  <input type="date" id="nutrition-history-date" class="activity-filter activity-date-filter" />
+                  <input
+                    type="date"
+                    id="nutrition-history-date"
+                    class="activity-filter activity-date-filter"
+                  />
                 </div>
                 <button
                   type="button"

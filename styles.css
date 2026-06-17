@@ -1291,7 +1291,7 @@ body {
 
 .notes-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
 }
@@ -1305,6 +1305,11 @@ body {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.notes-form-card #note-content {
+  min-height: 220px;
+  resize: vertical;
 }
 
 .notes-list {

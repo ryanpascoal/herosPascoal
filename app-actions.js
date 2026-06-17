@@ -222,7 +222,10 @@ function getWorkoutBestDayLoadRecord(workout, completedWorkouts = []) {
     completedWorkouts.forEach((entry) => {
       if (!entry || entry.failed || entry.skipped || !isRepetitionWorkoutType(entry)) return;
       if (String(entry.workoutId || '') !== workoutId) return;
-      bestFromHistory = Math.max(bestFromHistory, getWorkoutDayTotalLoad(entry.series, entry.weights));
+      bestFromHistory = Math.max(
+        bestFromHistory,
+        getWorkoutDayTotalLoad(entry.series, entry.weights)
+      );
     });
   }
 
@@ -274,13 +277,9 @@ function applyWorkoutCompletionStats(workout, workoutEntry, completedWorkouts = 
       ? isRepetitionWorkoutType(workoutModelSource)
       : true;
   const isDistanceWorkout =
-    typeof isDistanceWorkoutType === 'function'
-      ? isDistanceWorkoutType(workoutModelSource)
-      : false;
+    typeof isDistanceWorkoutType === 'function' ? isDistanceWorkoutType(workoutModelSource) : false;
   const isTimedWorkout =
-    typeof isTimedWorkoutType === 'function'
-      ? isTimedWorkoutType(workoutModelSource)
-      : false;
+    typeof isTimedWorkoutType === 'function' ? isTimedWorkoutType(workoutModelSource) : false;
   const usesWeight =
     typeof workoutUsesWeight === 'function'
       ? workoutUsesWeight(workoutModelSource) || workoutUsesWeight(workout)
@@ -290,9 +289,7 @@ function applyWorkoutCompletionStats(workout, workoutEntry, completedWorkouts = 
 
   if (isRepetitionWorkout) {
     const series = Array.isArray(workoutEntry.series) ? workoutEntry.series : [null, null, null];
-    const weights = Array.isArray(workoutEntry.weights)
-      ? workoutEntry.weights
-      : [null, null, null];
+    const weights = Array.isArray(workoutEntry.weights) ? workoutEntry.weights : [null, null, null];
     const bestSetReps = getBestWorkoutSetValue(series);
     const totalReps = getWorkoutDayTotalReps(series);
 
@@ -309,7 +306,8 @@ function applyWorkoutCompletionStats(workout, workoutEntry, completedWorkouts = 
     if (usesWeight) {
       const totalLoad = getWorkoutDayTotalLoad(series, weights);
       const bestWeight = getBestWorkoutWeightValue(weights);
-      workout.stats.totalLoad = Math.round(((workout.stats.totalLoad || 0) + totalLoad) * 100) / 100;
+      workout.stats.totalLoad =
+        Math.round(((workout.stats.totalLoad || 0) + totalLoad) * 100) / 100;
       workout.stats.bestWeight = Math.max(
         getWorkoutBestWeightRecord(workout, completedWorkouts),
         bestWeight
@@ -326,7 +324,10 @@ function applyWorkoutCompletionStats(workout, workoutEntry, completedWorkouts = 
 
     workout.stats.totalDistance = (workout.stats.totalDistance || 0) + distance;
     workout.stats.bestDistance = Math.max(workout.stats.bestDistance || 0, distance);
-    workout.stats.bestSpeed = Math.max(getWorkoutBestSpeedRecord(workout, completedWorkouts), speed);
+    workout.stats.bestSpeed = Math.max(
+      getWorkoutBestSpeedRecord(workout, completedWorkouts),
+      speed
+    );
     workout.stats.totalTime = (workout.stats.totalTime || 0) + time;
     if (time > 0) {
       if (workout.stats.bestTime === undefined || time < workout.stats.bestTime) {
@@ -644,29 +645,11 @@ function buildAttributeRewards(
   }));
 }
 
-function ensurePendingFailureReviews() {
-  if (!Array.isArray(appData.pendingFailureReviews)) {
-    appData.pendingFailureReviews = [];
-  }
-  return appData.pendingFailureReviews;
-}
-
 function getActivityHistoryListByCategory(category) {
   if (category === 'work') return appData.completedWorks;
   if (category === 'workout') return appData.completedWorkouts;
   if (category === 'study') return appData.completedStudies;
   return appData.completedMissions;
-}
-
-function getActiveActivityListByCategory(category) {
-  return category === 'work' ? appData.works : appData.missions;
-}
-
-function getActivityLabelByCategory(category) {
-  if (category === 'work') return 'trabalho';
-  if (category === 'workout') return 'treino';
-  if (category === 'study') return 'estudo';
-  return 'missão';
 }
 
 function getActivityLineageKey(item, category = 'mission') {
@@ -719,77 +702,6 @@ function hasResolvedActivityForDate(category, item, missedDate) {
   );
 }
 
-function queuePendingFailureReview(category, item, options = {}) {
-  const pendingReviews = ensurePendingFailureReviews();
-  const missedDate = String(options.missedDate || item?.dateAdded || getLocalDateString()).trim();
-  const lineageKey = getActivityLineageKey(item, category);
-  if (!item || !lineageKey || !missedDate) return false;
-  if (hasResolvedActivityForDate(category, item, missedDate)) return false;
-
-  const alreadyQueued = pendingReviews.some(
-    (review) =>
-      review?.category === category &&
-      String(review.lineageKey || '') === lineageKey &&
-      String(review.missedDate || '') === missedDate
-  );
-  if (alreadyQueued) return false;
-
-  pendingReviews.push({
-    id: createUniqueId(pendingReviews),
-    category,
-    lineageKey,
-    missedDate,
-    reason: String(options.reason || '').trim(),
-    activity: JSON.parse(JSON.stringify(item)),
-    createdAt: new Date().toISOString(),
-  });
-  return true;
-}
-
-function inferLastDailyResetForStartupReview() {
-  return appData.serverMeta?.lastDailyReset || null;
-}
-
-function shouldPrepareStartupFailureReviews() {
-  const today = getGameNow();
-  const todayStr = getLocalDateString(today);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = getLocalDateString(yesterday);
-  return inferLastDailyResetForStartupReview() === yesterdayStr;
-}
-
-function prepareStartupFailureReviews() {
-  if (Array.isArray(appData.pendingFailureReviews) && appData.pendingFailureReviews.length > 0) {
-    appData.pendingFailureReviews = [];
-  }
-  return 0;
-}
-
-function getPendingRoutineReviewsForDate(category, dateKey) {
-  return ensurePendingFailureReviews().filter(
-    (review) =>
-      review?.category === category &&
-      review?.missedDate === dateKey &&
-      review?.activity &&
-      typeof isRoutineType === 'function' &&
-      isRoutineType(review.activity.type)
-  );
-}
-
-function getPendingFailureReviewsForDate(category, dateKey) {
-  return ensurePendingFailureReviews().filter(
-    (review) => review?.category === category && review?.missedDate === dateKey
-  );
-}
-
-function discardResolvedPendingFailureReview(review) {
-  if (review?.id !== undefined) {
-    removePendingFailureReview(review.id);
-  }
-  return false;
-}
-
 function getManagedActivityMissedStatKey(category) {
   if (category === 'work') return 'worksMissed';
   if (category === 'mission') return 'missionsMissed';
@@ -837,576 +749,6 @@ function recordManagedActivityFailure(category, item, options = {}) {
   return record;
 }
 
-function recordCompletedMissionFromReview(mission, completedDate, review = null) {
-  if (!mission || !completedDate) return false;
-  if (hasResolvedActivityForDate('mission', mission, completedDate)) {
-    return discardResolvedPendingFailureReview(review);
-  }
-  if (review) removePendingFailureReview(review.id);
-
-  const completedAt = buildHistoryActionTimestamp(completedDate);
-  const record = {
-    ...mission,
-    completed: true,
-    failed: false,
-    skipped: false,
-    completedDate,
-    completedAt,
-    confirmedNextDay: true,
-    confirmedNextDayAt: new Date().toISOString(),
-    peopleIds: sanitizeActivityPeopleIds(mission.peopleIds),
-  };
-  delete record.failedDate;
-  delete record.failedAt;
-  delete record.skippedDate;
-  delete record.skippedAt;
-  delete record.penaltyApplied;
-  delete record.reason;
-  delete record.missedDate;
-
-  appData.completedMissions.push(record);
-
-  let xpGained = 1;
-  let coinsGained = 1;
-  let attributeRewards = [];
-  if (mission.type === 'epica') {
-    xpGained = 20;
-    coinsGained = 10;
-    attributeRewards = buildAttributeRewards(mission.attributes, 20, 100);
-  } else {
-    attributeRewards = buildAttributeRewards(mission.attributes, 1, 20);
-  }
-
-  applyRewardPackage({
-    heroXp: xpGained,
-    coins: coinsGained,
-    attributeRewards,
-  });
-  applyAssociatedPeopleRewards(mission, { amount: 1, dateKey: completedDate });
-
-  if (!appData.statistics) appData.statistics = {};
-  appData.statistics.missionsDone = (appData.statistics.missionsDone || 0) + 1;
-  updateProductiveDay(0, 1, 0, xpGained, 0, {
-    date: completedDate,
-    xpMission: xpGained,
-  });
-
-  addHeroLog(
-    'mission',
-    `Missão concluída: ${mission.name}`,
-    `+${xpGained} XP, +${coinsGained} moeda(s). Confirmada no dia seguinte.`,
-    {
-      category: 'mission',
-      sourceId: getActivityLineageKey(mission, 'mission'),
-      eventDateKey: completedDate,
-      status: 'completed',
-    }
-  );
-
-  if (typeof showFeedback === 'function') {
-    showFeedback(
-      `Missão "${mission.name}" confirmada como concluída em ${completedDate}.`,
-      'success'
-    );
-  }
-
-  return true;
-}
-
-function recordCompletedWorkFromReview(work, completedDate, review = null) {
-  if (!work || !completedDate) return false;
-  if (hasResolvedActivityForDate('work', work, completedDate)) {
-    return discardResolvedPendingFailureReview(review);
-  }
-  if (review) removePendingFailureReview(review.id);
-
-  const completedAt = buildHistoryActionTimestamp(completedDate);
-  const record = {
-    ...work,
-    completed: true,
-    failed: false,
-    skipped: false,
-    completedDate,
-    completedAt,
-    confirmedNextDay: true,
-    confirmedNextDayAt: new Date().toISOString(),
-    peopleIds: sanitizeActivityPeopleIds(work.peopleIds),
-  };
-  delete record.failedDate;
-  delete record.failedAt;
-  delete record.skippedDate;
-  delete record.skippedAt;
-  delete record.penaltyApplied;
-  delete record.reason;
-  delete record.missedDate;
-
-  appData.completedWorks.push(record);
-
-  let xpGained = 1;
-  let coinsGained = 1;
-  let attributeRewards = [];
-  if (work.type === 'epica') {
-    xpGained = 20;
-    coinsGained = 10;
-    attributeRewards = buildAttributeRewards(work.attributes || [], 20, 100);
-  } else {
-    attributeRewards = buildAttributeRewards(work.attributes || [], 1, 1);
-  }
-
-  applyRewardPackage({
-    heroXp: xpGained,
-    coins: coinsGained,
-    attributeRewards,
-    classRewards: work.classId ? [{ id: work.classId, amount: xpGained }] : [],
-  });
-  applyAssociatedPeopleRewards(work, { amount: 1, dateKey: completedDate });
-
-  if (!appData.statistics) appData.statistics = {};
-  appData.statistics.worksDone = (appData.statistics.worksDone || 0) + 1;
-  updateProductiveDay(0, 0, 0, xpGained, 1, {
-    date: completedDate,
-    xpWork: xpGained,
-  });
-
-  addHeroLog(
-    'work',
-    `Trabalho concluído: ${work.name}`,
-    `+${xpGained} XP, +${coinsGained} moeda(s). Confirmado no dia seguinte.`,
-    {
-      category: 'work',
-      sourceId: getActivityLineageKey(work, 'work'),
-      eventDateKey: completedDate,
-      status: 'completed',
-    }
-  );
-
-  if (typeof showFeedback === 'function') {
-    showFeedback(
-      `Trabalho "${work.name}" confirmado como concluído em ${completedDate}.`,
-      'success'
-    );
-  }
-
-  return true;
-}
-
-function recordFailedMissionFromReview(mission, missedDate, review = null) {
-  if (!mission || !missedDate) return false;
-  if (hasResolvedActivityForDate('mission', mission, missedDate)) {
-    return discardResolvedPendingFailureReview(review);
-  }
-  if (review) removePendingFailureReview(review.id);
-  const record = recordManagedActivityFailure('mission', mission, {
-    missedDate,
-    reason: review?.reason || 'Não concluída no dia',
-    recordFields: {
-      missedDate,
-      reviewedNextDay: true,
-    },
-  });
-  if (!record) return false;
-
-  addHeroLog(
-    'mission',
-    `Tarefa falhada: ${mission.name}`,
-    `Falha confirmada no dia seguinte para ${missedDate}. Penalidades aplicadas no pipeline diário.`,
-    {
-      category: 'mission',
-      sourceId: getActivityLineageKey(mission, 'mission'),
-      eventDateKey: missedDate,
-      status: 'failed',
-    }
-  );
-
-  if (typeof showFeedback === 'function') {
-    showFeedback(`Missão "${mission.name}" mantida como falha em ${missedDate}.`, 'warn');
-  }
-
-  return true;
-}
-
-function recordFailedWorkFromReview(work, missedDate, review = null) {
-  if (!work || !missedDate) return false;
-  if (hasResolvedActivityForDate('work', work, missedDate)) {
-    return discardResolvedPendingFailureReview(review);
-  }
-  if (review) removePendingFailureReview(review.id);
-  const record = recordManagedActivityFailure('work', work, {
-    missedDate,
-    reason: review?.reason || 'Não concluído no dia',
-    recordFields: {
-      missedDate,
-      reviewedNextDay: true,
-    },
-  });
-  if (!record) return false;
-
-  addHeroLog(
-    'work',
-    `Trabalho falhado: ${work.name}`,
-    `Falha confirmada no dia seguinte para ${missedDate}. Penalidades aplicadas no pipeline diário.`,
-    {
-      category: 'work',
-      sourceId: getActivityLineageKey(work, 'work'),
-      eventDateKey: missedDate,
-      status: 'failed',
-    }
-  );
-
-  if (typeof showFeedback === 'function') {
-    showFeedback(`Trabalho "${work.name}" mantido como falha em ${missedDate}.`, 'warn');
-  }
-
-  return true;
-}
-
-function recordCompletedWorkoutFromReview(workoutDay, completedDate, review = null) {
-  if (!workoutDay || !completedDate) return false;
-  if (hasResolvedActivityForDate('workout', workoutDay, completedDate)) {
-    return discardResolvedPendingFailureReview(review);
-  }
-  if (review) removePendingFailureReview(review.id);
-
-  const workout = (appData.workouts || []).find(
-    (entry) => String(entry?.id || '') === String(workoutDay.workoutId || '')
-  );
-  const completedAt = buildHistoryActionTimestamp(completedDate);
-  const workoutModelSource = workoutDay?.metric ? workoutDay : workout || workoutDay;
-  if (workout) {
-    applyWorkoutCompletionStats(workout, workoutDay, appData.completedWorkouts || []);
-  }
-
-  if (
-    !appData.completedWorkouts.some(
-      (entry) => entry.workoutId === workoutDay.workoutId && entry.date === completedDate
-    )
-  ) {
-    appData.completedWorkouts.push({
-      id: createUniqueId(appData.completedWorkouts),
-      workoutId: workoutDay.workoutId,
-      name: workoutDay.name || workout?.name || 'Treino',
-      emoji: workoutDay.emoji || workout?.emoji || '💪',
-      metric:
-        typeof getWorkoutMetric === 'function'
-          ? getWorkoutMetric(workoutModelSource)
-          : 'reps',
-      goalDirection:
-        typeof getWorkoutGoalDirection === 'function'
-          ? getWorkoutGoalDirection(workoutModelSource)
-          : 'maximize',
-      usesWeight:
-        typeof workoutUsesWeight === 'function'
-          ? workoutUsesWeight(workoutModelSource)
-          : workoutDay?.usesWeight === true || workout?.usesWeight === true,
-      date: completedDate,
-      completedDate,
-      completedAt,
-      failed: false,
-      series: Array.isArray(workoutDay.series) ? [...workoutDay.series] : [null, null, null],
-      weights: Array.isArray(workoutDay.weights) ? [...workoutDay.weights] : [null, null, null],
-      distance: workoutDay.distance ?? null,
-      time: workoutDay.time ?? null,
-      feedback: workoutDay.feedback || '',
-      objectiveId: workoutDay.objectiveId || workout?.objectiveId || null,
-      priority: workoutDay.priority || workout?.priority || 'medium',
-      impact: workoutDay.impact || workout?.impact || 'medium',
-      effort: workoutDay.effort || workout?.effort || 'medium',
-      energy: workoutDay.energy || workout?.energy || 'medium',
-      confirmedNextDay: true,
-      confirmedNextDayAt: new Date().toISOString(),
-      peopleIds: sanitizeActivityPeopleIds(workoutDay.peopleIds),
-    });
-  }
-
-  const workoutGoalDirection =
-    typeof getWorkoutGoalDirection === 'function'
-      ? getWorkoutGoalDirection(workoutModelSource)
-      : 'maximize';
-  const isRepetitionWorkout =
-    typeof isRepetitionWorkoutType === 'function'
-      ? isRepetitionWorkoutType(workoutModelSource)
-      : true;
-  const isDistanceWorkout =
-    typeof isDistanceWorkoutType === 'function'
-      ? isDistanceWorkoutType(workoutModelSource)
-      : false;
-  const isTimedWorkout =
-    typeof isTimedWorkoutType === 'function'
-      ? isTimedWorkoutType(workoutModelSource)
-      : false;
-
-  const attributeRewards = [{ id: 2, amount: 1 }];
-  if (isTimedWorkout && workoutGoalDirection === 'minimize') {
-    attributeRewards.push({ id: 3, amount: 1 });
-  }
-  if (isRepetitionWorkout || (isTimedWorkout && workoutGoalDirection === 'maximize')) {
-    attributeRewards.push({ id: 1, amount: 1 });
-  }
-  if (isDistanceWorkout) {
-    attributeRewards.push({ id: 6, amount: 1 });
-  }
-
-  applyRewardPackage({
-    heroXp: 3,
-    coins: 1,
-    attributeRewards,
-    trackerRewards: workout ? [{ entity: workout, amount: 10, mode: 'cyclic' }] : [],
-  });
-  applyAssociatedPeopleRewards(workoutDay, {
-    amount: 1,
-    dateKey: completedDate,
-  });
-
-  if (!appData.statistics) appData.statistics = {};
-  appData.statistics.workoutsDone = (appData.statistics.workoutsDone || 0) + 1;
-  updateProductiveDay(1, 0, 0, 3, 0, {
-    date: completedDate,
-    xpWorkout: 3,
-  });
-
-  addHeroLog(
-    'workout',
-    `Treino concluído: ${workoutDay.name || workout?.name || 'Treino'}`,
-    '+3 XP, +1 moeda. Confirmado no dia seguinte.',
-    {
-      category: 'workout',
-      sourceId: getActivityLineageKey(workoutDay, 'workout'),
-      eventDateKey: completedDate,
-      status: 'completed',
-    }
-  );
-
-  if (typeof showFeedback === 'function') {
-    showFeedback(
-      `Treino "${workoutDay.name || workout?.name || 'Treino'}" confirmado como concluído em ${completedDate}.`,
-      'success'
-    );
-  }
-
-  return true;
-}
-
-function recordCompletedStudyFromReview(studyDay, completedDate, review = null) {
-  if (!studyDay || !completedDate) return false;
-  if (hasResolvedActivityForDate('study', studyDay, completedDate)) {
-    return discardResolvedPendingFailureReview(review);
-  }
-  if (review) removePendingFailureReview(review.id);
-
-  const study = (appData.studies || []).find(
-    (entry) => String(entry?.id || '') === String(studyDay.studyId || '')
-  );
-  const completedAt = buildHistoryActionTimestamp(completedDate);
-
-  if (
-    !appData.completedStudies.some(
-      (entry) => entry.studyId === studyDay.studyId && entry.date === completedDate
-    )
-  ) {
-    appData.completedStudies.push({
-      id: createUniqueId(appData.completedStudies),
-      studyId: studyDay.studyId,
-      name: studyDay.name || study?.name || 'Estudo',
-      emoji: studyDay.emoji || study?.emoji || '📚',
-      type: studyDay.type || study?.type || 'logico',
-      date: completedDate,
-      completedDate,
-      completedAt,
-      failed: false,
-      applied: Boolean(studyDay.applied),
-      feedback: studyDay.feedback || '',
-      objectiveId: studyDay.objectiveId || study?.objectiveId || null,
-      priority: studyDay.priority || study?.priority || 'medium',
-      impact: studyDay.impact || study?.impact || 'medium',
-      effort: studyDay.effort || study?.effort || 'medium',
-      energy: studyDay.energy || study?.energy || 'medium',
-      confirmedNextDay: true,
-      confirmedNextDayAt: new Date().toISOString(),
-      peopleIds: sanitizeActivityPeopleIds(studyDay.peopleIds),
-    });
-  }
-
-  let xpGained = 1;
-  const attributeRewards = [{ id: 12, amount: 1 }];
-  if (studyDay.type === 'criativo') {
-    attributeRewards.push({ id: 5, amount: 3 });
-  }
-  if (studyDay.applied) {
-    xpGained += 2;
-    attributeRewards.push({ id: 12, amount: 2 });
-    attributeRewards.push({ id: 7, amount: 3 });
-  }
-
-  if (study?.stats) {
-    study.stats.completed = (study.stats.completed || 0) + 1;
-    if (studyDay.applied) {
-      study.stats.applied = (study.stats.applied || 0) + 1;
-    }
-  } else if (study) {
-    study.stats = {
-      completed: 1,
-      applied: studyDay.applied ? 1 : 0,
-    };
-  }
-
-  applyRewardPackage({
-    heroXp: xpGained,
-    coins: 1,
-    attributeRewards,
-    trackerRewards: study ? [{ entity: study, amount: 5, mode: 'cyclic' }] : [],
-  });
-  applyAssociatedPeopleRewards(studyDay, {
-    amount: 1,
-    dateKey: completedDate,
-  });
-
-  if (!appData.statistics) appData.statistics = {};
-  appData.statistics.studiesDone = (appData.statistics.studiesDone || 0) + 1;
-  updateProductiveDay(0, 0, 1, xpGained, 0, {
-    date: completedDate,
-    xpStudy: xpGained,
-  });
-
-  addHeroLog(
-    'study',
-    `Estudo concluído: ${studyDay.name || study?.name || 'Estudo'}`,
-    `+${xpGained} XP, +1 moeda${studyDay.applied ? ' (aplicado)' : ''}. Confirmado no dia seguinte.`,
-    {
-      category: 'study',
-      sourceId: getActivityLineageKey(studyDay, 'study'),
-      eventDateKey: completedDate,
-      status: 'completed',
-    }
-  );
-
-  if (typeof showFeedback === 'function') {
-    showFeedback(
-      `Estudo "${studyDay.name || study?.name || 'Estudo'}" confirmado como concluído em ${completedDate}.`,
-      'success'
-    );
-  }
-
-  return true;
-}
-
-function recordFailedWorkoutFromReview(workoutDay, missedDate, review = null) {
-  if (!workoutDay || !missedDate) return false;
-  if (hasResolvedActivityForDate('workout', workoutDay, missedDate)) {
-    return discardResolvedPendingFailureReview(review);
-  }
-  if (review) removePendingFailureReview(review.id);
-
-  appData.completedWorkouts.push({
-    id: createUniqueId(appData.completedWorkouts),
-    workoutId: workoutDay.workoutId,
-    name: workoutDay.name || 'Treino',
-    emoji: workoutDay.emoji || '💪',
-    metric:
-      typeof getWorkoutMetric === 'function' ? getWorkoutMetric(workoutDay) : 'reps',
-    goalDirection:
-      typeof getWorkoutGoalDirection === 'function'
-        ? getWorkoutGoalDirection(workoutDay)
-        : 'maximize',
-    usesWeight:
-      typeof workoutUsesWeight === 'function'
-        ? workoutUsesWeight(workoutDay)
-        : workoutDay?.usesWeight === true,
-    date: missedDate,
-    completedDate: missedDate,
-    failedDate: missedDate,
-    failedAt: buildHistoryActionTimestamp(missedDate),
-    failed: true,
-    penaltyApplied: false,
-    reason: review?.reason || 'Atividade não completada',
-    feedback: workoutDay.feedback || '',
-    objectiveId: workoutDay.objectiveId || null,
-    peopleIds: sanitizeActivityPeopleIds(workoutDay.peopleIds),
-  });
-  applyPenalties(missedDate, { onlyTypes: ['workout'] });
-
-  if (typeof showFeedback === 'function') {
-    showFeedback(
-      `Treino "${workoutDay.name || 'Treino'}" mantido como falha em ${missedDate}.`,
-      'warn'
-    );
-  }
-
-  return true;
-}
-
-function recordFailedStudyFromReview(studyDay, missedDate, review = null) {
-  if (!studyDay || !missedDate) return false;
-  if (hasResolvedActivityForDate('study', studyDay, missedDate)) {
-    return discardResolvedPendingFailureReview(review);
-  }
-  if (review) removePendingFailureReview(review.id);
-
-  appData.completedStudies.push({
-    id: createUniqueId(appData.completedStudies),
-    studyId: studyDay.studyId,
-    name: studyDay.name || 'Estudo',
-    emoji: studyDay.emoji || '📚',
-    type: studyDay.type || 'logico',
-    date: missedDate,
-    completedDate: missedDate,
-    failedDate: missedDate,
-    failedAt: buildHistoryActionTimestamp(missedDate),
-    failed: true,
-    penaltyApplied: false,
-    reason: review?.reason || 'Atividade não completada',
-    feedback: studyDay.feedback || '',
-    objectiveId: studyDay.objectiveId || null,
-    peopleIds: sanitizeActivityPeopleIds(studyDay.peopleIds),
-  });
-  applyPenalties(missedDate, { onlyTypes: ['study'] });
-
-  if (typeof showFeedback === 'function') {
-    showFeedback(
-      `Estudo "${studyDay.name || 'Estudo'}" mantido como falha em ${missedDate}.`,
-      'warn'
-    );
-  }
-
-  return true;
-}
-
-function removePendingFailureReview(reviewId) {
-  const pendingReviews = ensurePendingFailureReviews();
-  const reviewIndex = pendingReviews.findIndex((review) => Number(review?.id) === Number(reviewId));
-  if (reviewIndex === -1) return false;
-  pendingReviews.splice(reviewIndex, 1);
-  return true;
-}
-
-function resolvePendingFailureReview(review, wasCompleted) {
-  if (!review || !review.activity || !review.category) return false;
-  if (review.category === 'workout') {
-    return wasCompleted
-      ? recordCompletedWorkoutFromReview(review.activity, review.missedDate, review)
-      : recordFailedWorkoutFromReview(review.activity, review.missedDate, review);
-  }
-  if (review.category === 'study') {
-    return wasCompleted
-      ? recordCompletedStudyFromReview(review.activity, review.missedDate, review)
-      : recordFailedStudyFromReview(review.activity, review.missedDate, review);
-  }
-  if (review.category === 'work') {
-    return wasCompleted
-      ? recordCompletedWorkFromReview(review.activity, review.missedDate, review)
-      : recordFailedWorkFromReview(review.activity, review.missedDate, review);
-  }
-  return wasCompleted
-    ? recordCompletedMissionFromReview(review.activity, review.missedDate, review)
-    : recordFailedMissionFromReview(review.activity, review.missedDate, review);
-}
-
-async function processPendingFailureReviews() {
-  if (Array.isArray(appData.pendingFailureReviews) && appData.pendingFailureReviews.length > 0) {
-    appData.pendingFailureReviews = [];
-  }
-  return true;
-}
-
 // Manipular conclusão de treino
 function handleWorkoutCompletion() {
   const workoutDayId = parseInt(document.getElementById('workout-day-id').value);
@@ -1424,9 +766,7 @@ function handleWorkoutCompletion() {
 
   // Atualizar valores
   const workoutGoalDirection =
-    typeof getWorkoutGoalDirection === 'function'
-      ? getWorkoutGoalDirection(workout)
-      : 'maximize';
+    typeof getWorkoutGoalDirection === 'function' ? getWorkoutGoalDirection(workout) : 'maximize';
   const isRepetitionWorkout =
     typeof isRepetitionWorkoutType === 'function' ? isRepetitionWorkoutType(workout) : true;
   const isDistanceWorkout =
@@ -1498,8 +838,7 @@ function handleWorkoutCompletion() {
       workoutId: workoutDay.workoutId,
       name: workout.name,
       emoji: workout.emoji,
-      metric:
-        typeof getWorkoutMetric === 'function' ? getWorkoutMetric(workout) : 'reps',
+      metric: typeof getWorkoutMetric === 'function' ? getWorkoutMetric(workout) : 'reps',
       goalDirection:
         typeof getWorkoutGoalDirection === 'function'
           ? getWorkoutGoalDirection(workout)
@@ -1884,7 +1223,9 @@ function updateActivityForm() {
   const workoutMetric =
     typeof getWorkoutMetric === 'function'
       ? getWorkoutMetric(workoutTypeInput?.value || 'reps|maximize')
-      : String(workoutTypeInput?.value || 'reps|maximize').trim().startsWith('reps')
+      : String(workoutTypeInput?.value || 'reps|maximize')
+            .trim()
+            .startsWith('reps')
         ? 'reps'
         : 'other';
   const isRepetitionWorkoutSelection = isWorkout && workoutMetric === 'reps';
@@ -2302,7 +1643,7 @@ function completeMission(missionId, feedbackText = '') {
 
   addHeroLog(
     'mission',
-    `Missão concluída: ${mission.name}`,
+    `Ação concluída: ${mission.name}`,
     `+${xpGained} XP, +${coinsGained} moeda(s)`,
     {
       category: 'mission',
@@ -2316,7 +1657,7 @@ function completeMission(missionId, feedbackText = '') {
   updateUI({ mode: 'activity' });
 
   // 6. Mostrar feedback visual
-  const missionDoneMessage = `Missão "${mission.name}" concluída! ${
+  const missionDoneMessage = `Ação "${mission.name}" concluída! ${
     isRoutine ? 'Ela reaparecerá conforme os dias marcados.' : ''
   }`;
   celebrateAction({
@@ -2447,19 +1788,9 @@ function getRoutineOccurrenceDateKey(item) {
 
 function buildLatestRoutineTemplateMap(category, activeList = [], completedList = []) {
   const templates = new Map();
-  const pendingRoutineTemplates = ensurePendingFailureReviews()
-    .filter(
-      (review) =>
-        review?.category === category &&
-        review?.activity &&
-        typeof isRoutineType === 'function' &&
-        isRoutineType(review.activity.type)
-    )
-    .map((review) => review.activity);
   const candidates = [
     ...(Array.isArray(completedList) ? completedList : []),
     ...(Array.isArray(activeList) ? activeList : []),
-    ...pendingRoutineTemplates,
   ];
 
   candidates.forEach((item) => {
@@ -2928,14 +2259,6 @@ async function useItem(itemId) {
 
   // Aplicar efeito
   switch (item.effect) {
-    case 'heal':
-      showToast(
-        'Esse item legado não tem mais efeito porque o sistema de vidas foi removido.',
-        'info'
-      );
-      addHeroLog('item', 'Item legado sem efeito', 'A antiga poção de vida foi desativada.');
-      break;
-
     case 'skip':
       // Token de pulo e consumido automaticamente ao pular atividades.
       appData.inventory.push({ id: itemId, purchaseDate: new Date().toISOString() });
@@ -2975,6 +2298,10 @@ async function useItem(itemId) {
       showFeedback(`${item.name} usado! Recompensa: ${item.description}`, 'success');
       // Aqui você pode adicionar lógica personalizada para itens customizados
       addHeroLog('item', `Item usado: ${item.name}`, item.description || 'Recompensa aplicada.');
+      break;
+
+    default:
+      showFeedback('Item sem efeito configurado.', 'warn');
       break;
   }
 
@@ -3082,8 +2409,6 @@ Object.assign(globalThis, {
   updateActivityForm,
   completeMission,
   completeWork,
-  prepareStartupFailureReviews,
-  processPendingFailureReviews,
   recordManagedActivityFailure,
   recreateDailyMissionsForToday,
   cleanupOldDailyMissions,
@@ -3134,8 +2459,6 @@ if (typeof module !== 'undefined' && module.exports) {
     assignActivityPeople,
     addPersonXP,
     applyAssociatedPeopleRewards,
-    prepareStartupFailureReviews,
-    processPendingFailureReviews,
     recordManagedActivityFailure,
     cleanupOldDailyMissions,
     cleanupOldDailyWorks,

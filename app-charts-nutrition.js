@@ -89,7 +89,13 @@ function getWorkoutEntryMetric(entry) {
     return { primaryLabel: 'Volume', primaryValue: 0, typeLabel: '', extraSeries: [] };
   }
 
-  if (entry.type === 'repeticao') {
+  const metric = typeof getWorkoutMetric === 'function' ? getWorkoutMetric(entry) : entry.metric;
+  const goalDirection =
+    typeof getWorkoutGoalDirection === 'function'
+      ? getWorkoutGoalDirection(entry)
+      : entry.goalDirection;
+
+  if (metric === 'reps') {
     const totalReps = Array.isArray(entry.series)
       ? entry.series.reduce((sum, value) => sum + (parseInt(value, 10) || 0), 0)
       : 0;
@@ -101,7 +107,7 @@ function getWorkoutEntryMetric(entry) {
     };
   }
 
-  if (entry.type === 'distancia') {
+  if (metric === 'distance') {
     const distance = Number(entry.distance || 0);
     const time = Number(entry.time || 0);
     const speed = distance > 0 && time > 0 ? (distance / time) * 60 : 0;
@@ -120,7 +126,7 @@ function getWorkoutEntryMetric(entry) {
   return {
     primaryLabel: 'Tempo (min)',
     primaryValue: time,
-    typeLabel: entry.type === 'menor-tempo' ? 'Menor tempo' : 'Maior tempo',
+    typeLabel: goalDirection === 'minimize' ? 'Contra o tempo' : 'Duração',
     extraSeries: [],
   };
 }
@@ -133,7 +139,8 @@ function getWorkoutHistoryCatalog() {
         id: String(item.id),
         name: item.name || 'Treino',
         emoji: item.emoji || '💪',
-        type: item.type || '',
+        metric: item.metric || 'reps',
+        goalDirection: item.goalDirection || 'maximize',
       }));
   }
 
@@ -141,7 +148,8 @@ function getWorkoutHistoryCatalog() {
     id: String(workout.id),
     name: workout.name || 'Treino',
     emoji: workout.emoji || '💪',
-    type: workout.type || '',
+    metric: workout.metric || 'reps',
+    goalDirection: workout.goalDirection || 'maximize',
   }));
 }
 
@@ -240,7 +248,7 @@ function updateActivitiesChart() {
   }, 0);
 
   const data = {
-    labels: ['Tarefas', 'Trabalhos', 'Treinos', 'Estudos', 'Livros'],
+    labels: ['Ações', 'Trabalhos', 'Treinos', 'Estudos', 'Livros'],
     datasets: [
       {
         label: `Atividades Realizadas (${periodDays} dias)`,
@@ -397,14 +405,14 @@ function updateWeeklyChart() {
       labels: labels,
       datasets: [
         {
-          label: 'Tarefas',
+          label: 'Ações',
           data: missionsData,
           borderColor: CATEGORY_COLORS.mission.border,
           backgroundColor: CATEGORY_COLORS.mission.soft,
           tension: 0.4,
         },
         {
-          label: 'Meta Tarefas',
+          label: 'Meta Ações',
           data: missionGoalData,
           borderColor: CATEGORY_COLORS.mission.goal,
           backgroundColor: CATEGORY_COLORS.mission.soft,
@@ -514,7 +522,7 @@ function updateFailuresChart() {
   ctx.chart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ['Tarefas', 'Trabalhos', 'Treinos', 'Estudos'],
+      labels: ['Ações', 'Trabalhos', 'Treinos', 'Estudos'],
       datasets: [
         {
           label: `Falhas/Ignorados (${periodDays} dias)`,
@@ -560,7 +568,7 @@ function updateCompletedVsFailedChart() {
 
   const periodDays = getSelectedStatsChartPeriodDays();
   const periodKeys = new Set(getStatsChartPeriodDateKeys(periodDays));
-  const categories = ['Tarefas', 'Trabalhos', 'Treinos', 'Estudos'];
+  const categories = ['Ações', 'Trabalhos', 'Treinos', 'Estudos'];
   const periodTotals =
     typeof globalThis.getTotalsFromDateKeys === 'function'
       ? globalThis.getTotalsFromDateKeys(periodKeys)
@@ -651,7 +659,7 @@ function updateAdherenceRateChart() {
 
   const periodDays = getSelectedStatsChartPeriodDays();
   const periodKeys = new Set(getStatsChartPeriodDateKeys(periodDays));
-  const categories = ['Tarefas', 'Trabalhos', 'Treinos', 'Estudos'];
+  const categories = ['Ações', 'Trabalhos', 'Treinos', 'Estudos'];
   const periodTotals =
     typeof globalThis.getTotalsFromDateKeys === 'function'
       ? globalThis.getTotalsFromDateKeys(periodKeys)
@@ -757,7 +765,7 @@ function updateXpBySourceChart() {
   ctx.chart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ['Tarefas', 'Trabalhos', 'Treinos', 'Estudos', 'Livros'],
+      labels: ['Ações', 'Trabalhos', 'Treinos', 'Estudos', 'Livros'],
       datasets: [
         {
           label: `XP estimado por fonte (${periodDays} dias)`,
@@ -832,12 +840,13 @@ function updateWorkoutVolumeChart() {
 
     bucket.sessions += 1;
 
-    if (entry.type === 'repeticao' && Array.isArray(entry.series)) {
+    const metric = typeof getWorkoutMetric === 'function' ? getWorkoutMetric(entry) : entry.metric;
+    if (metric === 'reps' && Array.isArray(entry.series)) {
       bucket.reps += entry.series.reduce((sum, value) => sum + (parseInt(value, 10) || 0), 0);
       return;
     }
 
-    if (entry.type === 'distancia') {
+    if (metric === 'distance') {
       bucket.distance += Number(entry.distance || 0);
       bucket.time += Number(entry.time || 0);
       return;
@@ -1099,7 +1108,7 @@ function ensureNutritionStatsState() {
 
 function isNutritionEntryConsolidated(entry) {
   if (!entry || typeof entry !== 'object') return false;
-  return entry.consolidated !== false;
+  return entry.consolidated === true;
 }
 
 function calculateNutritionTotals(entries) {
@@ -1122,8 +1131,7 @@ function normalizeNutritionEntryForTimeline(entry) {
     ...source,
     id: Number.isFinite(Number(source.id)) ? Number(source.id) : 0,
     meal: source.meal || 'lanche',
-    foodName:
-      String(source.foodName || source.name || 'Alimento sem nome').trim() || 'Alimento sem nome',
+    foodName: String(source.foodName || 'Alimento sem nome').trim() || 'Alimento sem nome',
     grams: Number(source.grams || 0),
     kcal: Number(source.kcal || 0),
     protein: Number(source.protein || 0),
@@ -1131,7 +1139,7 @@ function normalizeNutritionEntryForTimeline(entry) {
     fat: Number(source.fat || 0),
     fiber: Number(source.fiber || 0),
     notes: String(source.notes || '').trim(),
-    consolidated: source.consolidated !== false,
+    consolidated: source.consolidated === true,
     consolidatedAt: String(source.consolidatedAt || '').trim(),
   };
 }
@@ -1425,7 +1433,9 @@ async function deleteNutritionEntry(entryId) {
 function renderNutritionDaySummary(dateStr) {
   const container = document.getElementById('nutrition-day-summary');
   if (!container) return;
-  const totals = calculateNutritionTotals(getNutritionEntriesByDate(dateStr, { includePending: true }));
+  const totals = calculateNutritionTotals(
+    getNutritionEntriesByDate(dateStr, { includePending: true })
+  );
   const status = buildNutritionConsolidationStatus(dateStr);
   const requiredMealCount = Math.max(1, status.requiredMeals.length);
   container.innerHTML = `
@@ -1488,7 +1498,9 @@ function renderNutritionDayEntries(dateStr) {
 function renderNutritionGoalStatus(dateStr) {
   const container = document.getElementById('nutrition-goal-status');
   if (!container) return;
-  const totals = calculateNutritionTotals(getNutritionEntriesByDate(dateStr, { includePending: true }));
+  const totals = calculateNutritionTotals(
+    getNutritionEntriesByDate(dateStr, { includePending: true })
+  );
   const evaluation = evaluateNutritionGoalStatus(totals);
   container.innerHTML = evaluation.items
     .map((item) => {
@@ -1521,9 +1533,7 @@ function getNutritionEntriesWithinDays(days) {
   return (appData.nutritionEntries || [])
     .filter(
       (entry) =>
-        entry.date >= startStr &&
-        entry.date <= todayStr &&
-        isNutritionEntryConsolidated(entry)
+        entry.date >= startStr && entry.date <= todayStr && isNutritionEntryConsolidated(entry)
     )
     .map(normalizeNutritionEntryForTimeline)
     .sort((a, b) => {
@@ -1868,9 +1878,7 @@ function recalcNutritionStats() {
     isNutritionEntryConsolidated(entry)
   );
   const logDates = Array.from(new Set(consolidatedEntries.map((entry) => entry.date))).sort();
-  const rewardedGoalSet = new Set(
-    (stats.rewardedGoalDates || []).map((v) => String(v))
-  );
+  const rewardedGoalSet = new Set((stats.rewardedGoalDates || []).map((v) => String(v)));
   const goalHitDates = logDates.filter((date) => {
     const totals = calculateNutritionTotals(getNutritionEntriesByDate(date));
     const evaluation = evaluateNutritionGoalStatus(totals);
@@ -1909,9 +1917,7 @@ function maybeRewardNutritionGoal(dateStr) {
         ['protein', 'carbs', 'fat', 'fiber'].includes(item.key) &&
         getNutritionStatusClass(item) === 'ok'
     )
-    .filter(
-      (item) => !stats.rewardedMacroGoalKeys.includes(`${dateStr}|${item.key}`)
-    );
+    .filter((item) => !stats.rewardedMacroGoalKeys.includes(`${dateStr}|${item.key}`));
   if (!rewardedItems.length) return false;
 
   rewardedItems.forEach((item) => {
@@ -2105,9 +2111,9 @@ async function reopenNutritionDay(dateStr = getNutritionDiaryDate()) {
   appData.nutritionStats.rewardedMacroGoalKeys = (
     appData.nutritionStats.rewardedMacroGoalKeys || []
   ).filter((key) => !String(key).startsWith(rewardPrefix));
-  appData.nutritionStats.rewardedGoalDates = (appData.nutritionStats.rewardedGoalDates || []).filter(
-    (date) => String(date) !== targetDateStr
-  );
+  appData.nutritionStats.rewardedGoalDates = (
+    appData.nutritionStats.rewardedGoalDates || []
+  ).filter((date) => String(date) !== targetDateStr);
   removeNutritionLogsForDate(targetDateStr);
   rollbackHeroXP(totalHeroRewards);
   rollbackAttributeXP(6, rewardedMealKeys.length);
@@ -2120,7 +2126,10 @@ async function reopenNutritionDay(dateStr = getNutritionDiaryDate()) {
   recalcNutritionStats();
   if (typeof queueSave === 'function') queueSave();
   updateNutritionView();
-  showFeedback('Dia reaberto. Ajuste as refeições e consolide novamente quando terminar.', 'success');
+  showFeedback(
+    'Dia reaberto. Ajuste as refeições e consolide novamente quando terminar.',
+    'success'
+  );
   return true;
 }
 
@@ -2139,7 +2148,9 @@ function consolidateNutritionDay(dateStr = getNutritionDiaryDate()) {
     return false;
   }
 
-  const consolidatedAt = (typeof getGameNow === 'function' ? getGameNow() : new Date()).toISOString();
+  const consolidatedAt = (
+    typeof getGameNow === 'function' ? getGameNow() : new Date()
+  ).toISOString();
   const mealGroups = new Map();
   pendingEntries.forEach((entry) => {
     entry.consolidated = true;

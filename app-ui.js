@@ -432,7 +432,9 @@ function handlePersonSubmit(event) {
 
   const savedPerson = existingPerson || appData.people[appData.people.length - 1];
   const sortedPeople = getSortedPeople();
-  const savedIndex = sortedPeople.findIndex((person) => Number(person?.id) === Number(savedPerson?.id));
+  const savedIndex = sortedPeople.findIndex(
+    (person) => Number(person?.id) === Number(savedPerson?.id)
+  );
   if (savedIndex >= 0) {
     currentPeoplePage = Math.floor(savedIndex / PEOPLE_PAGE_SIZE) + 1;
   }
@@ -1351,21 +1353,13 @@ function formatWorkoutWeightStat(weightKg) {
 
 function getWorkoutStats(workout) {
   const workoutGoalDirection =
-    typeof getWorkoutGoalDirection === 'function'
-      ? getWorkoutGoalDirection(workout)
-      : 'maximize';
+    typeof getWorkoutGoalDirection === 'function' ? getWorkoutGoalDirection(workout) : 'maximize';
   const isRepetitionWorkout =
-    typeof isRepetitionWorkoutType === 'function'
-      ? isRepetitionWorkoutType(workout)
-      : true;
+    typeof isRepetitionWorkoutType === 'function' ? isRepetitionWorkoutType(workout) : true;
   const isDistanceWorkout =
-    typeof isDistanceWorkoutType === 'function'
-      ? isDistanceWorkoutType(workout)
-      : false;
+    typeof isDistanceWorkoutType === 'function' ? isDistanceWorkoutType(workout) : false;
   const isTimedWorkout =
-    typeof isTimedWorkoutType === 'function'
-      ? isTimedWorkoutType(workout)
-      : false;
+    typeof isTimedWorkoutType === 'function' ? isTimedWorkoutType(workout) : false;
 
   if (isRepetitionWorkout) {
     const usesWeight =
@@ -2022,7 +2016,7 @@ function failMission(missionId, reason = '', options = {}) {
 
   addHeroLog(
     'mission',
-    `Tarefa falhada: ${mission.name}`,
+    `Ação falhada: ${mission.name}`,
     `Falha registrada para ${penaltyDate}. Penalidades aplicadas no pipeline diário.`,
     {
       category: 'mission',
@@ -2031,7 +2025,7 @@ function failMission(missionId, reason = '', options = {}) {
       status: 'failed',
     }
   );
-  showFeedback(`Tarefa "${mission.name}" falhou (${penaltyDate}).`, 'error', 3200);
+  showFeedback(`Ação "${mission.name}" falhou (${penaltyDate}).`, 'error', 3200);
 }
 
 // Atualizar missões
@@ -2094,7 +2088,7 @@ async function skipMission(missionId) {
           entry.skippedDate === todayStr)
     );
   if (routineAlreadyResolvedToday) return;
-  if (!(await tryConsumeSkipItem(`a missao "${mission.name}"`))) return;
+  if (!(await tryConsumeSkipItem(`a ação "${mission.name}"`))) return;
 
   appData.completedMissions.push({
     ...mission,
@@ -2117,7 +2111,7 @@ async function skipMission(missionId) {
 
   addHeroLog(
     'mission',
-    `Missao pulada: ${mission.name}`,
+    `Ação pulada: ${mission.name}`,
     '1 item de pulo consumido. Sem penalidade.',
     {
       category: 'mission',
@@ -2128,7 +2122,7 @@ async function skipMission(missionId) {
   );
 
   updateUI({ mode: 'activity' });
-  showFeedback(`Missao "${mission.name}" pulada sem penalidade.`, 'info');
+  showFeedback(`Ação "${mission.name}" pulada sem penalidade.`, 'info');
 }
 
 function failWork(workId, reason = '', options = {}) {
@@ -2193,17 +2187,12 @@ async function skipWork(workId) {
     appData.works.splice(workIndex, 1);
   }
 
-  addHeroLog(
-    'work',
-    `Trabalho pulado: ${work.name}`,
-    '1 item de pulo consumido. Sem penalidade.',
-    {
-      category: 'work',
-      sourceId: String(work.originalId || work.id || ''),
-      eventDateKey: todayStr,
-      status: 'skipped',
-    }
-  );
+  addHeroLog('work', `Trabalho pulado: ${work.name}`, '1 item de pulo consumido. Sem penalidade.', {
+    category: 'work',
+    sourceId: String(work.originalId || work.id || ''),
+    eventDateKey: todayStr,
+    status: 'skipped',
+  });
 
   updateUI({ mode: 'activity' });
   showFeedback(`Trabalho "${work.name}" pulado sem penalidade.`, 'info');
