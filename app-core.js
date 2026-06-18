@@ -235,10 +235,7 @@ function checkDailyReset() {
           })();
 
     missedDates.forEach((dateKey) => {
-      if (dateKey === yesterdayStr) {
-        applyPenalties(dateKey, { onlyTypes: ['nutrition', 'hydration'] });
-        return;
-      }
+      if (dateKey >= yesterdayStr) return;
       applyPenalties(dateKey);
     });
 

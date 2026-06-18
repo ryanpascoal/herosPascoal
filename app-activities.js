@@ -458,6 +458,32 @@ function getTimelineFailureDeadlineHtml(entry) {
   `;
 }
 
+function isFailureDeadlinePastLoggingGrace(deadlineDateKey) {
+  const safeDeadlineDateKey = String(deadlineDateKey || '').trim();
+  if (!safeDeadlineDateKey) return true;
+  const todayStr = typeof getLocalDateString === 'function' ? getLocalDateString(getGameNow()) : '';
+  if (!todayStr) return true;
+  if (typeof isDatePastLoggingGrace === 'function') {
+    return isDatePastLoggingGrace(safeDeadlineDateKey, todayStr);
+  }
+  const graceDate =
+    typeof parseLocalDateString === 'function'
+      ? parseLocalDateString(safeDeadlineDateKey)
+      : new Date(safeDeadlineDateKey);
+  if (!Number.isFinite(graceDate.getTime())) return true;
+  graceDate.setDate(graceDate.getDate() + 1);
+  return getLocalDateString(graceDate) < todayStr;
+}
+
+function isPrematureFailureTimelineEntry(entry) {
+  if (!entry || !entry.failureDeadlineDateKey) return false;
+  const isFailedActivity = entry.timelineKind === 'activity' && entry.item?.failed === true;
+  const isFailedLog =
+    entry.timelineKind === 'log' && getStandaloneTimelineLogStatusClass(entry.log) === 'failed';
+  if (!isFailedActivity && !isFailedLog) return false;
+  return !isFailureDeadlinePastLoggingGrace(entry.failureDeadlineDateKey);
+}
+
 function getPlannedTimelineStatusMeta() {
   return { text: 'PLANEJADO', className: 'planned-status', tone: 'planned' };
 }
@@ -841,10 +867,12 @@ function getStandaloneTimelineLogCategory(log) {
     safeType === 'work' ||
     safeType === 'level' ||
     safeType === 'item' ||
-    safeType === 'penalty' ||
     safeType === 'system'
   ) {
     return safeType;
+  }
+  if (safeType === 'penalty') {
+    return inferPenaltyDetailCategory(`${log?.title || ''} ${log?.content || ''}`);
   }
   return 'hero-log';
 }
@@ -1232,7 +1260,9 @@ function getUnifiedTimelineEvents() {
     ...nutritionEvents,
     ...expandedPenaltyLogEvents,
     ...logEvents,
-  ].sort((left, right) => {
+  ]
+    .filter((entry) => !isPrematureFailureTimelineEntry(entry))
+    .sort((left, right) => {
     const timeDelta = Number(right.sortTimestamp || 0) - Number(left.sortTimestamp || 0);
     if (timeDelta !== 0) return timeDelta;
     const isoDelta = String(right.eventTimestamp || '').localeCompare(

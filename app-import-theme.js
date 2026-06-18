@@ -916,7 +916,21 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   const yesterdayDate = parseLocalDateString(todayStr);
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterdayDate);
-  const shouldResetCurrentStreaks = targetDateStr === todayStr || targetDateStr === yesterdayStr;
+  const isTargetPastLoggingGrace =
+    typeof isDatePastLoggingGrace === 'function'
+      ? isDatePastLoggingGrace(targetDateStr, todayStr)
+      : (() => {
+          const graceDate = parseLocalDateString(targetDateStr);
+          graceDate.setDate(graceDate.getDate() + 1);
+          return getLocalDateString(graceDate) < todayStr;
+        })();
+  const targetGraceExpiredDate = parseLocalDateString(targetDateStr);
+  targetGraceExpiredDate.setDate(targetGraceExpiredDate.getDate() + 2);
+  const shouldResetCurrentStreaks =
+    targetDateStr === todayStr ||
+    targetDateStr === yesterdayStr ||
+    getLocalDateString(targetGraceExpiredDate) === todayStr;
+  const shouldCheckMissedType = (type) => shouldCheckType(type) && isTargetPastLoggingGrace;
 
   if (isRestDay(targetDateStr)) {
     return;
@@ -983,7 +997,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
 
   // Check workouts - was there any failed workout on this day?
   let failedWorkouts = [];
-  if (shouldCheckType('workout')) {
+  if (shouldCheckMissedType('workout')) {
     const existingFailedWorkouts = appData.completedWorkouts.filter(
       (entry) => entry.failedDate === targetDateStr && entry.failed && entry.penaltyApplied !== true
     );
@@ -998,9 +1012,9 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       );
     }
   }
-  if (shouldCheckType('workout') && failedWorkouts.length > 0) {
+  if (shouldCheckMissedType('workout') && failedWorkouts.length > 0) {
     failedTypes.push('workout');
-  } else if (shouldCheckType('workout')) {
+  } else if (shouldCheckMissedType('workout')) {
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const scheduledWorkouts = appData.workouts.filter(
       (w) =>
@@ -1041,7 +1055,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
 
   // Check studies - was there any failed study on this day?
   let failedStudies = [];
-  if (shouldCheckType('study')) {
+  if (shouldCheckMissedType('study')) {
     const existingFailedStudies = appData.completedStudies.filter(
       (entry) => entry.failedDate === targetDateStr && entry.failed && entry.penaltyApplied !== true
     );
@@ -1056,9 +1070,9 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       );
     }
   }
-  if (shouldCheckType('study') && failedStudies.length > 0) {
+  if (shouldCheckMissedType('study') && failedStudies.length > 0) {
     failedTypes.push('study');
-  } else if (shouldCheckType('study')) {
+  } else if (shouldCheckMissedType('study')) {
     const dayOfWeek = parseLocalDateString(targetDateStr).getDay();
     const scheduledStudies = appData.studies.filter(
       (s) =>
@@ -1099,7 +1113,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
 
   // Check missions - was there any failed mission on this day?
   let missionFailureCount = 0;
-  if (shouldCheckType('mission')) {
+  if (shouldCheckMissedType('mission')) {
     const failedMissions = appData.completedMissions.filter(
       (m) => m.failedDate === targetDateStr && m.failed && m.penaltyApplied !== true
     );
@@ -1127,7 +1141,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
 
   // Check works - was there any failed work on this day?
   let workFailureCount = 0;
-  if (shouldCheckType('work') && !workOffActive) {
+  if (shouldCheckMissedType('work') && !workOffActive) {
     const failedWorks = appData.completedWorks.filter(
       (w) => w.failedDate === targetDateStr && w.failed && w.penaltyApplied !== true
     );
@@ -1162,7 +1176,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   const penaltyDaySnapshot = getPenaltyDaySnapshot();
   const nutritionPenaltyAlreadyApplied = Number(penaltyDaySnapshot.nutritionFailed || 0) > 0;
   const nutritionMissingMeals =
-    shouldCheckType('nutrition') &&
+    shouldCheckMissedType('nutrition') &&
     nutritionActive &&
     !isRestDay(targetDateStr) &&
     !nutritionPenaltyAlreadyApplied &&
@@ -1170,7 +1184,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
       ? getNutritionMissingMealsForDate(targetDateStr)
       : [];
   if (
-    shouldCheckType('nutrition') &&
+    shouldCheckMissedType('nutrition') &&
     nutritionActive &&
     !isRestDay(targetDateStr) &&
     !nutritionPenaltyAlreadyApplied &&
@@ -1180,7 +1194,7 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
   }
 
   // Check hydration - penalize every day the goal is not met
-  if (shouldCheckType('hydration') && appData.hydration && appData.hydration.startDate) {
+  if (shouldCheckMissedType('hydration') && appData.hydration && appData.hydration.startDate) {
     if (targetDateStr >= appData.hydration.startDate) {
       const hydrationGoalHit = appData.hydration.goalHitDates?.includes(targetDateStr);
       const hydrationPenaltyAlreadyApplied = Number(penaltyDaySnapshot.hydrationFailed || 0) > 0;
