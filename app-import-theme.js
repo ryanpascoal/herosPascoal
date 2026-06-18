@@ -1337,15 +1337,17 @@ function applyPenalties(dateStr = getLocalDateString(), options = {}) {
     ].filter(Boolean);
     const failedDetailsLabel =
       failedDetails.length > 0 ? failedDetails.join(', ') : failedTypesLabel;
-    const penaltyLogMeta =
-      failedTypes.length > 0 &&
-      failedTypes.every((type) => type === 'nutrition' || type === 'hydration')
-        ? {
-            category: failedTypes.includes('nutrition') ? 'nutrition' : 'hydration',
-            eventDateKey: targetDateStr,
-            status: 'failed',
-          }
-        : null;
+    const penaltyLogMeta = {
+      category:
+        failedTypes.length > 0 &&
+        failedTypes.every((type) => type === 'nutrition' || type === 'hydration')
+          ? failedTypes.includes('nutrition')
+            ? 'nutrition'
+            : 'hydration'
+          : '',
+      eventDateKey: targetDateStr,
+      status: 'failed',
+    };
 
     applyCoinPenalty({
       requestedAmount: totalPenaltyItems,

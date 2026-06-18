@@ -787,17 +787,38 @@
       }
 
       if (lastReset !== today) {
-        const lastDate = parseLocalDateString(lastReset);
         const todayDate = parseLocalDateString(today);
-        const cursor = new Date(lastDate);
+        const yesterday = new Date(todayDate);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = getLocalDateString(yesterday);
+        const missedDates =
+          window.AppRules && typeof window.AppRules.getMissedDateKeys === 'function'
+            ? window.AppRules.getMissedDateKeys(lastReset, today)
+            : (() => {
+                const keys = [];
+                const lastDate = parseLocalDateString(lastReset);
+                const cursor = new Date(lastDate);
+                while (cursor < todayDate) {
+                  keys.push(getLocalDateString(cursor));
+                  cursor.setDate(cursor.getDate() + 1);
+                }
+                return keys;
+              })();
 
-        while (cursor < todayDate) {
-          applyPenalties(getLocalDateString(cursor));
-          cursor.setDate(cursor.getDate() + 1);
+        missedDates.forEach((dateKey) => {
+          if (dateKey === yesterdayStr) {
+            applyPenalties(dateKey, { onlyTypes: ['nutrition', 'hydration'] });
+            return;
+          }
+          applyPenalties(dateKey);
+        });
+
+        if (typeof cleanupOldDailyWorkouts === 'function') {
+          cleanupOldDailyWorkouts();
         }
-
-        appData.dailyWorkouts = [];
-        appData.dailyStudies = [];
+        if (typeof cleanupOldDailyStudies === 'function') {
+          cleanupOldDailyStudies();
+        }
         cleanupOldDailyMissions();
         cleanupOldDailyWorks();
         if (typeof checkOverdueMissions === 'function') {

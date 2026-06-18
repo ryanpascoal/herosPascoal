@@ -6701,6 +6701,29 @@ body.light-theme {
   color: #ffd6dd;
 }
 
+.timeline-failure-deadline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 3px 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(252, 165, 165, 0.32);
+  border-radius: 8px;
+  background: rgba(248, 113, 113, 0.13);
+  color: #fecdd3;
+  font-weight: 600;
+}
+
+.timeline-failure-deadline span {
+  color: #fca5a5;
+}
+
+.timeline-failure-deadline strong {
+  color: #fff1f2;
+}
+
 .history-list .mission-card.skipped .mission-details,
 .history-card.skipped .mission-details {
   color: #ffe5b0;
@@ -6927,6 +6950,20 @@ body.light-theme .history-card.skipped .mission-details,
 body.light-theme .history-list .mission-card.planned .mission-details,
 body.light-theme .history-card.planned .mission-details {
   color: #526277;
+}
+
+body.light-theme .timeline-failure-deadline {
+  border-color: rgba(220, 38, 38, 0.22);
+  background: rgba(239, 68, 68, 0.1);
+  color: #991b1b;
+}
+
+body.light-theme .timeline-failure-deadline span {
+  color: #b91c1c;
+}
+
+body.light-theme .timeline-failure-deadline strong {
+  color: #7f1d1d;
 }
 
 #gestao .sub-content {

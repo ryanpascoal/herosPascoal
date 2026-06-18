@@ -415,6 +415,49 @@ function getTimelineStatusMeta(item) {
   return { text: 'CONCLUÍDO', className: 'completed-status', tone: 'completed' };
 }
 
+function getHistoryFailureDeadlineDateKey(category, item, eventDateKey = '') {
+  if (!item?.failed) return '';
+  if (category === 'mission' || category === 'work') {
+    return (
+      String(item.missedDate || '').trim() ||
+      String(getScheduledItemDueDateKey(item) || '').trim() ||
+      String(item.dateAdded || '').trim() ||
+      String(item.failedDate || '').trim() ||
+      String(eventDateKey || '').trim()
+    );
+  }
+  if (category === 'workout' || category === 'study') {
+    return (
+      String(item.missedDate || '').trim() ||
+      String(item.date || '').trim() ||
+      String(item.failedDate || '').trim() ||
+      String(eventDateKey || '').trim()
+    );
+  }
+  return String(item.missedDate || item.failedDate || eventDateKey || '').trim();
+}
+
+function getTimelineFailureDeadlineLabel(entry) {
+  const category = String(entry?.category || '').trim();
+  if (category === 'nutrition') return 'Prazo da alimentação';
+  if (category === 'hydration') return 'Prazo da hidratação';
+  if (category === 'workout') return 'Prazo do treino';
+  if (category === 'study') return 'Prazo do estudo';
+  if (category === 'work') return 'Prazo do trabalho';
+  return 'Prazo da atividade';
+}
+
+function getTimelineFailureDeadlineHtml(entry) {
+  const deadlineDateKey = String(entry?.failureDeadlineDateKey || '').trim();
+  if (!deadlineDateKey) return '';
+  return `
+    <p class="timeline-failure-deadline">
+      <span>${escapeHtml(getTimelineFailureDeadlineLabel(entry))}</span>
+      <strong>${formatDate(deadlineDateKey)}</strong>
+    </p>
+  `;
+}
+
 function getPlannedTimelineStatusMeta() {
   return { text: 'PLANEJADO', className: 'planned-status', tone: 'planned' };
 }
@@ -427,6 +470,8 @@ function getHistoryEntryTypeLabel(category, item) {
 }
 
 function getTimelineLogDateKey(log) {
+  const metaEventDateKey = String(log?.meta?.eventDateKey || '').trim();
+  if (metaEventDateKey) return metaEventDateKey;
   if (!log?.date) return '';
   const parsed = new Date(log.date);
   if (!Number.isFinite(parsed.getTime())) return '';
@@ -805,9 +850,10 @@ function getStandaloneTimelineLogCategory(log) {
 }
 
 function getStandaloneTimelineLogStatusClass(log) {
+  if (String(log?.meta?.status || '').trim() === 'failed') return 'failed';
+  if (log?.type === 'penalty') return 'failed';
   if (getNutritionHydrationTimelineLogCategory(log) === 'hydration') return 'completed';
   if (getNutritionHydrationTimelineLogCategory(log) === 'nutrition') return 'completed';
-  if (log?.type === 'penalty') return 'failed';
   if (log?.type === 'system') return 'skipped';
   return 'completed';
 }
@@ -940,6 +986,8 @@ function buildAggregatePenaltyTimelineEntries(log) {
       eventTimestamp,
       sortTimestamp,
       title: detail,
+      failureDeadlineDateKey:
+        getStandaloneTimelineLogStatusClass(splitLog) === 'failed' ? eventDateKey : '',
     };
   });
 }
@@ -1109,6 +1157,7 @@ function getUnifiedTimelineEvents() {
       statusMeta: getTimelineStatusMeta(item),
       typeLabel: getHistoryEntryTypeLabel(category, item),
       title: getActivityTimelineTitle(category, item),
+      failureDeadlineDateKey: getHistoryFailureDeadlineDateKey(category, item, eventDateKey),
     };
   });
 
@@ -1170,6 +1219,8 @@ function getUnifiedTimelineEvents() {
         eventTimestamp: String(log.date || '').trim(),
         sortTimestamp: getTimelineSortTimestamp(eventDateKey, log.date || ''),
         title: String(log.title || 'Registro do herói').trim() || 'Registro do herói',
+        failureDeadlineDateKey:
+          getStandaloneTimelineLogStatusClass(log) === 'failed' ? eventDateKey : '',
       };
     });
 
@@ -1336,6 +1387,7 @@ function renderTimelineEventCard(entry) {
     const card = document.createElement('div');
     const toneClass = getStandaloneTimelineLogStatusClass(entry.log);
     const timelineTime = formatTimelineTime(entry.eventTimestamp);
+    const failureDeadlineHtml = getTimelineFailureDeadlineHtml(entry);
     card.className = `mission-card history-card compact-history timeline-log-card ${toneClass}`;
     card.innerHTML = `
       <div class="mission-header">
@@ -1350,6 +1402,7 @@ function renderTimelineEventCard(entry) {
       </div>
       <div class="mission-details">
         <p>Data: ${formatDate(entry.eventDateKey)}</p>
+        ${failureDeadlineHtml}
         ${timelineTime ? `<p>Hora: ${escapeHtml(timelineTime)}</p>` : ''}
         ${entry.log?.content ? `<p class="timeline-narrative">Registro: ${escapeHtml(entry.log.content)}</p>` : ''}
       </div>
@@ -1362,6 +1415,7 @@ function renderTimelineEventCard(entry) {
   const card = document.createElement('div');
   card.className = `mission-card history-card compact-history ${statusMeta.tone}`;
   const timelineTime = formatTimelineTime(entry.eventTimestamp);
+  const failureDeadlineHtml = getTimelineFailureDeadlineHtml(entry);
   const workoutDetailLines =
     category === 'workout'
       ? getWorkoutHistoryDetailLines(item)
@@ -1380,6 +1434,7 @@ function renderTimelineEventCard(entry) {
     <div class="mission-details">
       <p>Tipo: ${typeLabel}</p>
       <p>Data: ${formatDate(eventDateKey)}</p>
+      ${failureDeadlineHtml}
       ${entry.isPlanned ? '<p>Status: Prevista para este dia.</p>' : ''}
       ${timelineTime ? `<p>Hora: ${escapeHtml(timelineTime)}</p>` : ''}
       ${workoutDetailLines}
