@@ -8416,32 +8416,33 @@ body.light-theme .activity-due-date {
   }
 }
 
-/* Daily mobile cards: text can grow vertically, but actions stay pinned to the right. */
+/* Daily mobile cards: content grows naturally while actions stay pinned to the right. */
 @media (max-width: 560px) {
   #atividades #daily-activities {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     overflow-x: hidden;
   }
 
   #atividades #daily-activities .compact-activity-card {
     display: grid;
-    grid-template-columns: 5px minmax(0, 1fr) clamp(92px, 28vw, 128px);
+    grid-template-columns: 5px minmax(0, 1fr) clamp(94px, 29vw, 128px);
     grid-template-areas:
       'bar main actions'
       'bar meta actions';
     grid-auto-flow: row;
     align-items: start;
-    column-gap: 9px;
-    row-gap: 6px;
+    column-gap: 10px;
+    row-gap: 8px;
     width: 100%;
     min-width: 0;
     min-height: 0;
     height: auto;
-    padding: 10px 9px;
+    padding: 11px 10px;
     overflow: visible;
     box-sizing: border-box;
+    margin-bottom: 0;
   }
 
   #atividades #daily-activities .activity-color-bar {
@@ -8516,7 +8517,7 @@ body.light-theme .activity-due-date {
     justify-items: stretch;
     gap: 6px;
     width: 100%;
-    min-width: 92px;
+    min-width: 94px;
     max-width: 128px;
     margin: 0;
     overflow: visible;
@@ -8524,7 +8525,7 @@ body.light-theme .activity-due-date {
   }
 
   #atividades #daily-activities .activity-actions.has-skip {
-    grid-template-columns: minmax(0, 1fr) 34px;
+    grid-template-columns: minmax(0, 1fr) 36px;
   }
 
   #atividades #daily-activities .activity-actions.has-study-toggle {
@@ -8532,7 +8533,7 @@ body.light-theme .activity-due-date {
   }
 
   #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
-    grid-template-columns: 18px minmax(0, 1fr) 34px;
+    grid-template-columns: 18px minmax(0, 1fr) 36px;
   }
 
   #atividades #daily-activities .activity-actions .apply-study-checkbox {
@@ -8559,7 +8560,7 @@ body.light-theme .activity-due-date {
     font-size: 0.7rem;
     line-height: 1.1;
     white-space: normal;
-    overflow: hidden;
+    overflow: visible;
     text-align: center;
     text-overflow: clip;
     box-sizing: border-box;
@@ -8579,8 +8580,8 @@ body.light-theme .activity-due-date {
 
   #atividades #daily-activities .activity-actions .skip-btn {
     grid-column: 2;
-    width: 34px;
-    min-width: 34px;
+    width: 36px;
+    min-width: 36px;
     padding: 0;
   }
 
@@ -8593,7 +8594,7 @@ body.light-theme .activity-due-date {
   #atividades #daily-activities .compact-activity-card {
     grid-template-columns: 4px minmax(0, 1fr) clamp(84px, 29vw, 118px);
     column-gap: 7px;
-    padding: 9px 8px;
+    padding: 10px 8px;
   }
 
   #atividades #daily-activities .activity-main {
@@ -8611,7 +8612,7 @@ body.light-theme .activity-due-date {
   }
 
   #atividades #daily-activities .activity-actions.has-skip {
-    grid-template-columns: minmax(0, 1fr) 32px;
+    grid-template-columns: minmax(0, 1fr) 34px;
   }
 
   #atividades #daily-activities .activity-actions.has-study-toggle {
@@ -8619,7 +8620,7 @@ body.light-theme .activity-due-date {
   }
 
   #atividades #daily-activities .activity-actions.has-study-toggle.has-skip {
-    grid-template-columns: 18px minmax(0, 1fr) 32px;
+    grid-template-columns: 18px minmax(0, 1fr) 34px;
   }
 
   #atividades #daily-activities .activity-actions .complete-btn,
@@ -8632,8 +8633,8 @@ body.light-theme .activity-due-date {
   }
 
   #atividades #daily-activities .activity-actions .skip-btn {
-    width: 32px;
-    min-width: 32px;
+    width: 34px;
+    min-width: 34px;
     padding: 0;
   }
 }
