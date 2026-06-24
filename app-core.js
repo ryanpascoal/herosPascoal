@@ -146,11 +146,39 @@ function mergeStateWithDefaults(defaultValue, sourceValue) {
   return sourceValue === undefined ? cloneStateValue(defaultValue) : cloneStateValue(sourceValue);
 }
 
+function removePeopleSystemData(state) {
+  if (!state || typeof state !== 'object') return state;
+
+  delete state.people;
+
+  [
+    state.missions,
+    state.works,
+    state.workouts,
+    state.studies,
+    state.books,
+    state.dailyWorkouts,
+    state.dailyStudies,
+    state.completedMissions,
+    state.completedWorks,
+    state.completedWorkouts,
+    state.completedStudies,
+  ].forEach((list) => {
+    if (!Array.isArray(list)) return;
+    list.forEach((item) => {
+      if (item && typeof item === 'object') delete item.peopleIds;
+    });
+  });
+
+  return state;
+}
+
 function replaceAppState(source) {
   const nextState =
     source && typeof source === 'object'
       ? mergeStateWithDefaults(APP_DEFAULTS, source)
       : cloneDefaultAppState();
+  removePeopleSystemData(nextState);
   Object.keys(appData).forEach((key) => delete appData[key]);
   Object.assign(appData, nextState);
 }
@@ -163,6 +191,7 @@ function finalizeLoadedState() {
 
 function buildLocalCachePayload() {
   const payload = JSON.parse(JSON.stringify(appData));
+  removePeopleSystemData(payload);
 
   payload.localCacheMeta = {
     cachedAt: new Date().toISOString(),
@@ -675,7 +704,6 @@ function generateDailyActivities() {
     distance: null,
     time: null,
     feedback: '',
-    peopleIds: Array.isArray(workout.peopleIds) ? [...workout.peopleIds] : [],
   });
   const buildStudyEntry = (study, dateKey) => ({
     id: createUniqueId(appData.dailyStudies),
@@ -692,7 +720,6 @@ function generateDailyActivities() {
     impact: study.impact || 'medium',
     effort: study.effort || 'medium',
     energy: study.energy || 'medium',
-    peopleIds: Array.isArray(study.peopleIds) ? [...study.peopleIds] : [],
   });
 
   // Gerar treinos do dia
@@ -772,6 +799,7 @@ function generateDailyActivities() {
 Object.assign(globalThis, {
   startApp,
   cloneDefaultAppState,
+  removePeopleSystemData,
   replaceAppState,
   finalizeLoadedState,
   normalizeWeekdayValue,

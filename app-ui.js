@@ -14,9 +14,6 @@
   // Inicializar os seletores de atributos
   initAttributesSelectors();
   initClassSelectors();
-  if (typeof initPeopleSelectors === 'function') {
-    initPeopleSelectors();
-  }
   initSelectAllDays('#activity-days-container .days-selector');
   if (typeof updateActivityForm === 'function') {
     updateActivityForm();
@@ -148,9 +145,6 @@ function formatNoteTimestamp(timestamp) {
   });
 }
 
-const PEOPLE_PAGE_SIZE = 12;
-let currentPeoplePage = 1;
-
 function setNotesFormEditingState(note = null) {
   const titleEl = document.getElementById('notes-form-title');
   const editIdEl = document.getElementById('note-edit-id');
@@ -176,342 +170,6 @@ function setNotesFormEditingState(note = null) {
   contentEl.value = '';
   submitBtn.textContent = 'Salvar nota';
   cancelBtn.style.display = 'none';
-}
-
-function getSortedPeople(people = appData.people) {
-  return [...(Array.isArray(people) ? people : [])].sort((left, right) => {
-    const levelDelta = Number(right?.level || 0) - Number(left?.level || 0);
-    if (levelDelta !== 0) return levelDelta;
-
-    const xpDelta = Number(right?.xp || 0) - Number(left?.xp || 0);
-    if (xpDelta !== 0) return xpDelta;
-
-    const interactionsDelta = Number(right?.interactions || 0) - Number(left?.interactions || 0);
-    if (interactionsDelta !== 0) return interactionsDelta;
-
-    return String(left?.name || '').localeCompare(String(right?.name || ''), 'pt-BR');
-  });
-}
-
-function formatPersonDate(dateStr) {
-  if (!dateStr) return '';
-  const parsed = parseLocalDateString(dateStr);
-  if (!Number.isFinite(parsed.getTime())) return '';
-  return parsed.toLocaleDateString('pt-BR');
-}
-
-function clampPeoplePage(totalItems) {
-  const totalPages = Math.max(1, Math.ceil(Number(totalItems || 0) / PEOPLE_PAGE_SIZE));
-  currentPeoplePage = Math.min(Math.max(1, currentPeoplePage), totalPages);
-  return totalPages;
-}
-
-function changePeoplePage(step) {
-  const totalPeople = Array.isArray(appData.people) ? appData.people.length : 0;
-  const totalPages = clampPeoplePage(totalPeople);
-  currentPeoplePage = Math.min(totalPages, Math.max(1, currentPeoplePage + Number(step || 0)));
-  updatePeopleList();
-}
-
-function populateActivityPeopleSelector(selectedIds = null) {
-  const container = document.getElementById('activity-people');
-  if (!container) return;
-
-  if (!Array.isArray(appData.people)) appData.people = [];
-
-  const preservedIds = Array.isArray(selectedIds)
-    ? selectedIds.map((id) => String(id))
-    : Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map((checkbox) =>
-        String(checkbox.value)
-      );
-  const people = [...appData.people].sort((left, right) =>
-    String(left?.name || '').localeCompare(String(right?.name || ''), 'pt-BR')
-  );
-
-  if (people.length === 0) {
-    container.innerHTML =
-      '<p class="empty-message selector-empty-message">Nenhuma pessoa cadastrada ainda.</p>';
-    return;
-  }
-
-  container.innerHTML = '';
-  people.forEach((person) => {
-    const wrapper = document.createElement('label');
-    wrapper.className = 'attribute-checkbox';
-    wrapper.innerHTML = `
-      <input type="checkbox" value="${person.id}" ${preservedIds.includes(String(person.id)) ? 'checked' : ''} />
-      <span>${escapeHtml(person.name || 'Pessoa')}</span>
-    `;
-    container.appendChild(wrapper);
-  });
-}
-
-function setPersonFormEditingState(person = null) {
-  const titleEl = document.getElementById('person-form-title');
-  const editIdEl = document.getElementById('person-edit-id');
-  const nameEl = document.getElementById('person-name');
-  const relationTypeEl = document.getElementById('person-relation-type');
-  const relationStartEl = document.getElementById('person-relation-start');
-  const contactEl = document.getElementById('person-contact');
-  const submitBtn = document.getElementById('person-submit-btn');
-  const cancelBtn = document.getElementById('person-cancel-btn');
-
-  if (
-    !titleEl ||
-    !editIdEl ||
-    !nameEl ||
-    !relationTypeEl ||
-    !relationStartEl ||
-    !contactEl ||
-    !submitBtn ||
-    !cancelBtn
-  ) {
-    return;
-  }
-
-  if (person) {
-    titleEl.textContent = 'Editar Pessoa';
-    editIdEl.value = String(person.id ?? '');
-    nameEl.value = String(person.name || '');
-    relationTypeEl.value = String(person.relationType || '');
-    relationStartEl.value = String(person.relationStart || '');
-    contactEl.value = String(person.contact || '');
-    submitBtn.textContent = 'Atualizar Pessoa';
-    cancelBtn.style.display = 'inline-flex';
-    nameEl.focus();
-    return;
-  }
-
-  titleEl.textContent = 'Cadastrar Pessoa';
-  editIdEl.value = '';
-  nameEl.value = '';
-  relationTypeEl.value = '';
-  relationStartEl.value = '';
-  contactEl.value = '';
-  submitBtn.textContent = 'Salvar Pessoa';
-  cancelBtn.style.display = 'none';
-}
-
-function updatePeopleList() {
-  const container = document.getElementById('people-list');
-  const paginationEl = document.getElementById('people-pagination');
-  const paginationSummaryEl = document.getElementById('people-pagination-summary');
-  const prevBtn = document.getElementById('people-page-prev');
-  const nextBtn = document.getElementById('people-page-next');
-  if (!container) return;
-
-  if (!Array.isArray(appData.people)) appData.people = [];
-  const people = getSortedPeople();
-  const totalPages = clampPeoplePage(people.length);
-
-  if (people.length === 0) {
-    container.innerHTML = '<p class="empty-message">Nenhuma pessoa cadastrada.</p>';
-    if (paginationEl) paginationEl.style.display = 'none';
-    return;
-  }
-
-  container.innerHTML = '';
-  const startIndex = (currentPeoplePage - 1) * PEOPLE_PAGE_SIZE;
-  const paginatedPeople = people.slice(startIndex, startIndex + PEOPLE_PAGE_SIZE);
-
-  paginatedPeople.forEach((person) => {
-    const totalXp = Number(person.xp || 0);
-    const currentXp = totalXp % 100;
-    const percentage = Math.min(100, Math.max(0, (currentXp / 100) * 100));
-    const personCard = document.createElement('div');
-    personCard.className = 'item-card person-card';
-    personCard.innerHTML = `
-      <div class="item-info person-info">
-        <span class="item-emoji">🤝</span>
-        <div>
-          <div class="item-name-row">
-            <div class="item-name">${escapeHtml(person.name || 'Pessoa')}</div>
-            <span class="item-type">${escapeHtml(person.relationType || 'Relação')}</span>
-          </div>
-          <div class="person-meta">
-            <span>${Number(person.interactions || 0)} interações</span>
-          </div>
-          <div class="display-xp-bar">
-            <div class="person-xp-head">
-              <div class="display-level">Nível ${Number(person.level || 0)}</div>
-              <div class="display-xp-text">${currentXp}/100 XP</div>
-            </div>
-            <div class="display-xp-progress">
-              <div class="display-xp-fill" style="width: ${percentage}%"></div>
-            </div>
-          </div>
-          ${
-            person.relationStart || person.contact
-              ? `<div class="person-meta">
-                  ${person.relationStart ? `<span>Desde ${escapeHtml(formatPersonDate(person.relationStart) || person.relationStart)}</span>` : ''}
-                  ${person.contact ? `<span>${escapeHtml(person.contact)}</span>` : ''}
-                </div>`
-              : ''
-          }
-        </div>
-      </div>
-      <div class="item-actions">
-        <button class="action-btn edit-btn person-edit-btn" data-id="${person.id}" title="Editar pessoa">
-          <i class="fas fa-edit"></i>
-        </button>
-        <button class="action-btn delete-btn person-delete-btn" data-id="${person.id}" title="Excluir pessoa">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
-    `;
-    container.appendChild(personCard);
-  });
-
-  if (paginationEl) {
-    paginationEl.style.display = totalPages > 1 ? 'grid' : 'none';
-  }
-  if (paginationSummaryEl) {
-    const firstItem = startIndex + 1;
-    const lastItem = Math.min(startIndex + PEOPLE_PAGE_SIZE, people.length);
-    paginationSummaryEl.textContent =
-      `Mostrando ${firstItem}-${lastItem} de ${people.length}` +
-      ` • Página ${currentPeoplePage} de ${totalPages}`;
-  }
-  if (prevBtn) prevBtn.disabled = currentPeoplePage <= 1;
-  if (nextBtn) nextBtn.disabled = currentPeoplePage >= totalPages;
-
-  container.querySelectorAll('.person-edit-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'), 10);
-      if (Number.isFinite(id)) editPerson(id);
-    });
-  });
-
-  container.querySelectorAll('.person-delete-btn').forEach((btn) => {
-    btn.addEventListener('click', function () {
-      const id = parseInt(this.getAttribute('data-id'), 10);
-      if (Number.isFinite(id)) deletePerson(id);
-    });
-  });
-}
-
-function handlePersonSubmit(event) {
-  event.preventDefault();
-
-  if (!Array.isArray(appData.people)) appData.people = [];
-
-  const editId = parseInt(document.getElementById('person-edit-id')?.value || '', 10);
-  const name = document.getElementById('person-name')?.value?.trim() || '';
-  const relationType = document.getElementById('person-relation-type')?.value?.trim() || '';
-  const relationStart = document.getElementById('person-relation-start')?.value || '';
-  const contact = document.getElementById('person-contact')?.value?.trim() || '';
-
-  if (!name || !relationType) {
-    showFeedback('Informe pelo menos nome e tipo de relação.', 'warn');
-    return;
-  }
-
-  const existingPerson = Number.isFinite(editId)
-    ? appData.people.find((person) => person.id === editId)
-    : null;
-
-  if (existingPerson) {
-    existingPerson.name = name;
-    existingPerson.relationType = relationType;
-    existingPerson.relationStart = relationStart;
-    existingPerson.contact = contact;
-  } else {
-    appData.people.push({
-      id: createUniqueId(appData.people),
-      name,
-      relationType,
-      relationStart,
-      contact,
-      xp: 0,
-      maxXp: 100,
-      level: 0,
-      interactions: 0,
-      lastInteractionDate: null,
-    });
-  }
-
-  const savedPerson = existingPerson || appData.people[appData.people.length - 1];
-  const sortedPeople = getSortedPeople();
-  const savedIndex = sortedPeople.findIndex(
-    (person) => Number(person?.id) === Number(savedPerson?.id)
-  );
-  if (savedIndex >= 0) {
-    currentPeoplePage = Math.floor(savedIndex / PEOPLE_PAGE_SIZE) + 1;
-  }
-
-  setPersonFormEditingState();
-  updateUI({ mode: 'activity' });
-  showFeedback(
-    existingPerson ? 'Pessoa atualizada com sucesso!' : 'Pessoa cadastrada com sucesso!',
-    'success'
-  );
-}
-
-function editPerson(personId) {
-  const person = Array.isArray(appData.people)
-    ? appData.people.find((entry) => Number(entry?.id) === Number(personId))
-    : null;
-  if (!person) return;
-
-  const profileMainPanels = document.querySelector('.profile-main-panels');
-  const profileTabs = document.querySelector('.profile-tabs');
-  if (profileMainPanels || profileTabs) {
-    switchTab('perfil');
-    switchInnerSubTab('perfil-geral', profileMainPanels);
-  }
-  if (profileTabs) {
-    switchSubTab('pessoas', profileTabs);
-  }
-
-  setPersonFormEditingState(person);
-}
-
-function removePersonAssociations(personId) {
-  const targetId = String(personId);
-  [
-    appData.missions,
-    appData.works,
-    appData.workouts,
-    appData.studies,
-    appData.books,
-    appData.completedMissions,
-    appData.completedWorks,
-    appData.completedWorkouts,
-    appData.completedStudies,
-  ].forEach((list) => {
-    if (!Array.isArray(list)) return;
-    list.forEach((item) => {
-      if (!Array.isArray(item?.peopleIds)) return;
-      item.peopleIds = item.peopleIds.filter((id) => String(id) !== targetId);
-    });
-  });
-}
-
-async function deletePerson(personId) {
-  if (!Array.isArray(appData.people)) return;
-  const personIndex = appData.people.findIndex((entry) => Number(entry?.id) === Number(personId));
-  if (personIndex === -1) return;
-
-  const confirmed = await askConfirmation('Tem certeza que deseja excluir esta pessoa?', {
-    title: 'Excluir pessoa',
-    confirmText: 'Excluir',
-  });
-  if (!confirmed) return;
-
-  const [removedPerson] = appData.people.splice(personIndex, 1);
-  removePersonAssociations(personId);
-
-  const currentEditId = parseInt(document.getElementById('person-edit-id')?.value || '', 10);
-  if (
-    removedPerson &&
-    Number.isFinite(currentEditId) &&
-    Number(currentEditId) === Number(removedPerson.id)
-  ) {
-    setPersonFormEditingState();
-  }
-
-  updateUI({ mode: 'activity' });
-  showFeedback('Pessoa excluída com sucesso!', 'success');
 }
 
 function renderNotes() {
@@ -815,9 +473,6 @@ function initEvents() {
     'nutrition-consolidate-day-btn': () => globalThis.consolidateNutritionDay?.(),
     'nutrition-reopen-day-btn': () => globalThis.reopenNutritionDay?.(),
     'note-cancel-btn': () => setNotesFormEditingState(),
-    'person-cancel-btn': () => setPersonFormEditingState(),
-    'people-page-prev': () => changePeoplePage(-1),
-    'people-page-next': () => changePeoplePage(1),
     'save-stats-goals-btn': saveStatisticsGoals,
     'reset-foods-btn': resetNutritionFoods,
     'reset-btn': resetProgress,
@@ -829,7 +484,6 @@ function initEvents() {
     'activity-form': handleActivitySubmit,
     'shop-item-form': handleShopItemSubmit,
     'class-form': handleClassSubmit,
-    'person-form': handlePersonSubmit,
     'objective-form': handleObjectiveSubmit,
     'finance-form': handleFinanceSubmit,
     'finance-budget-form': handleFinanceBudgetSubmit,
@@ -1137,9 +791,7 @@ function updateUI(options = {}) {
   // Atualizar atributos
   updateAttributes();
   updateClassesList();
-  updatePeopleList();
   updateWorkClassOptions();
-  populateActivityPeopleSelector();
 
   if (shouldUpdateActivity) {
     // Garante que atividades do dia reflitam cadastros/edições feitos na sessão atual
@@ -2323,16 +1975,10 @@ Object.assign(globalThis, {
   bindById,
   bindManyById,
   getSortedNotes,
-  getSortedPeople,
   renderNotes,
-  populateActivityPeopleSelector,
-  updatePeopleList,
   handleNoteSubmit,
-  handlePersonSubmit,
   editNote,
-  editPerson,
   deleteNote,
-  deletePerson,
   toggleNoteFavorite,
   initEvents,
   updateUI,
@@ -2371,7 +2017,6 @@ Object.assign(globalThis, {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getSortedNotes,
-    getSortedPeople,
     getWorkoutStats,
     hasGeneralFailure,
     hasNutritionHydrationFailure,
